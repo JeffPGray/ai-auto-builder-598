@@ -1,0 +1,21 @@
+# Klaudius scaffolds into this folder after `init`. Never commit the licence key,
+# provider credentials, or the vendor's source (licence forbids redistribution).
+.env
+.env.*
+!.env.example
+my-agency/
+node_modules/
+.next/
+.vercel/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local agent state
+.claude/ledger.json
+.claude/ledger-archive/
+
+# Evaluation artifacts
+baseline/
+artifacts/
