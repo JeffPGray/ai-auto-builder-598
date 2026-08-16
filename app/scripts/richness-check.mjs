@@ -177,6 +177,59 @@ if (home) {
       'art-directed. Give the hero and at least one section-anchor photo a duotone, graphic-' +
       'containment, or directional-scrim treatment (see § Photo art direction).');
   }
+
+  /* 4c. HERO MOTION. Measured 2026-08-16: `data-reveal` is correctly banned from the hero (it
+   * tweens through opacity:0, which disqualifies the element from LCP candidacy), but that got
+   * over-applied into "the hero has no motion at all" — an operator looking at a finished,
+   * otherwise-improved build called it out by name: "no hero motion". `data-hero-reveal` is the
+   * LCP-safe fix (Motion.tsx tweens only y/scale for it, opacity never moves), and it must
+   * actually be present on the hero's text/CTA wrapper, not just theoretically available. Same
+   * pragmatic hero-area heuristic as the composition check below: the hero is always the first
+   * thing on the page, so the first slice of the document is "the hero area" without needing a
+   * real HTML parse. */
+  const heroHasReveal = /data-hero\b/.test(h) && /data-hero-reveal\b/.test(h.slice(0, 6000));
+  facts.heroReveal = heroHasReveal;
+  if (/data-hero\b/.test(h) && !heroHasReveal) {
+    failures.push(
+      '[motion] the hero section has no data-hero-reveal on its text/CTA content — it will render ' +
+      'perfectly static while every other section on the page moves. This is NOT the same as the ' +
+      'data-reveal ban (that one is correct and stays): data-hero-reveal tweens y/scale only, never ' +
+      'opacity, so it never risks LCP. Put it on the wrapper div immediately inside the hero holding ' +
+      'the eyebrow/h1/dek/CTA row.');
+  }
+
+  /* 4d. SERVICE-PAGE / BLOG COUPLING CONTRADICTION. build/SKILL.md § "Per-service pages" says a
+   * blog article's worth of substance almost always clears the 120-word bar for a /services/<slug>
+   * page too, and to decide both together — written 2026-08-16 specifically because demolition-okc
+   * wrote 5 real blog articles while giving every service "no dedicated page". The SAME contradiction
+   * recurred on the next build anyway (the-woodlands-plumbing-and-air, same night): every one of 5
+   * services got a real blog article AND a "/services/slug: no (<120)" verdict in status.md's own
+   * per-service table. The rule was prose; prose lost. This reads status.md's own decision table
+   * (sibling of site-dir) and fails on any row that claims a blog article but no dedicated page —
+   * the exact contradiction the rule exists to prevent, now caught mechanically instead of trusted. */
+  const statusPath2 = join(siteDir, '..', 'data', 'status.md');
+  if (existsSync(statusPath2)) {
+    const statusText = readFileSync(statusPath2, 'utf8');
+    const rows = statusText.split('\n').filter((l) => /^\s*\|.*\|.*\|.*\|.*\|/.test(l) && !/^\s*\|[\s-]*\|[\s-]*\|/.test(l));
+    const contradictions = rows.filter((row) => {
+      const cells = row.split('|').map((c) => c.trim());
+      // Expect: | Service | Words | /services section | /services/slug | Blog article |
+      if (cells.length < 6) return false;
+      const slugCell = (cells[4] || '').toLowerCase();
+      const blogCell = (cells[5] || '').toLowerCase();
+      const slugSaysNo = /^no\b/.test(slugCell);
+      const blogSaysYes = /^yes\b/.test(blogCell);
+      return slugSaysNo && blogSaysYes;
+    });
+    if (contradictions.length) {
+      failures.push(
+        `[structure] status.md's per-service table has ${contradictions.length} row(s) with a real ` +
+        'blog article but no /services/<slug> page — the exact contradiction build/SKILL.md\'s § ' +
+        '"Per-service pages" says to decide together. If there was enough substance for a blog ' +
+        'article, there is enough for the service page (write it), or the blog article should not ' +
+        'exist either (cut it). Rows: ' + contradictions.map((r) => r.split('|')[1]?.trim()).join(', '));
+    }
+  }
 }
 
 /* 5. WEIGHT BUDGETS — the thing that actually decides the mobile Lighthouse score.

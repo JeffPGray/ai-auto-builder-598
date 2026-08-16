@@ -246,6 +246,17 @@ blog. If it needs invention to reach 120 words, it does not qualify.
 Cross-link both ways: `/services` section → the page, and the page → the related article. Two pages
 about the same job that ignore each other read as generated.
 
+> 🚨 **This exact contradiction recurred the very next build after the paragraph above was
+> written (the-woodlands-plumbing-and-air, same night, 2026-08-16) — now caught mechanically by
+> `richness-check.mjs`, not just written down: a status.md with a real blog article and
+> `/services/slug: no` on the SAME service is an automatic FAIL.** Do not count words twice with
+> two different answers. If you are writing a genuine blog article for a service, that substance
+> making it into 500+ words of article prose IS proof it clears 120 words — go write the service
+> page from the same research, do not separately re-tally a shorter "combined" figure for the
+> `/services` section and let that smaller number decide the page question. The two decisions are
+> ONE decision, made once, from the deepest content you gathered for that service — never twice,
+> against two different word counts.
+
 **Record the per-service decision and counts in `status.md`** alongside the route decision, so QA
 can check the judgement rather than re-derive it.
 
@@ -1585,6 +1596,17 @@ border — and that pattern is barred from any brand/marketing use, so the shape
 disambiguates. (Colour is never the only indicator anyway, WCAG 1.4.1; on a collision that
 rule is the answer, not belt-and-braces.)
 
+**Ground/secondary separation.** `derive-palette.mjs` also prints `⚠️ GROUND/SECONDARY TOO CLOSE`
+when the ground-hue (§ Ground above) and the harmony-derived secondary land within 60° of each
+other — added 2026-08-16 after a real build (ground-hue 210, split-harmony secondary at 178,
+only 32° apart) drew the operator verdict "color theory seems a bit off". Both are correct in
+isolation — the ground-hue fallback rule and the harmony rotation off the accent have never known
+about each other — but a ground and a secondary that close read as one muddy neutral family
+instead of a deliberate two-hue scheme, even though nothing is technically wrong. If you see this
+warning, change the harmony type (moves the secondary) or the `--ground-hue` (moves the ladder)
+and re-run before treating the palette as final; the script does not auto-correct this because
+either change needs its own contrast/CVD re-check.
+
 Pairs never mix: `--on-accent-bright` on `--accent-fill` is unchecked and not allowed (same for
 the secondary pair). Set
 `--chat-accent: var(--accent-fill); --chat-on-accent: var(--on-accent-fill);` so the chat widget
@@ -1806,12 +1828,25 @@ Then mark elements. These four attributes are the entire API:
 > add sections purely to have something to animate. Coverage is a floor on craft, not a target to
 > game.
 | `data-reveal-group` | a card/photo grid wrapper | staggers its direct children instead of itself |
+| `data-hero-reveal` | the hero's TEXT/CTA content wrapper | settles into place on load (transform/scale ONLY, never opacity) — the LCP-safe entrance the hero is otherwise excluded from |
 | `data-hero` | the hero `<section>` | the parallax measures against it |
 | `data-nav` | the fixed `<header>` | gains `data-scrolled="true"` past 80px, so you can style a solid state |
 
 **Never put `data-reveal` on the hero section.** An element at `opacity: 0` is
 excluded from being an LCP candidate, so revealing the hero silently pushes LCP to
 some much later text block. The hero is visible from the first paint, always.
+
+> 🚨 **That rule got over-applied into "the hero gets no motion at all," and a real operator
+> caught it (2026-08-16): "no hero motion" on an otherwise-improved build. The hero's own
+> background media already proves an LCP-safe pattern works — `data-hero-media`'s parallax
+> scales/translates without ever touching opacity — so the fix is `data-hero-reveal` on the
+> hero's text/CTA wrapper: same never-touch-opacity discipline, applied to the copy instead of
+> just the media. It fires on mount, not on scroll (the hero is already in view), tweening only
+> `y`/`scale`, so the element is `opacity: 1` from first paint through the whole animation and
+> never loses LCP eligibility. Put it on the wrapper div immediately inside the hero's content
+> column (the one holding the eyebrow, `<h1>`, dek and CTA row) — its direct children stagger the
+> same way `data-reveal-group`'s do. Confirmed present in `Motion.tsx`; every hero must use it —
+> a static hero next to a page that moves everywhere else reads as unfinished, not restrained.**
 
 `Motion.tsx` carries the failure handling and you should not weaken it: the hidden
 state is applied from JS only after the libraries load, the reveals are **rebuilt on
