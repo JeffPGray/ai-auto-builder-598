@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Klaudius — Operator Guide</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+  :root {
+    --cream: #F6EFE3;
+    --cream-deep: #EFE6D4;
+    --cream-soft: #FAF5EB;
+    --ink: #1F1A14;
+    --ink-soft: #3A332A;
+    --ink-muted: #6E6356;
+    --sienna: #C5562C;
+    --rule: #E5DCCC;
+    --rule-strong: #D5C8B0;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, sans-serif;
+    font-size: 16px;
+    line-height: 1.625;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background-color: rgba(197, 86, 44, 0.18);
+    color: var(--ink);
+  }
+  main {
+    max-width: 48rem;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+  @media (min-width: 768px) {
+    main { padding: 80px 40px 96px; }
+  }
+  header {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--rule);
+  }
+  header h1 {
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 36px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+  @media (min-width: 768px) {
+    header h1 { font-size: 48px; }
+  }
+  header .lead {
+    margin: 16px 0 0;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-muted);
+  }
+  h2 {
+    margin: 48px 0 8px;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+  @media (min-width: 768px) {
+    h2 { font-size: 30px; }
+  }
+  h3 {
+    margin: 28px 0 8px;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    color: var(--ink);
+  }
+  p {
+    margin: 0 0 18px;
+    color: var(--ink-soft);
+  }
+  ul, ol {
+    margin: 0 0 20px;
+    padding-left: 24px;
+    color: var(--ink-soft);
+  }
+  li { margin-bottom: 8px; }
+  strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  em { font-style: italic; }
+  a {
+    color: var(--sienna);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover { color: var(--ink); }
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.875em;
+    background: var(--cream-deep);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+  pre {
+    background: var(--cream-deep);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 16px 18px;
+    margin: 0 0 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+  }
+  pre code {
+    background: transparent;
+    padding: 0;
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .callout {
+    background: var(--cream-deep);
+    border-left: 3px solid var(--sienna);
+    border-radius: 0 6px 6px 0;
+    padding: 22px 26px;
+    margin: 0 0 40px;
+  }
+  .callout h2 {
+    margin: 0 0 10px;
+    font-size: 22px;
+  }
+  @media (min-width: 768px) {
+    .callout h2 { font-size: 22px; }
+  }
+  .callout p { color: var(--ink-soft); }
+  .callout p:last-child { margin-bottom: 0; }
+  .muted { color: var(--ink-muted); }
+  .nav {
+    background: var(--cream-deep);
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin: 0 0 40px;
+    font-size: 14px;
+  }
+  .nav strong {
+    display: block;
+    margin-bottom: 8px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-muted);
+  }
+  .nav ul {
+    margin: 0;
+    padding-left: 20px;
+    columns: 2;
+    column-gap: 24px;
+    color: var(--ink-soft);
+  }
+  .nav li { margin-bottom: 4px; }
+  blockquote {
+    border-left: 3px solid var(--sienna);
+    background: var(--cream-deep);
+    margin: 0 0 20px;
+    padding: 14px 20px;
+    border-radius: 0 6px 6px 0;
+  }
+  blockquote p {
+    margin: 0;
+    color: var(--ink-soft);
+  }
+  hr {
+    border: 0;
+    text-align: center;
+    margin: 64px 0;
+    height: auto;
+  }
+  hr::after {
+    content: "·   ·   ·";
+    color: #A39684;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 20px;
+    letter-spacing: 0.3em;
+  }
+  /* Brand bar */
+  .brand-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--rule);
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.15s ease;
+  }
+  .brand-bar:hover { color: var(--sienna); }
+  .brand-bar:hover .brand-name { color: var(--sienna); }
+  .brand-bar svg { display: block; }
+  .brand-bar .brand-name {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    transition: color 0.15s ease;
+  }
+  /* Eyebrow labels above sections */
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--ink-muted);
+    margin: 64px 0 6px;
+  }
+  .eyebrow + h2 { margin-top: 0; }
+  /* Anchor links on headings — pure CSS hover # glyph */
+  h2 a, h3 a {
+    color: inherit;
+    text-decoration: none;
+  }
+  h2 a:hover, h3 a:hover { color: var(--sienna); }
+  h2 a::after, h3 a::after {
+    content: "  #";
+    color: #A39684;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    font-weight: 400;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.7em;
+  }
+  h2 a:hover::after, h3 a:hover::after { opacity: 1; }
+  /* Sign-off */
+  .sign-off {
+    margin-top: 80px;
+    padding-top: 40px;
+    text-align: center;
+    border-top: 1px solid var(--rule);
+  }
+  .sign-off .motto {
+    font-family: "Fraunces", Georgia, serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--ink-muted);
+    margin: 0;
+  }
+  /* Print stylesheet */
+  @media print {
+    body { background: #fff; color: #000; }
+    main { max-width: 100%; padding: 32px 24px; }
+    .nav { display: none; }
+    pre {
+      white-space: pre-wrap;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      color: #000;
+    }
+    a { color: #000; text-decoration: underline; }
+    pre, blockquote, .callout { break-inside: avoid; }
+    h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+    .sign-off { border-top: 1px solid #999; }
+    .brand-bar svg rect:first-child { fill: #000; }
+  }
+</style>
+</head>
+<body>
+<main id="top">
+
+<a class="brand-bar" href="https://klaudius.dev">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="28" height="28" role="img" aria-label="Klaudius mark">
+    <rect width="64" height="64" rx="8" fill="#C5562C" />
+    <rect x="14" y="14" width="6" height="36" fill="#F6EFE3" />
+    <path d="M20 32 L36 14 L44 14 L26 33 Z" fill="#F6EFE3" />
+    <rect x="32" y="34" width="14" height="16" fill="#F6EFE3" />
+  </svg>
+  <span class="brand-name">Klaudius</span>
+</a>
+
+<header>
+  <h1>Operator Guide</h1>
+  <p class="lead">Power-user reference for day-to-day operation</p>
+</header>
+
+<section class="callout">
+  <h2>How to read this.</h2>
+  <p>If you haven't read <a href="DOCS.html"><code>DOCS.html</code></a> yet, start there — that's the entry-point reference covering install, model and reasoning-effort guidance, and the daily-driver commands. This guide picks up from where that one leaves off.</p>
+  <p>It's written to be skimmed cover-to-cover once, then dipped back into when you hit something specific. Anything important enough to need explaining in plain English ends up here: how the pipeline thinks, day-to-day operating rhythm, gotchas, and power-user moves. Content gets added as it occurs to Team Klaudius, so this guide will grow rather than arrive fully-formed. It lives next to <code>CLAUDE.md</code> so Claude can read it too, but the primary audience is you.</p>
+</section>
+
+<div class="nav">
+  <strong>On this page</strong>
+  <ul>
+    <li><a href="#follow-up">Follow-ups and warm leads</a></li>
+    <li><a href="#vercel">Hosting: Vercel, Cloudflare, Netlify or your own server</a></li>
+    <li><a href="#places">Google Places: keeping the credits flowing</a></li>
+    <li><a href="#reply">When a client replies</a></li>
+    <li><a href="#macos-fda">macOS: Full Disk Access for parallel SMS / iMessage outreach</a></li>
+  </ul>
+</div>
+
+<section id="follow-up">
+  <p class="eyebrow">Outreach rhythm</p>
+  <h2><a href="#follow-up">Follow-ups and warm leads</a></h2>
+  <p>Most outreach gets ignored, and the difference between a 1% conversion rate and a 5% conversion rate is what you do with the silence. Klaudius runs a structured follow-up sequence and tracks every conversation in Supabase so you don't have to remember who's where.</p>
+
+  <h3>How the data model works</h3>
+  <p>Every client lives in a Supabase <code>clients</code> table with a <code>status</code> field. The statuses the follow-up skills care about are <strong><code>outreach_sent</code></strong> (you've made contact, no real reply yet) and <strong><code>responded</code></strong> (the client engaged). The terminals are <code>converted</code>, <code>rejected</code>, <code>lapsed</code>, and <code>unreachable</code>.</p>
+  <p>Conversation state itself — <em>who said what, when</em> — lives in your <code>chat.db</code> (SMS via iMessage) or your Twilio message log (SMS via Twilio), your email inbox (via IMAP), and for WhatsApp, a local SQLite database that a background daemon maintains (<code>~/.klaudius/whatsapp/&lt;account&gt;/messages.db</code>). Supabase mirrors all of that as a cache: columns like <code>last_out_date</code>, <code>last_in_date</code>, <code>outgoing_touch_count</code>, <code>has_inbound_since_last_out</code>. The cache is rebuilt by <code>scripts/sync_thread_state.py</code> at the start of every <code>/follow-up</code> and <code>/warm-leads</code> run, so the skills always work on fresh data — but the source of truth is the actual messages.</p>
+  <p>The default cadence is <strong>5 touches over 21 days</strong> (initial + four follow-ups on days 3, 7, 14, 21). After the breakup message lands and 7 days pass with no engagement, the client moves to <code>lapsed</code>.</p>
+
+  <h3>WhatsApp lane</h3>
+  <p>WhatsApp works a little differently from email and SMS because the protocol requires a continuously-connected device. Klaudius runs a small background daemon (<code>scripts/whatsapp-daemon.mjs</code>) per linked WhatsApp account that holds the Baileys WebSocket connection, mirrors every inbound and outbound message to a local SQLite, and serializes sends. The daemon auto-spawns the first time <code>/outreach</code> uses it; it stays alive in the background after that. You don't have to start it, restart it, or manage it day-to-day. If you ever want to inspect what's running, gracefully stop a daemon, or troubleshoot a stuck account, just ask Claude — it knows how to drive the daemon scripts and will run the right command for what you need.</p>
+  <p><strong>Multiple numbers.</strong> Klaudius supports linking 2–5 WhatsApp accounts and round-robins across them for initial sends — useful for higher-volume operators who want to distribute traffic across multiple phones. Follow-ups always use whichever account sent the original message (stored in <code>outreach_account</code> on the client row); you can't continue a WhatsApp thread from a different number. To add a new account after install, just ask Claude — it'll walk you through the pairing flow and wire the new account into your config.</p>
+  <p><strong>Suspension risk.</strong> WhatsApp may issue a 24-hour suspension on numbers used for excessive amounts of cold outbound in a short space of time, so try not to spam cold messaging on WhatsApp — keep daily cold-outbound volume modest (around 20–30 sends a day is a reasonable ceiling). If an account does get suspended or unlinked, the daemon detects it, pings you on Telegram, and the round-robin skips it for subsequent sends; to re-pair, just ask Claude. If you want to dig into what happened, just ask Claude to pull the daemon logs for that account.</p>
+  <p><strong>Cascade on failure.</strong> If WhatsApp can't reach a candidate (the number isn't on WhatsApp, or the send fails account-level), Klaudius falls through to your next priority channel for that candidate. Account-level failures also fire a Telegram alert so you know the account needs attention.</p>
+
+  <h3><code>/follow-up</code> — the daily push</h3>
+  <p>Run <code>/follow-up</code> to advance the outreach loop. It does five things in order:</p>
+  <ol>
+    <li><strong>Refreshes the cache</strong> from your inbox and SMS thread history (chat.db or Twilio, per your setup) — typically 6-7 minutes for a thousand-client pool.</li>
+    <li><strong>Auto-triages new inbounds</strong> — replies are classified as <code>noise</code> (auto-replies, OOO, tapbacks), <code>rejection</code>, <code>genuine</code> (promoted to <code>responded</code>), or <code>unclear</code> (surfaced to you). It also surfaces any already-<code>responded</code> client whose newest message is still unanswered — those are yours to reply to, and Claude will draft the reply if you ask.</li>
+    <li><strong>Handles bounces</strong> — mailer-daemon hits from the last 14 days are matched back to clients; you're asked whether to switch them to SMS or mark them unreachable.</li>
+    <li><strong>Lapses end-of-sequence clients</strong> — anyone past the breakup with no engagement gets proposed for <code>lapsed</code> (you approve before the flip).</li>
+    <li><strong>Proposes due follow-ups</strong> — clients whose cadence gap has elapsed are listed as a table for your review.</li>
+  </ol>
+  <p><strong>Nothing sends without explicit approval.</strong> <code>/follow-up</code> always presents the proposed list and stops; you reply with "send all", "send first 10", specific slugs, or "skip". This is a hard rule baked into the skill — silence is not approval, and a "yes" from yesterday doesn't carry to today.</p>
+  <p>Cadence: once a day, or every couple of days at lower volume. Skip it for too long and bounces pile up unhandled; run it more than once a day and you'll mostly see "no candidates due" and burn the cache-refresh time for nothing.</p>
+
+  <h3><code>/warm-leads</code> — the daily attention list</h3>
+  <p><code>/warm-leads</code> is the read-only counterpart. It looks at every <code>responded</code> client, reads each thread in full, and buckets them:</p>
+  <ul>
+    <li><strong>NEEDS RESPONSE</strong> — the client is waiting on you. This is your priority list.</li>
+    <li><strong>NUDGE CANDIDATES</strong> — you replied, ball's been in their court 5+ days, time to nudge.</li>
+    <li><strong>WAITING ON CLIENT DEADLINE</strong> — they said "back next week" or similar. Leave alone until then.</li>
+    <li><strong>RECENTLY ACTIONED</strong> — you replied within the last 48 hours. Leave alone.</li>
+    <li><strong>MISCLASSIFIED / DEAD</strong> — the thread doesn't look like real engagement; consider re-classing.</li>
+  </ul>
+  <p>The skill <strong>never sends anything</strong>. It produces a report and stops. Acting on it is manual, one thread at a time — deliberately so, because a warm-lead reply is the exact moment when a mail-merge template loses the deal. Read the thread, compose the reply yourself (with Claude's help if you want), send.</p>
+  <p>Cadence: once a day, in the morning. The NEEDS RESPONSE bucket is what you want at the top of your inbox before the day starts.</p>
+
+  <h3>Why the split</h3>
+  <p><code>/follow-up</code> is for clients who haven't engaged yet — high volume, structured cadence, sequence-driven, batchable. <code>/warm-leads</code> is for clients who <em>have</em> engaged — low volume, every conversation different, no batching. Different rhythm, different rules, hence two skills. Don't try to make <code>/follow-up</code> do warm-lead work — you'll get mail-merge replies to real conversations and lose deals.</p>
+
+  <h3>Not sure your mail is landing?</h3>
+  <p>Run <code>/deliverability</code>. It sends one test message from your account, reads it back, and tells you how the receiving mail service treated it — whether your domain authenticated correctly — then tells you what to fix, with the exact DNS record wherever one applies. Worth doing once at setup and again if replies dry up.</p>
+  <p>What it can't see is mail being quietly filtered in <em>other</em> people's inboxes. Nothing can measure that honestly (the tools that sell inbox-placement testing send to dormant seed accounts that never open or reply, which flatters your numbers), so treat authentication as the thing you verify and reply rate over time as the thing you actually watch.</p>
+</section>
+
+<section id="vercel">
+  <p class="eyebrow">Hosting</p>
+  <h2><a href="#vercel">Hosting: Vercel, Cloudflare, Netlify or your own server</a></h2>
+  <p>Klaudius deploys to one host, chosen at setup: <strong>Vercel</strong> (the default), <strong>Cloudflare Pages</strong>, <strong>Netlify</strong>, or <strong>your own server</strong> (self-host). The choice lives in <code>.env</code> as <code>DEPLOY_PROVIDER</code> — switch it any time with <code>npx klaudius configure</code> (you'll be asked for the new host's credentials). The sites Klaudius builds are static, so all four serve them identically; the trade-offs below are about limits and account ergonomics, not site quality.</p>
+  <p>On <strong>Vercel</strong>, the free <strong>Hobby</strong> tier is generous enough to run the pipeline on for a long time before paying anything: 200 projects per account, 100 deployments per day, 100 GB Fast Data Transfer/month, 1M edge requests/month. The deployments-per-day cap is the first ceiling you'll bump into — every iteration on a client site counts.</p>
+  <p>When you hit it, the simplest workaround is to <strong>spin up another Vercel account</strong> under a different email address. New account, fresh limits. The catch: each client site lives on whichever account originally deployed it, and to redeploy that site later — a content tweak after a client request, a copy fix, pushing any update — your terminal needs to be authenticated with the same Vercel account it was deployed from. So as your book grows across multiple accounts, you end up re-running <code>vercel login</code> every time you touch an older client. That's the main reason bouncing accounts gets annoying.</p>
+  <p>If you want to be done with the account-juggling, <strong>upgrade to Pro at $20/month</strong>. One account, one terminal auth, and no deployment limits you'll realistically hit at solo-operator volume — the daily and total project caps are high enough they stop being part of your operating reality. Transfer and edge-request caps go up 10× as well (1 TB transfer, 10M edge requests) and are equally unreachable at solo volume. One closed client covers Pro for a year and a half.</p>
+  <blockquote>
+    <p><strong>A note on Vercel's terms.</strong> Vercel's Hobby plan is officially restricted to non-commercial, personal use — Fair Use guidelines call out client work as outside scope, with account suspension as the stated penalty. In practice this isn't actively enforced against indie operators, but we're flagging it so you know the formal position. If you'd rather not have it hanging over you, Pro removes the question.</p>
+  </blockquote>
+
+  <h3>The Cloudflare Pages alternative</h3>
+  <p>If you'd rather not deal with Vercel's per-day deploy cap or account-juggling, set <code>DEPLOY_PROVIDER=cloudflare</code> (in the wizard, or later via <code>npx klaudius configure</code>). Cloudflare Pages' free tier is the most generous of any host for this use case: <strong>unlimited sites, unlimited bandwidth, and 500 builds/month</strong> — Klaudius builds locally and uploads the finished static files, so even the build cap is effectively out of reach. For a high-volume operator this removes the "spin up another account" dance entirely; one account carries your whole book.</p>
+  <p>Setup needs two things, both collected by the wizard: a <strong>Cloudflare API token</strong> and your <strong>Account ID</strong>. Create the token at <a href="https://dash.cloudflare.com/profile/api-tokens">dash.cloudflare.com/profile/api-tokens</a> as a Custom Token with exactly one permission — <strong>Account → Cloudflare Pages → Edit</strong>. That scope matters: an under-scoped token is the single most common cause of a <code>403</code> at deploy time. The Account ID is the 32-character hex string in your dashboard URL (<code>dash.cloudflare.com/&lt;ID&gt;</code>). Klaudius authenticates non-interactively with these, so there's no <code>wrangler login</code> step and nothing to re-auth as your book grows.</p>
+  <p>Each client site becomes a Cloudflare Pages <em>project</em> named after the client slug, served at <code>&lt;slug&gt;.pages.dev</code> (Cloudflare appends a few random characters if that name is already taken globally). Redeploys reuse the same project automatically — no account-specific login state to track, which is the main ergonomic win over bouncing Vercel accounts.</p>
+
+  <h3>The Netlify alternative</h3>
+  <p>Already host on Netlify, or just prefer it? Set <code>DEPLOY_PROVIDER=netlify</code> (in the wizard, or later via <code>npx klaudius configure</code>). Netlify's free <strong>Starter</strong> tier gives you <strong>unlimited sites and 100&nbsp;GB bandwidth/month</strong> across all of them — comfortably enough to run a growing book on. Klaudius builds each site locally and uploads the finished static files, so your monthly build-minutes allowance is never touched.</p>
+  <p>Setup needs just one thing, collected by the wizard: a <strong>Netlify personal access token</strong>. Create it at <a href="https://app.netlify.com/user/applications#personal-access-tokens">app.netlify.com/user/applications</a> → New access token. Unlike Cloudflare there's no separate Account ID — a personal access token already carries full account access, and Klaudius reads the team it should create sites under straight from the token. Authentication is non-interactive, so there's no <code>netlify login</code> step and nothing to re-auth as your book grows. (If you belong to several Netlify teams, set <code>NETLIFY_ACCOUNT_SLUG</code> in <code>.env</code> to the team that should own your client sites.)</p>
+  <p>Each client site becomes a Netlify <em>site</em> named after the client slug, served at <code>&lt;slug&gt;.netlify.app</code>. Redeploys reuse the same site automatically. One thing to know: Netlify site names share a single global namespace (like Cloudflare's <code>pages.dev</code>), so on the rare occasion a slug is already taken by someone else's Netlify site, the deploy stops and tells you rather than guessing — nudge the client slug and re-run.</p>
+
+  <h3>The self-host alternative (your own server)</h3>
+  <p>Prefer to own the whole stack — a VPS you SSH into, with your own backups and certificates? Set <code>DEPLOY_PROVIDER=selfhost</code>. Every Klaudius site is a static export (plain HTML, CSS and a little JS — no Node process to run), so the deploy step simply builds locally and <code>rsync</code>s the finished files to your server over SSH. Two values configure it, both collected by the wizard: <code>SELFHOST_DEPLOY_TARGET</code> (where files land, e.g. <code>deploy@yourvps:/var/www/klaudius-sites</code> — each client gets its own subdirectory) and <code>SELFHOST_URL_TEMPLATE</code> (the public URL pattern, e.g. <code>https://{slug}.sites.your-domain.com</code>).</p>
+  <p>The server side is yours to set up <em>once</em>, and the recommended shape makes every future deploy zero-touch: wildcard DNS (<code>*.sites.your-domain.com</code> pointing at the server), a wildcard TLS certificate (Let's Encrypt via DNS validation), and one wildcard virtual host that maps each subdomain to its client's directory. Ask Claude to walk you through configuring nginx or Caddy — it's a ten-minute, one-time job. Two constraints to know: the <code>{slug}</code> must be in the <em>hostname</em> (not the URL path — static exports link their assets from the site root, so path-based hosting serves broken pages), and authentication is SSH keys only (the deploy fails loudly rather than ever prompting for a password). The dynamic add-ons (CMS, live rating, booking) remain Vercel-only — everything else, including go-live SEO, works identically on your own box.</p>
+</section>
+
+<section id="places">
+  <p class="eyebrow">Sourcing</p>
+  <h2><a href="#places">Google Places: keeping the credits flowing</a></h2>
+  <p>Klaudius's <code>/find</code> skill queries Google's Places API to discover candidate businesses, which means you need an active Google Cloud account with credits. Google hands every new account <strong>$300 in trial credit, valid for 90 days</strong>. At solo-operator volume that lasts a long time — a full town sweep (the two-layer <code>/find</code> search) costs a dollar or two of credit, and Klaudius caches each sweep and reuses it across clients rather than re-searching per build.</p>
+  <p>When the trial expires (or runs dry, if you really stretched it), the simplest move is to <strong>sign up again with a different Google account</strong>. Fresh $300, fresh 90 days. Generate a new Places API key from the new account's Cloud Console and ask Claude to swap the new key in for you. Cycling accounts every few months is a few minutes of work — barely an inconvenience at the cadence the trial renewals come up.</p>
+</section>
+
+<section id="reply">
+  <p class="eyebrow">Closing the deal</p>
+  <h2><a href="#reply">When a client replies</a></h2>
+  <p>Once a client expresses interest — by reply, DM, or phone — Klaudius hands off and you take over. The playbook below is the difference between deals that close in a day and deals that drift for a week.</p>
+
+  <h3>Lead with a domain shortlist</h3>
+  <p>Most clients haven't really thought about a domain when they reply to your outreach. The highest-leverage move you can make <strong>early in the deal — before they've fully committed</strong> — is to take the domain conversation off their plate: surface a shortlist of good options yourself, and offer to register and manage it for them. It signals professionalism, removes a chunk of decision-fatigue, and is one of the best conversion levers in the playbook. The client never has to think about registrars or pricing or DNS.</p>
+  <p>The way to do it: <strong>ask Claude to suggest domains that fit the client</strong>. Claude has the reasoning to come up with strong brand fits based on the business name and industry, and can autonomously check availability across registrars — so what you get back is a curated shortlist of 2-3 candidates that are real, available, and worth sending. Pass them to the client, ask which they prefer, and offer to handle the registration on their behalf. Most say yes — it's one less thing for them to deal with, and it costs them nothing extra.</p>
+  <p>Once they've picked: register the domain at any major registrar (Namecheap, Cloudflare Registrar, Porkbun, Spaceship — pick one and stick with it). A <code>.com</code> runs about <strong>$5-6</strong> for the first year. Then point the domain at Vercel by setting the registrar's nameservers to:</p>
+<pre><code>ns1.vercel-dns.com
+ns2.vercel-dns.com</code></pre>
+  <p>DNS propagation can take up to 48 hours but usually resolves within an hour. Once it does, your Vercel project picks up the domain automatically (if you haven't already attached the domain to the Vercel project, just ask Claude to do that for you). End to end — register, switch nameservers, attach in Vercel — is about ten minutes, and the client never touches a registrar dashboard. That's the impression you're paying $5 for.</p>
+  <p><strong>On Cloudflare Pages</strong> the flow is the same idea, different buttons: add the custom domain to the client's Pages project (Workers &amp; Pages → your project → Custom domains → Set up a domain), and Cloudflare tells you the DNS record to create. If you registered the domain through Cloudflare Registrar (or moved its nameservers to Cloudflare), the record is added for you in one click; otherwise add the <code>CNAME</code> it shows you at your registrar. Ask Claude to attach it and it'll walk the steps. Same ten-minute, client-never-sees-a-dashboard result.</p>
+  <p><strong>On Netlify</strong> it's the same idea once more: add the custom domain to the client's site (Site configuration → Domain management → Add a domain), and Netlify shows you the DNS to set — either point the registrar's nameservers at Netlify's, or add the records it lists at your current registrar. Ask Claude to attach it and it'll walk the steps. Same ten-minute result.</p>
+
+  <h3>Decide how to handle renewals</h3>
+  <p>Annual <code>.com</code> renewals run <strong>~$10-13</strong> (Cloudflare Registrar is the cheapest at ~$10 with zero markup; Porkbun and Namecheap are in the same range). You have two clean options:</p>
+  <ul>
+    <li><strong>Absorb it.</strong> Bake renewals into the price you charge and swallow them as a cost of doing business. Simpler; fewer billing conversations. (If you're on monthly billing this is the path of least resistance — renewals just disappear into the recurring fee.)</li>
+    <li><strong>Charge it back.</strong> Roll it into an annual maintenance or hosting fee. Cleaner economics once you have many clients, awkward if you only have a couple.</li>
+  </ul>
+  <p>Pick one and apply it consistently across your book. Mixed policies cause more bookkeeping pain than the savings are worth.</p>
+
+  <h3>Go-live SEO: one command once the domain is attached</h3>
+  <p>Ask Claude to run <code>/seo {business-name} {live-domain}</code> and it applies every SEO and GEO (AI-search) optimisation a Klaudius-built site needs, in one shot: the canonical URL and social-share tags (so the site shares properly on WhatsApp and Facebook), the sitemap and robots.txt, structured data telling Google and the AI assistants (ChatGPT, Claude, Perplexity) exactly what the business is, where it is and when it's open, and an FAQ section written the way people actually ask — all built from the real gathered content — plus a direct push of the URL to the search engines that accept submission. Run it when a client converts, once their domain is attached. It's the launch step most small-business websites never get: plenty of sites an agency was paid for go live with no sitemap, no structured data, and nothing submitted anywhere.</p>
+  <p>Three things worth knowing. <strong>It works on every host</strong> — Vercel, Cloudflare Pages, and Netlify alike, unlike the CMS/rating/booking add-ons. <strong>Run it after the domain is attached, not before</strong> — every tag it writes hangs off the final URL, so doing it early means doing it twice (if a client is staying on the free host URL, that's fine too — just run it with no domain argument). And <strong>it ends with a short checklist for you</strong> — adding the site to Google Search Console and Bing Webmaster Tools (~10 minutes total, and Claude can drive both in the browser while you sign in). That's how Google and Bing get told about the site directly, where you later see what searches it shows up for — and, since Bing's index is what ChatGPT Search retrieves from, where you can see how often AI actually cites it. Everything applied is recorded in <code>clients/{slug}/data/seo.md</code>. The selling line writes itself: the site isn't just live, it's set up properly for Google and for AI assistants — which most competitors' sites aren't.</p>
+
+  <h3>The CMS upsell: let the client edit their own site</h3>
+  <p>"But I can't update it myself" is the most common objection a bespoke site gets compared to Wix or WordPress — and it's also one of the easiest upsells in the playbook. Once a client has converted (or is wavering on exactly this point), ask Claude to run <code>/cms {business-name}</code>. It retrofits the deployed site with a password-protected editor at <code>/admin</code> where the owner edits their own contact details, text, services, reviews and photos from their phone — changes go live in seconds, photos are resized automatically, and their edits survive every redeploy. When it finishes you get the owner's password plus a ready-to-forward handover note.</p>
+  <p>Three things worth knowing before you pitch it. <strong>It's Vercel-only</strong> — the editor needs a server runtime and Vercel Blob storage, so it's not available on Cloudflare Pages or Netlify installs. <strong>It costs you nothing extra at this scale</strong> — content and photos sit comfortably inside Vercel's free Hobby allowances (1&nbsp;GB of Blob storage and 10&nbsp;GB transfer a month, shared across your account — a typical site uses a few dozen MB). And <strong>price it as a feature, not a freebie</strong>: "you can edit everything yourself, no WordPress, no plugins, no monthly platform fee" justifies a higher one-off price or pads a maintenance retainer nicely. The password and editor URL are recorded in <code>clients/{slug}/data/cms.md</code> if the client ever loses them.</p>
+
+  <h3>Live Google rating: social proof that updates itself</h3>
+  <p>A business's Google rating is often the single most persuasive thing on its site — but the moment you bake a number like "5.0 from 120 reviews" into a build, it's frozen, and it drifts out of date as new reviews come in. Ask Claude to run <code>/auto-updating-google-rating {business-name}</code> and that figure becomes live: the star rating and review count are pulled straight from the business's own Google listing and refresh themselves on a weekly cycle, with nothing for anyone to update by hand. It confirms the right listing the same way the gather step does, wires the live figure into wherever the site already shows its rating, and falls back to the launch numbers if Google is ever unreachable so a visitor never sees a broken or invented count.</p>
+  <p>Two things worth knowing. <strong>It's Vercel-only</strong> — the live refresh needs a server runtime (the skill flips the site off static export, the same as the CMS does), so it isn't available on Cloudflare Pages or Netlify installs. <strong>It costs effectively nothing to run</strong> — the Google call is cached for a week, so a single site stays comfortably inside the free Places API allowance. The angle to sell isn't a monthly fee you'd charge the client — it's that a site whose social proof stays current on its own is an easier close and takes a chore off your plate, and it answers the quiet worry that a bought site will go stale the moment it ships. The verified Place ID and details are recorded in <code>clients/{slug}/data/google-rating.md</code>.</p>
+
+  <h3>Booking systems: replace the client's platform fees</h3>
+  <p>Booking capability is one of the biggest recurring costs a client has — restaurant platforms run hundreds a month plus per-cover fees, and salon platforms take commissions of 20&ndash;35% on new clients. Ask Claude to run <code>/booking {business-name}</code> and Klaudius retrofits the deployed site with a complete booking system of its own: restaurant-style sittings with table and party-size capacity, or salon-style appointments with services, durations and staff calendars. Customers book at <code>/book</code> and get instant confirmation emails with a calendar invite and a self-service change-or-cancel link — they can move their own booking to a new time; the owner gets an email per booking, tagged first-time or returning customer, plus a password-protected dashboard at <code>/admin/bookings</code> for the day's bookings, phone bookings and closures; a morning job sends day-of reminders. It starts with a short discovery conversation (days, times, capacity, rules), then installs autonomously and <strong>live-tests itself before handing over</strong> — it makes a real booking on the live site, checks the emails actually arrived, moves it to a new time, cancels it through the cancel link and cleans up.</p>
+  <p>Things worth knowing before you pitch it. <strong>It's Vercel-only</strong> — server runtime plus a scheduled job, same constraint as the CMS. <strong>It costs nothing to run</strong> at small-business booking volume; the free tiers underneath cover it and there are no per-booking fees. <strong>Demo vs converted matters:</strong> on a pitch-stage site the emails send through your own mailbox and booking notifications come to you — perfect for demoing the flow live; once the client converts and has their own domain, the skill's conversion checklist switches sending to <code>bookings@their-domain</code> (via a free Resend account) and points notifications at the owner's real inbox. (Booking-mode leads arrive halfway there already: their preview ships with a working booking page as a front-end demo, and running <code>/booking</code> at conversion is what swaps it for the real system.) And <strong>never re-run <code>/build</code> for a booking-enabled client</strong> — the build skill refuses anyway, but the rule is worth knowing: a rebuild would tear the booking system out from under live customers. The dashboard URL, password, settings summary and conversion checklist are all recorded in <code>clients/{slug}/data/booking.md</code>. When you price it, let the client's own platform bill make the argument — you're rerouting money they already spend into something they own.</p>
+
+  <h3>Then bill them</h3>
+  <p>When it's time to invoice, ask your agent to invoice the client (<code>/send-invoice {business name}</code>): it writes a proper PDF invoice from the details your project already holds and leaves a ready-to-send email in your own drafts folder with the invoice attached, for you to review and send yourself. Full detail in <code>DOCS.html</code>.</p>
+
+  <h3>Contact form: confirm the email first</h3>
+  <p>Most of the templates include a contact form. If Klaudius surfaced an email address during outreach, it's already in the build and you're done. If it didn't — i.e. the lead came in via SMS, social DM, or call — <strong>ask the client which email they want enquiries delivered to before you publish</strong>. Otherwise the contact form on the live site won't be functional.</p>
+  <p>Klaudius now defaults to wiring the contact section as a <code>mailto:</code> whenever an email is on file: zero infrastructure, zero deliverability concerns, submissions land directly in the client's inbox. If there's no email at build time the site ships with a no-op success-state form — once the lead converts and the client confirms an inbox, ask Claude to swap it for a <code>mailto:</code>.</p>
+</section>
+
+<section id="macos-fda">
+  <p class="eyebrow">macOS</p>
+  <h2><a href="#macos-fda">Full Disk Access for parallel SMS / iMessage outreach</a></h2>
+  <p>If you configured automated SMS / iMessage outreach on macOS and you run the pipeline in parallel (see <a href="DOCS.html"><code>DOCS.html</code></a> for the parallel mode itself), you'll need Full Disk Access (FDA) granted to <strong>the Claude Code binary itself</strong> — not just your terminal app. Background <code>--bg</code> sessions detach from your terminal at dispatch, so they don't inherit your terminal's FDA grant the way an interactive <code>claude</code> session does. Without FDA, deploys still succeed, but the <code>/outreach</code> step surfaces a "requires human approval" / "cannot send autonomously" message and bails out.</p>
+  <p><strong>Granting FDA.</strong> The only part you have to do yourself is the click-through in <strong>System Settings → Privacy &amp; Security → Full Disk Access</strong> — Claude can't physically click in a macOS system panel. Everything else, ask Claude: which exact binary file to add (it's a versioned path that changes with every Claude Code update, and the obvious-looking one in <code>~/.local/bin/</code> is a symlink that won't work), how to restart the daemon afterwards, and a smoke test to confirm everything wired up. Tell Claude &ldquo;I want to grant Full Disk Access to the Claude Code binary, walk me through it&rdquo; and it'll surface the right path for you to add and verify the result.</p>
+  <p><strong>Re-grant after every Claude Code update.</strong> macOS keys the grant on the binary file, so when Claude Code auto-updates, the new versioned binary doesn't inherit the old grant — outreach silently breaks until you redo the grant. After any auto-update, just ask Claude to walk you through the re-grant; it'll surface the new path for you to add in Privacy &amp; Security and run a smoke test to confirm.</p>
+</section>
+
+<footer class="sign-off">
+  <p class="motto">Built by running it.</p>
+</footer>
+
+</main>
+</body>
+</html>

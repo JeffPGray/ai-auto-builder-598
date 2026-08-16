@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Klaudius — Project Docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+  :root {
+    --cream: #F6EFE3;
+    --cream-deep: #EFE6D4;
+    --cream-soft: #FAF5EB;
+    --ink: #1F1A14;
+    --ink-soft: #3A332A;
+    --ink-muted: #6E6356;
+    --sienna: #C5562C;
+    --rule: #E5DCCC;
+    --rule-strong: #D5C8B0;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, sans-serif;
+    font-size: 16px;
+    line-height: 1.625;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background-color: rgba(197, 86, 44, 0.18);
+    color: var(--ink);
+  }
+  main {
+    max-width: 48rem;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+  @media (min-width: 768px) {
+    main { padding: 80px 40px 96px; }
+  }
+  header {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--rule);
+  }
+  header h1 {
+    margin: 0;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 36px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+  @media (min-width: 768px) {
+    header h1 { font-size: 48px; }
+  }
+  header .lead {
+    margin: 16px 0 0;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-muted);
+  }
+  h2 {
+    margin: 48px 0 8px;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+  @media (min-width: 768px) {
+    h2 { font-size: 30px; }
+  }
+  h3 {
+    margin: 28px 0 8px;
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    color: var(--ink);
+  }
+  p {
+    margin: 0 0 18px;
+    color: var(--ink-soft);
+  }
+  ul, ol {
+    margin: 0 0 20px;
+    padding-left: 24px;
+    color: var(--ink-soft);
+  }
+  li { margin-bottom: 8px; }
+  strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  em { font-style: italic; }
+  a {
+    color: var(--sienna);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover { color: var(--ink); }
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.875em;
+    background: var(--cream-deep);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+  pre {
+    background: var(--cream-deep);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 16px 18px;
+    margin: 0 0 20px;
+    overflow-x: auto;
+    line-height: 1.55;
+  }
+  pre code {
+    background: transparent;
+    padding: 0;
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .callout {
+    background: var(--cream-deep);
+    border-left: 3px solid var(--sienna);
+    border-radius: 0 6px 6px 0;
+    padding: 22px 26px;
+    margin: 0 0 40px;
+  }
+  .callout h2 {
+    margin: 0 0 10px;
+    font-size: 22px;
+  }
+  @media (min-width: 768px) {
+    .callout h2 { font-size: 22px; }
+  }
+  .callout p { color: var(--ink-soft); }
+  .callout p:last-child { margin-bottom: 0; }
+  .muted { color: var(--ink-muted); }
+  .nav {
+    background: var(--cream-deep);
+    border-radius: 6px;
+    padding: 18px 22px;
+    margin: 0 0 40px;
+    font-size: 14px;
+  }
+  .nav strong {
+    display: block;
+    margin-bottom: 8px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-muted);
+  }
+  .nav ul {
+    margin: 0;
+    padding-left: 20px;
+    columns: 2;
+    column-gap: 24px;
+    color: var(--ink-soft);
+  }
+  .nav li { margin-bottom: 4px; }
+  blockquote {
+    border-left: 3px solid var(--sienna);
+    background: var(--cream-deep);
+    margin: 0 0 20px;
+    padding: 14px 20px;
+    border-radius: 0 6px 6px 0;
+  }
+  blockquote p {
+    margin: 0;
+    color: var(--ink-soft);
+  }
+  hr {
+    border: 0;
+    text-align: center;
+    margin: 64px 0;
+    height: auto;
+  }
+  hr::after {
+    content: "·   ·   ·";
+    color: var(--ink-faint);
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 20px;
+    letter-spacing: 0.3em;
+  }
+  /* Brand bar */
+  .brand-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--rule);
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.15s ease;
+  }
+  .brand-bar:hover { color: var(--sienna); }
+  .brand-bar:hover .brand-name { color: var(--sienna); }
+  .brand-bar svg { display: block; }
+  .brand-bar .brand-name {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    transition: color 0.15s ease;
+  }
+  /* Eyebrow labels above sections */
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--ink-muted);
+    margin: 64px 0 6px;
+  }
+  .eyebrow + h2 { margin-top: 0; }
+  /* Anchor links on headings — pure CSS hover # glyph */
+  h2 a, h3 a {
+    color: inherit;
+    text-decoration: none;
+  }
+  h2 a:hover, h3 a:hover { color: var(--sienna); }
+  h2 a::after, h3 a::after {
+    content: "  #";
+    color: var(--ink-faint);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    font-weight: 400;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.7em;
+  }
+  h2 a:hover::after, h3 a:hover::after { opacity: 1; }
+  /* Drop cap on opening callout paragraph */
+  .callout > p:first-of-type::first-letter {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 3.2em;
+    float: left;
+    line-height: 0.9;
+    margin: 4px 10px 0 0;
+    color: var(--sienna);
+    font-weight: 500;
+  }
+  /* Pull quote */
+  .pullquote {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 26px;
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.3;
+    color: var(--ink);
+    border-left: 3px solid var(--sienna);
+    padding: 6px 0 6px 24px;
+    margin: 40px 0;
+  }
+  @media (min-width: 768px) {
+    .pullquote { font-size: 32px; }
+  }
+  /* Agent-specific content blocks. Driven by the segmented toggle below the
+     header — by default Claude Code content is shown; clicking the Codex
+     button swaps every agent-block in the document at once (pure CSS via
+     :has() on the body, with a tiny localStorage script at the bottom of
+     <body> persisting the choice across page loads). */
+  .agent-toggle {
+    display: inline-flex;
+    align-items: center;
+    margin: 8px 0 36px;
+    padding: 5px;
+    gap: 2px;
+    background: var(--cream-deep);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+  }
+  .agent-toggle-label {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-muted);
+    padding: 0 14px;
+  }
+  .agent-toggle input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .agent-toggle label {
+    padding: 7px 16px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    user-select: none;
+  }
+  .agent-toggle label:hover { color: var(--ink); }
+  .agent-toggle input[type="radio"]:checked + label {
+    background: var(--ink);
+    color: var(--cream);
+  }
+  .agent-toggle input[type="radio"]:focus-visible + label {
+    outline: 2px solid var(--sienna);
+    outline-offset: 2px;
+  }
+  .agent-pair { margin: 8px 0 22px; }
+  .agent-block {
+    background: var(--cream-soft);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 16px 20px 4px;
+  }
+  .agent-block h4 {
+    margin: 0 0 10px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--ink-muted);
+  }
+  .agent-block p { margin: 0 0 12px; color: var(--ink-soft); }
+  .agent-block pre { margin: 8px 0 12px; }
+  /* Default: Claude visible, Codex hidden */
+  .agent-block[data-agent="codex"] { display: none; }
+  /* When Codex is selected (via the toggle radio): invert */
+  body:has(#agent-codex:checked) .agent-block[data-agent="claude"] { display: none; }
+  body:has(#agent-codex:checked) .agent-block[data-agent="codex"] { display: block; }
+  /* Inline agent-name variants, for shared prose that names the agent */
+  .agent-inline[data-agent="codex"] { display: none; }
+  body:has(#agent-codex:checked) .agent-inline[data-agent="claude"] { display: none; }
+  body:has(#agent-codex:checked) .agent-inline[data-agent="codex"] { display: inline; }
+  /* When printing, show both agents so the print doc is complete. */
+  @media print {
+    .agent-toggle { display: none; }
+    .agent-block[data-agent="codex"] { display: block; }
+    body:has(#agent-codex:checked) .agent-block[data-agent="claude"] { display: block; }
+  }
+  /* Back to top link */
+  .back-to-top {
+    text-align: center;
+    margin: 48px 0 0;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+  }
+  .back-to-top a {
+    color: var(--ink-muted);
+    text-decoration: none;
+  }
+  .back-to-top a:hover { color: var(--sienna); }
+  /* Sign-off */
+  .sign-off {
+    margin-top: 80px;
+    padding-top: 40px;
+    text-align: center;
+    border-top: 1px solid var(--rule);
+  }
+  .sign-off .motto {
+    font-family: "Fraunces", Georgia, serif;
+    font-style: italic;
+    font-size: 18px;
+    color: var(--ink-muted);
+    margin: 0;
+  }
+  /* Print stylesheet */
+  @media print {
+    body { background: #fff; color: #000; }
+    main { max-width: 100%; padding: 32px 24px; }
+    .nav, .back-to-top { display: none; }
+    pre {
+      white-space: pre-wrap;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      color: #000;
+    }
+    a { color: #000; text-decoration: underline; }
+    pre, blockquote, .callout, .pullquote { break-inside: avoid; }
+    h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+    .sign-off { border-top: 1px solid #999; }
+    .brand-bar svg rect:first-child { fill: #000; }
+  }
+</style>
+</head>
+<body>
+<main id="top">
+
+<a class="brand-bar" href="https://klaudius.dev">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="28" height="28" role="img" aria-label="Klaudius mark">
+    <rect width="64" height="64" rx="8" fill="#C5562C" />
+    <rect x="14" y="14" width="6" height="36" fill="#F6EFE3" />
+    <path d="M20 32 L36 14 L44 14 L26 33 Z" fill="#F6EFE3" />
+    <rect x="32" y="34" width="14" height="16" fill="#F6EFE3" />
+  </svg>
+  <span class="brand-name">Klaudius</span>
+</a>
+
+<header>
+  <h1>Documentation</h1>
+  <p class="lead">For your Klaudius project</p>
+</header>
+
+<section class="callout">
+  <h2>Start here: the project is the docs.</h2>
+  <p>Most of what you'd ask of these docs is better asked of your agent directly — open it (Claude Code or Codex) in your project folder and just talk. This file exists for the few things the agent can't easily surface on its own (see below for how to operate Klaudius), and for the moments when the agent isn't running yet (first-time install, re-running the wizard, install troubleshooting).</p>
+</section>
+
+<div class="nav">
+  <strong>On this page</strong>
+  <ul>
+    <li><a href="#getting-the-most">Getting the most out of Klaudius</a></li>
+    <li><a href="#install">First-time install</a></li>
+    <li><a href="#diagnostics">Diagnostics</a></li>
+    <li><a href="#deliverability">Checking your email lands</a></li>
+    <li><a href="#invoicing">Invoicing a client</a></li>
+    <li><a href="#reconfigure">Re-running the wizard</a></li>
+    <li><a href="#credentials">Where your credentials live</a></li>
+    <li><a href="#updating">Updating to the latest version</a></li>
+  </ul>
+</div>
+
+<form class="agent-toggle" aria-label="Show docs for the agent you use">
+  <span class="agent-toggle-label">Show docs for</span>
+  <input type="radio" name="agent" id="agent-claude" value="claude" checked>
+  <label for="agent-claude">Claude Code</label>
+  <input type="radio" name="agent" id="agent-codex" value="codex">
+  <label for="agent-codex">Codex</label>
+</form>
+
+<section id="getting-the-most">
+  <p class="eyebrow">The essentials</p>
+  <h2><a href="#getting-the-most">Getting the most out of Klaudius</a></h2>
+  <p>The five things below are what almost every operator wishes they'd known on day one. Read them before you start churning out sites.</p>
+
+  <h3>1. Talk to your agent inside the project — this is the #1 thing</h3>
+  <p>Klaudius is designed to be as hackable and customisable as possible, and the way you do that is by opening your agent (Claude Code or Codex) in your project folder and just talking to it. Ask it to walk you through how the pipeline works, what any part of the project does, or what features are available. Want more casual outreach? Say so. Want to raise your pricing, stop pitching restaurants, drop a follow-up touch, source businesses from a different city? Ask. The agent handles the change for you. When something breaks, it can almost always fix it.</p>
+  <p>The project is the product, and the more you treat it as something you converse with, the more you'll get out of it. The rest of this file covers the things the agent can't easily surface on its own (model and reasoning-effort selection, the parallel-pipeline mode, account scaling) — everything else, just ask.</p>
+
+  <aside class="pullquote">The project is the product.</aside>
+
+  <h3>2. Balance output volume against quality</h3>
+  <p>The biggest fork in how to run Klaudius is which agent and which plan tier you're on. The defaults that work best differ across both axes — pick the box below that matches your install:</p>
+  <div class="agent-pair">
+    <div class="agent-block" data-agent="claude">
+      <h4>Claude Code</h4>
+      <p><strong>On Claude Max:</strong> use <strong>Opus</strong> and treat the thinking level as a quality dial. The higher you set it — "high", then "xhigh", then "max" — the better the websites come out. The trade-off is usage: each step up burns through your limits faster. On Max you've got the headroom, so lean toward the higher levels; drop back down only if you're pushing for volume and feeling the limits.</p>
+      <p><strong>On Claude Pro:</strong> two ways to run it. <strong>For volume</strong>, use <strong>Sonnet</strong> and ask Claude to remove the QA phase of the pipeline (see note below) — Pro's limits burn fast, but Sonnet keeps sites decent with the occasional rough edge and lets you build several per usage window. <strong>For quality</strong>, run <strong>Opus</strong> instead: Pro's limits stretch to roughly one site per 5-hour window on Opus, so the move is to build one, then build another the moment the limit resets ("token-maxxing"). Far lower throughput, but each site comes out markedly better. Pick based on whether you want more sites or better ones.</p>
+    </div>
+    <div class="agent-block" data-agent="codex">
+      <h4>Codex</h4>
+      <p><strong>On ChatGPT Pro:</strong> use <strong>Sol</strong> (currently <code>gpt-5.6-sol</code>) and treat the reasoning effort as a quality dial. The higher you set it — "high", then "extra high" — the better the websites come out. The trade-off is usage: each step up burns through your limits faster. Pro has the headroom, so lean toward the higher levels.</p>
+      <p><strong>On ChatGPT Plus:</strong> two ways to run it. <strong>For volume</strong>, use <strong>Terra</strong> (currently <code>gpt-5.6-terra</code>) — close to the previous flagship's quality at roughly half the usage burn — and ask Codex to remove the QA phase of the pipeline (see note below); you'll finish several pipelines per usage window with only a modest quality dip. <strong>For quality</strong>, run <strong>Sol</strong> instead (currently <code>gpt-5.6-sol</code>) and accept roughly one site per usage window; build it, then build another when your limits reset ("token-maxxing"). Far lower throughput, but each site comes out markedly better. Pick based on whether you want more sites or better ones.</p>
+    </div>
+  </div>
+  <p>A note on the QA stage. After the agent has finished generating a site, a <em>fresh</em> agent is launched purely to review it. It doesn't just read the code — it takes screenshots of the site across desktop and mobile viewports and visually inspects each one the way a human would, catching broken layouts, missing images, copy that drifted from the brief, broken hrefs, or anything that just looks off. We use a fresh agent because the main building agent has been deep in that codebase for hundreds of tool calls and has tunnel vision: it's been generating components, wiring data, deploying. A fresh-context reviewer walks in cold and is markedly better at spotting the small stuff. It's the cheapest way to neutralise accumulated-context bias, and it's a big part of why Klaudius output reads as crafted rather than generated. That said, QA is often the slowest part of the pipeline and a real slice of your usage — especially when a site fails the first round and needs a fix pass — so on the cheaper plans, removing it is the right call if you're leaning toward volume over quality. To do that, ask <span class="agent-inline" data-agent="claude">Claude</span><span class="agent-inline" data-agent="codex">Codex</span> directly:</p>
+<pre><code>&gt; Remove the QA phase from the pipeline — update the project instructions so sites go straight from build to deploy</code></pre>
+  <p>It will edit the pipeline instructions for you, and every future run skips QA without you having to ask again.</p>
+
+  <h3>3. Run your agent on autonomous mode</h3>
+  <p>Klaudius is built around long-running, multi-step sessions — finding leads, building sites, sending outreach. Sitting at your keyboard pressing "yes" to every tool approval defeats the point. <strong>Switch your agent into autonomous mode and let it run.</strong></p>
+  <div class="agent-pair">
+    <div class="agent-block" data-agent="claude">
+      <h4>Claude Code — auto mode</h4>
+      <p>Cycle into it with <strong>Shift+Tab</strong> until the status line reads "auto mode." Once you're in, Claude executes routine actions — file edits, script runs, API calls — without prompting, while still surfacing output for you to follow.</p>
+      <p>This isn't reckless. Anthropic ships guardrails inside auto mode that surface genuinely dangerous actions for approval — destructive shell commands, irreversible operations, anything that affects shared production systems. You retain veto power on the things that matter; you stop being asked about routine work. (Don't use <code>--dangerously-skip-permissions</code> — that bypasses the guardrails entirely.)</p>
+    </div>
+    <div class="agent-block" data-agent="codex">
+      <h4>Codex — yolo mode</h4>
+      <p>Run with <code>codex --yolo</code> to skip the approval prompts and let Codex work autonomously.</p>
+    </div>
+  </div>
+  <p>Drop back to interactive mode when you're doing something you genuinely want to review step-by-step — composing a reply to a warm lead, say, or registering a domain for a freshly-converted client.</p>
+
+  <h3>4. Don't cram too many pipeline runs into one session</h3>
+  <p>If you try to run many clients sequentially in a single session, you'll fill the context limit and the agent will auto-compact mid-pipeline, which can disrupt whatever it's working on at the time. The fix is to ask it to <strong>run the pipeline in parallel</strong>:</p>
+<pre><code>&gt; Run pipeline x3</code></pre>
+  <p>On the cheaper plans (Claude Pro or ChatGPT Plus), start with <code>x2</code> instead — parallel sessions all draw from the same usage pool, and three concurrent builds will burn through the lower tiers' limits mid-run.</p>
+  <p>The agent becomes an orchestrator that dispatches three concurrent pipeline sessions, each running end-to-end on its own client, and refills the pool every time one completes. Each session handles one client and exits, so no instance ever gets bloated context, and your orchestrator session stays light. The mechanics underneath that single command differ by agent — both work for the operator, but the underlying machinery differs:</p>
+  <div class="agent-pair">
+    <div class="agent-block" data-agent="claude">
+      <h4>Claude Code</h4>
+      <p>Each parallel session runs as a Claude Code <strong>background session</strong> managed by the supervisor process — a full Claude Code session, just without a terminal attached. Runs on your existing subscription, no extra billing.</p>
+      <p><strong>Two-tab pattern.</strong> Tab 1 is the orchestrator (the session you ran <em>"Run pipeline x3"</em> in). Tab 2 is optional but useful — a live dashboard of every background session:</p>
+<pre><code>claude agents</code></pre>
+      <p>Sessions survive Ctrl+C and terminal closes. They don't survive reboots — run <code>claude respawn --all</code> after a reboot to restart them where they left off.</p>
+    </div>
+    <div class="agent-block" data-agent="codex">
+      <h4>Codex</h4>
+      <p>Each parallel session is a separate headless <code>codex exec</code> child that builds one client and exits, writing its progress to its own log file and its final outcome to a <code>run-NNN.summary</code> file the orchestrator reads. Runs on your existing subscription, no extra billing.</p>
+      <p><strong>On macOS, Linux, or WSL2</strong> the orchestrator backgrounds each child with a shell <code>&amp;</code> and watches the logs (monitor with <code>/ps</code>). <strong>On native Windows</strong> it launches each child as a detached <code>Start-Process</code> instead, because Windows has no Unix-style background jobs — the agent handles this difference for you. If you'd rather use the simpler shell flow on Windows, run Codex inside WSL2.</p>
+      <p><strong>Monitoring.</strong> Ask the orchestrator for pool status anytime. To resume after a reboot, just say "Run pipeline x3" again. Concurrency safety is handled by atomic claims in the database, and the orchestrator stops automatically after three consecutive pipeline-level failures.</p>
+    </div>
+  </div>
+  <p><strong>Pool size.</strong> Start with <strong>x2 or x3</strong>. Three is the sweet spot for most operators — enough throughput that you're not babysitting, not so many that you burn through usage limits. The orchestrator stops automatically after three consecutive pipeline-level failures (no candidates in a region, build errors, etc.) and sends you an alert. Infrastructure-level failures — API socket drops, auth expiry, supervisor errors — trigger an immediate stop on the first occurrence; those usually need a human eye to recover from.</p>
+
+  <h3>5. Scaling further as a power user</h3>
+  <p>Once sales pick up and you want to really multiply output, running multiple agent subscriptions in parallel is the next move — when usage runs out on one account, you switch to the other and keep going. Pair this with the parallel pipeline mode above and you can keep throughput up around the clock.</p>
+  <div class="agent-pair">
+    <div class="agent-block" data-agent="claude">
+      <h4>Claude Code</h4>
+      <p>Stack multiple Claude Max or Pro subscriptions across separate accounts. Switching is a re-auth in your terminal — log out of one and log into the other. Background sessions tied to the first account keep running on it; new dispatches go on whichever account you're currently authed to.</p>
+    </div>
+    <div class="agent-block" data-agent="codex">
+      <h4>Codex</h4>
+      <p>Stack multiple ChatGPT Pro or Plus subscriptions across separate accounts. Switching is a re-auth in your terminal.</p>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <p class="eyebrow">Setup</p>
+  <h2><a href="#install">First-time install</a></h2>
+  <p>Before the wizard, get your machine ready. Open Claude Code or Codex in your terminal and tell it this (it'll take it from there):</p>
+<blockquote><p>I've bought Klaudius (klaudius.dev). Download and read the setup script for my system first — https://klaudius.dev/setup.sh (macOS/Linux) or https://klaudius.dev/setup.ps1 (Windows) — then run it: curl -fsSL https://klaudius.dev/setup.sh | bash on macOS/Linux, or irm https://klaudius.dev/setup.ps1 | iex on Windows.</p></blockquote>
+  <p>It installs the prerequisites Klaudius needs — Node.js (22.15+) and Python (3.10+) — into your user space, with no admin password and no clicks, then runs a preflight check and tells you when you're ready. It <strong>skips anything you already have</strong> at a good version, so it's harmless on an existing developer setup and safe to re-run. Because your agent reads the script before running it, it can also fix anything that goes wrong along the way.</p>
+  <p>Rather do it yourself? Run the command for your system straight in a terminal, without the agent. (The <em>read it first</em> half of the wording above is doing real work: handed a bare <code>irm … | iex</code> with no chance to review it, an agent will usually refuse — piping a script straight from the web into a shell is a pattern they're trained to stop. Once it has read the script, it runs it happily.)</p>
+  <p>Then, in a new terminal tab, scaffold the project:</p>
+<pre><code>npx klaudius@latest init my-agency</code></pre>
+  <p>The <code>init</code> command scaffolds this project, then launches you into an interactive wizard that walks you through everything — your pricing and outreach preferences, the connection details for the infrastructure Klaudius runs on, and the installation of all dependencies (Node packages, Python packages, browser engines). The whole thing takes 15–20 minutes.</p>
+  <p>Outreach channels: Klaudius supports email, SMS, iMessage and WhatsApp. You opt into any combination during the wizard and set a priority order — for each candidate, Klaudius tries your priority channels in order and uses the first one that's viable.</p>
+  <p>After it finishes, move into the new project directory and open your agent (see <a href="#getting-the-most">Run your agent on autonomous mode</a>):</p>
+  <div class="agent-pair">
+    <div class="agent-block" data-agent="claude">
+      <h4>Claude Code</h4>
+<pre><code>cd my-agency
+claude
+&gt; Run the pipeline for New Jersey.</code></pre>
+    </div>
+    <div class="agent-block" data-agent="codex">
+      <h4>Codex</h4>
+<pre><code>cd my-agency
+codex --yolo
+&gt; Run the pipeline for New Jersey.</code></pre>
+    </div>
+  </div>
+</section>
+
+<section id="diagnostics">
+  <p class="eyebrow">Troubleshooting</p>
+  <h2><a href="#diagnostics">Diagnostics: <code>npx klaudius doctor</code></a></h2>
+  <p><code>npx klaudius doctor</code> is the <strong>install-time health check</strong>. The main moment to run it is right after the wizard finishes — ask your agent inside the project to run it and confirm everything wired up cleanly. The agent will execute the command, read the output, and walk you through anything that needs fixing. If you prefer to run it yourself, the command is the same:</p>
+<pre><code>npx klaudius@latest doctor</code></pre>
+  <p>It runs a structured check across everything that needs to be in order for the pipeline to work — language versions, dependencies, project files, and the credentials you configured in the wizard. The output flags whatever's broken and points at the fix.</p>
+  <p>Beyond install, you generally won't need to reach for <code>doctor</code> at all. The exception is when something environmental has clearly changed — you've moved to a new machine, rotated a credential externally, or a system update has broken something. For everyday pipeline issues — anything mid-run, anything specific to a particular client, anything you'd describe in a sentence — just ask your agent directly. It reads the error, reasons about it, and usually fixes it on the spot.</p>
+  <p>If <code>doctor</code> reports green and your agent can't make sense of what's happening, email <a href="mailto:hello@klaudius.dev">hello@klaudius.dev</a> with your output and we'll dig in.</p>
+</section>
+
+<section id="deliverability">
+  <p class="eyebrow">Email</p>
+  <h2><a href="#deliverability">Checking your email lands: <code>/deliverability</code></a></h2>
+  <p>Ask your agent to run <code>/deliverability</code> and it will tell you whether your outreach email is set up correctly.</p>
+  <p>It works in two steps. First it sends a single test message from your own account to itself, reads it back, and reports how the receiving mail service actually treated it: the SPF, DKIM and DMARC verdicts it stamped on the message. That's the authoritative answer, because it's read off a real delivered message rather than inferred from your DNS records. Then it checks your sending domain's DNS and tells you what needs fixing, with the exact record to paste into your registrar wherever one applies.</p>
+  <p>Worth running once when you set up, and again any time replies dry up or you suspect something has changed.</p>
+</section>
+
+<section id="invoicing">
+  <p class="eyebrow">Getting paid</p>
+  <h2><a href="#invoicing">Invoicing a client: <code>/send-invoice</code></a></h2>
+  <p>When a client says yes, ask your agent to invoice them — <code>/send-invoice {business name}</code>. It writes a professional PDF invoice for that client and leaves a ready-to-send email sitting in your own mailbox's drafts folder, with the invoice already attached and the client already in the To field. You read it and press send. <strong>It never sends anything itself</strong> — the last click on a money email is always yours.</p>
+  <p>You don't have to tell it much, because your project already knows the client: their business name, the owner, their email, the address, and the price you quoted them. Pass an amount if you're billing something different from the quoted price (a deposit, an add-on, a maintenance period) and it uses that instead.</p>
+  <p>The first time you ever run it, it asks a handful of questions about your own business — the name you invoice under, your address, whether you charge sales tax or VAT, and how clients pay you — then remembers all of it, so every invoice after that goes straight to confirming the numbers. Before anything is written, it shows you the whole invoice, tax arithmetic included, for you to confirm or correct. Invoice numbers run in sequence and are never reused; if something needs correcting, you get a fresh number that references the one it replaces.</p>
+  <p>Everything it produces — the invoice, the PDF, and a record of what was billed — is filed alongside that client's site in your project, so your invoicing history lives where the rest of their work does.</p>
+</section>
+
+<section id="reconfigure">
+  <p class="eyebrow">Reconfiguration</p>
+  <h2><a href="#reconfigure">Re-running the wizard</a></h2>
+<pre><code>npx klaudius@latest configure</code></pre>
+  <p>Walks you through every wizard step again with your existing answers pre-filled, so you can change anything (pricing, sender identity, outreach channels, API keys, etc.) and skip past anything you want to leave alone. Writes the new values back to <code>.env</code>. Alternatively, you can just ask your agent in the project to change any of these (e.g. "change my pricing to $899").</p>
+</section>
+
+<section id="credentials">
+  <p class="eyebrow">Reference</p>
+  <h2><a href="#credentials">Where your credentials live</a></h2>
+  <p>Every credential the wizard collects — for your email host, SMS provider, CRM, hosting, data sources, and any other service you wire in — is written to your project's local <code>.env</code> file and stays there. None of these credentials are ever sent to Klaudius's servers. The pipeline uses them directly against each provider from your machine.</p>
+  <p>If you ever rotate a credential externally (regenerate an app password, issue a new token, etc.), ask your agent to help you get it updated, or just run <code>npx klaudius configure</code> to walk through the wizard again.</p>
+</section>
+
+<section id="updating">
+  <p class="eyebrow">Maintenance</p>
+  <h2><a href="#updating">Updating to the latest version</a></h2>
+<pre><code>npx klaudius@latest update</code></pre>
+  <p>Pulls the latest core skills, scripts, and template files. Update is conservative by design:</p>
+  <ul>
+    <li><strong>Files you haven't touched</strong> are updated cleanly in place.</li>
+    <li><strong>Files you've edited</strong> become conflicts — Klaudius writes a report at <code>.klaudius/conflicts.md</code> and stages the canonical incoming versions under <code>.klaudius/incoming/</code>. Open your agent afterwards and ask it to "resolve the conflicts" — the <code>resolve-conflicts</code> skill walks through each one and applies your choice (keep yours, take upstream, or merge). Any choice that overwrites or deletes your version saves it first under <code>.klaudius/backup/</code>, so a mis-chosen resolution is recoverable.</li>
+    <li><strong>Files you've deleted</strong> (say you removed a skill you don't use) are never silently reinstalled — update flags them as conflicts too, and you choose: restore the file, or keep it deleted permanently.</li>
+    <li><strong>Files you've created</strong> (your own skills, your own scripts, any work under <code>clients/</code>) are invisible to update — they're not tracked, so they're never touched.</li>
+    <li><strong>Local config</strong> (<code>.env</code>, plus your agent's MCP config — <code>.mcp.json</code> + <code>.claude/settings.json</code> for Claude Code installs, <code>.codex/config.toml</code> for Codex installs) is never overwritten — those belong to your install, not the template.</li>
+  </ul>
+</section>
+
+<hr>
+
+<p class="muted">Looking for more depth? <a href="operator-guide.html"><code>operator-guide.html</code></a> sits next to this file in your project folder and covers the deeper operational topics — the near-zero-cost scaling playbook, the follow-up and warm-leads data model, and what to do when a client replies.</p>
+
+<p class="back-to-top">
+  <a href="#top">↑ Back to top</a>
+</p>
+
+<footer class="sign-off">
+  <p class="motto">Built by running it.</p>
+</footer>
+
+</main>
+
+<script>
+(function () {
+  // Persist the agent-toggle choice across page loads so a Codex operator
+  // doesn't have to click "Codex" every time they open the docs. Pure DOM
+  // (no framework) so the same script works inside both this offline file
+  // and the website /docs page.
+  var KEY = "klaudius-docs-agent";
+  try {
+    var stored = localStorage.getItem(KEY);
+    if (stored === "codex") {
+      var r = document.getElementById("agent-codex");
+      if (r) r.checked = true;
+    }
+  } catch (e) { /* localStorage disabled — silently degrade */ }
+  document.querySelectorAll('input[name="agent"]').forEach(function (r) {
+    r.addEventListener("change", function () {
+      try { localStorage.setItem(KEY, r.value); } catch (e) {}
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

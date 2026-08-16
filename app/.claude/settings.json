@@ -1,0 +1,15 @@
+{
+  "enabledMcpjsonServers": [
+    "supabase"
+  ],
+  "permissions": {
+    "deny": [
+      "Read(./.klaudius/base/**)",
+      "Edit(./.klaudius/base/**)",
+      "Write(./.klaudius/base/**)"
+    ]
+  },
+  "env": {
+    "PATH": "/Users/jeffgray/.local/bin:${PATH}"
+  }
+}

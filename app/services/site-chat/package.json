@@ -1,0 +1,22 @@
+{
+  "name": "klaudius-site-chat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "One shared chat endpoint serving every Klaudius-built static site. Deploy once; every site's widget calls it.",
+  "scripts": {
+    "dev": "next dev -p 4180",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^16.2.5",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "@anthropic-ai/sdk": "^0.71.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19.2.14",
+    "typescript": "^5"
+  }
+}

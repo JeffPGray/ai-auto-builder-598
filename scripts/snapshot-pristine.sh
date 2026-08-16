@@ -22,6 +22,18 @@ if [ ! -d "$SRC" ]; then
   exit 1
 fi
 
+# A folder holding only .env/.mcp.json/.claude/settings.json is a HALF-FINISHED init: the wizard
+# writes config as it goes but delivers scripts/ and the skills only after the credential checks
+# pass. Snapshotting that state produces an empty "pristine baseline" that then blocks the real
+# one (this script refuses to overwrite), which is worse than having no snapshot at all. It
+# happened twice on 2026-08-15. Require real vendor payload before capturing.
+if [ ! -d "$SRC/scripts" ] && [ ! -d "$SRC/.claude/skills" ]; then
+  echo "REFUSING: $SRC has no scripts/ and no .claude/skills/ — the source has not been delivered." >&2
+  echo "The wizard writes .env as it goes but ships the pipeline only after its credential checks" >&2
+  echo "pass. Finish init (skipping email is fine), then re-run this." >&2
+  exit 1
+fi
+
 if [ -d "$DEST" ]; then
   echo "pristine/ already exists — refusing to overwrite the only untouched copy." >&2
   echo "If you genuinely need a fresh baseline, move the old one aside first." >&2

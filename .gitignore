@@ -17,5 +17,16 @@ venv/
 .claude/ledger-archive/
 
 # Evaluation artifacts
-baseline/
+# Screenshots only — ~40MB. BASELINE.md and the raw JSON stay tracked: they are the
+# reference artefact the Klaudius comparison is judged against. A directory-level
+# ignore would stop git descending at all, and no later negation could rescue a child.
+baseline/*.png
+baseline/*.jpeg
+baseline/*.jpg
 artifacts/
+
+# baseline/ holds ~40MB of screenshots — not worth syncing. But BASELINE.md is the REFERENCE
+# ARTEFACT the Klaudius comparison is judged against; losing it means re-measuring the old engine
+# after it has already been changed, which is impossible to do honestly. Track the markdown + JSON.
+!baseline/BASELINE.md
+!baseline/*.json

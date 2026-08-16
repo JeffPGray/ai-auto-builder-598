@@ -1,0 +1,32 @@
+{
+  "name": "klaudius-pipeline",
+  "version": "1.0.0",
+  "description": "Bespoke SMB website pipeline (find, build, deploy, outreach) running on Claude Code.",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "vercel-build": "next build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@playwright/cli": "^0.1.13",
+    "baileys": "7.0.0-rc13",
+    "better-sqlite3": "^12.10.0",
+    "next": "^16.2.5",
+    "patchright": "^1.58.2",
+    "playwright": "^1.58.2",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "0.12.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.2",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "6.0.2"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
+  }
+}

@@ -138,14 +138,20 @@ today. Plan capacity accordingly.
 Captured 2026-08-15 against the live `impactlandscapes-net.grayreserve.agency`, screenshots viewed,
 contrast computed. This is what Klaudius has to beat.
 
+**Full measured artefact: `baseline/BASELINE.md`** (re-measured 2026-08-15 with pixel-level
+verification; raw JSON + scripts committed so every number re-derives). Summary:
+
 | Check | Desktop 1440x900 | Mobile 375x812 |
 |---|---|---|
-| Nav top | **963px — below the fold**, `position: relative` (scrolls away) | **974px — below the fold** |
-| `h1` top | **1169px — below the fold**, reads "REQUEST YOUR FREE QUOTE." | **1152px — below the fold** |
-| Text elements in first viewport | **1** | 5 |
-| Nav CTA contrast | **fails WCAG AA** | **fails WCAG AA** |
-| JSON-LD | **none** | **none** |
+| Nav top | **963px — below the fold**, `position: relative`, `z-index: 2` | **974px — below the fold** |
+| Nav off-screen for | **91.0% of the page** (-2037px at scrollY 3000) | 90.9% |
+| `h1` top | **1169px — below the fold**, "Request your free Quote." | **1152px — below the fold** |
+| Business-info elements in first viewport | **0** | **0** |
+| Nav CTA contrast | **2.57:1 — fails AA** (white on `#6AB42F`) | **2.57:1 — fails AA** |
+| AA text failures | **7** | 6 |
+| JSON-LD | **present** — LocalBusiness/WebSite/WebPage/BreadcrumbList/Service | present |
 | Document height | 10,968px | 9,795px |
+| Pages / words / photos / hero video | 5 pages · 1,509 words · 11 photos + logo · video present (36.3 MB) | — |
 
 **Looking at it confirms the numbers.** The entire desktop first viewport is a dark video of a man
 mowing — no business name, no logo, no nav, no headline, no phone number. The only interface
@@ -160,16 +166,29 @@ Three corrections to the previously stated audit, from re-measuring:
 2. **The chat widget is present and rendering** (visible bottom-right in both viewports). The
    $98/mo chatbot justification is real and live today — which is precisely what `RISK-01` says
    would be lost by moving to an engine that has none.
-3. **"Zero services named" holds in substance, not literally.** There is an "Our Services" heading
-   and the prose is genuinely strong — "Frisco's blackland clay", "grade set, beds edged, sod knit
-   and mowed on the stripe", "under the mulch line, fall set first". But no discrete service is
-   named as an offering; the section is collapsed behind a `+`. A visitor cannot scan what this
-   business sells. **This copy quality is the bar `P2-01` must preserve.**
+3. **"Zero services named" holds in substance, not literally.** The prose is genuinely strong —
+   "Frisco's blackland clay", "the grade first, then the beds, the plantings and the lawn that sit
+   on top of it". But no discrete service is ever named as an offering. **This copy quality is the
+   bar `P2-01` must preserve.**
 
-⚠️ The earlier audit reported nav CTA contrast at 2.57:1; this pass computed 1.11:1. The nav sits
-over video, so resolving its transparent background against the body colour is unreliable and the
-1.11 figure should not be quoted. **Both agree it fails AA — treat "fails" as the finding and the
-exact ratio as unresolved.**
+Four further corrections from the 2026-08-15 pixel-verified pass (details in `baseline/BASELINE.md`):
+
+4. **JSON-LD is NOT absent.** `LocalBusiness`, `WebSite`, `WebPage`, `BreadcrumbList` and `Service`
+   ship on all four pages, and `llms.txt` + `robots.txt` are present. The defect is the *content*:
+   `Service.name` is the placeholder `"Our Services"` and `streetAddress` is corrupt (`"560626 The"`).
+   This weakens — but does not remove — the `RISK-01` schema concern: a schema layer exists to port.
+5. **Nav CTA contrast is 2.57:1, not 1.11:1.** The earlier "unresolved, do not quote" caveat is
+   withdrawn. `a.gr-nav-cta` paints its **own** opaque `#6AB42F`; pixel sampling shows the dominant
+   colour in the element crop is `rgb(106,180,47)` at 5,413 of 6,072 px. **2.57:1 is quotable.**
+6. **First-viewport text elements are 0, not 1 / 5.** The earlier counts included the off-canvas
+   mobile drawer (`left: 486px` on a 375px viewport) and our own "Make this mine" sales pill.
+7. **Hero video IS present and playing here** (`readyState: 4`, `paused: false`, 1660x1244, 5.04s) —
+   the global warning that recent builds ship without one does not apply to this tenant. It is
+   36.3 MB, which is its own problem.
+
+⚠️ Method note worth keeping: on this site the ancestor-walk method for resolving background colour
+produced **two false contrast failures** that pixel sampling overturned. Compute the ratio, then
+**confirm against rendered pixels** before reporting a contrast defect.
 
 ---
 
@@ -211,9 +230,78 @@ Tracked as `RISK-01` in `.claude/ledger.json`, parked deliberately until Phase 1
    — per-tenant Vercel project, subdomain bound as a **Production Domain** on that project
    (`POST /v9/projects/{id}/domains`), Deployment Protection disabled, alias set as belt-and-braces.
    A specific subdomain beats the `*.grayreserve.agency` wildcard. Read it; do not invent a new pattern.
+7. **Run the pipeline with `cwd = app/`, never from this repo root.** Not a preference — measured
+   2026-08-15. Claude Code identifies a skill by its **directory name**, ignoring `name:`
+   frontmatter, and this repo contains three directories called `build`:
+   `app/.claude/skills/` (ours), `app/.klaudius/base/.claude/skills/` (the vendor baseline
+   `npx klaudius update` diffs against), and `pristine/.claude/skills/` (byte-identical to base).
+   From this repo root none of them is a *static* skill source — the root `.claude/` has no
+   `skills/` — so they reach a session only through the file-touch-triggered dynamic path, where
+   the last-registered copy wins and the registration is cached for the life of the process.
+   Worse, from the root `Skill(skill="build")` resolves to SuperClaude's
+   `~/.claude/commands/build.md` — a completely unrelated skill. Verified by invoking it: the
+   first line came back `# /sc:build - Project Building and Packaging`.
+   With `cwd = app/`, `app/.claude/skills` is discovered statically, static sources beat dynamic
+   ones by name, and the customised copies win deterministically. Verified the same way: the
+   loaded `build` text contained the `anti-ai-slop` bullet, the loaded `deploy` text contained
+   `IndexNow ping (all hosts)`. Running from `app/` also makes `app/CLAUDE.md` the project memory
+   instead of this file.
+8. **Never open `app/.klaudius/base/**` or `pristine/**` with Read/Edit/Write.** A single Read of
+   any file under either tree registers that tree's whole skill set and can shadow ours for the
+   rest of the session. Both are fenced off by `deny` rules in `.claude/settings.json` here and in
+   `app/.claude/settings.json`. Inspect them with `grep`, `diff` or `git` through Bash instead —
+   those tools do not trigger skill discovery. Deleting `.klaudius/base` is not an option: the
+   updater hardcodes that path as its 3-way-merge baseline.
+9. `bash scripts/verify-skill-resolution.sh` asserts all five customisations are present in ours
+   and absent from the baseline, that the deny rules survive, and that no fourth skill root has
+   appeared. Run it after any `npx klaudius update`.
 
 ## Prerequisites still outstanding
 
 Klaudius needs a Supabase project, a Vercel team, a Google Places key, and an email/SMS provider.
 Which of these already exist under Gray Reserve accounts is **unconfirmed** — check before the
 wizard asks, so Jeff isn't creating duplicates mid-flow.
+
+
+---
+
+## 2026-08-16 — Design lift and the gates that enforce it
+
+**The failure worth remembering:** a build passed contrast 934/934, ship-scan clean, and PageSpeed
+desktop 100/100/100 — and was rated **2/10**. `var(--secondary)` referenced 0 times, 1 gradient,
+grain at opacity 0.05, 3 section treatments, and `/ui-ux-pro-max`'s STYLE + KEY EFFECTS silently
+dropped. **Every skill ran; the build used about a quarter of what it was handed**, and no gate saw
+it because every gate measured CORRECTNESS. Absence is invisible to a validity checker.
+
+**Gates now in the pipeline** (all deterministic scripts, zero model cost):
+
+| script | runs at | blocks on |
+|---|---|---|
+| `optimise-images.mjs` | before build | — (produces WebP 640/1024/1600/1920) |
+| `richness-check.mjs` | QA | unused secondary, <2 gradients, grain <0.08, <3 treatments, un-staggered grids, images >250KB, missing width/height, missing `theme-color`, CVD collapse, sRGB gradients, **dropped design-consult recommendations** |
+| `ship-scan.mjs --fix` | QA | secrets, operator paths, source maps, vendor name, AI-slop lexicon; strips html/css comments |
+| `contrast-check.mjs` | build + QA | computed WCAG with alpha compositing |
+| `prune-client-build.mjs` | deploy | — (530MB -> ~20MB per client) |
+| `deploy-and-alias.mjs` | deploy | alias not following the new deployment |
+
+**Colour precedence (settled):** the brand accent is theirs and never overridden; **everything else
+colour belongs to `derive-palette` + `color-expert`** because only they can prove 4.5:1 and CVD
+separation against this client's real surfaces; `/ui-ux-pro-max` owns layout, style, effects and
+typography. Deviating is allowed, silence is not — undocumented drops fail the build.
+
+**Colour method:** choose CHARACTER (deep/vivid/muted/pale/dark) first, harmony second. Six-rung
+brand-tinted surface ladder at fixed low chroma — **for a mono-brand client you never invent a
+second hue, you build the ladder.**
+
+**Dispatch (the only shape that works):**
+```bash
+env -u CLAUDECODE -u CLAUDE_CODE CLAUDE_WORKER_CHILD=1 \
+  claude -p --permission-mode dontAsk --model opus --effort high "<prompt>"
+```
+⛔ **Never pass `--mcp-config`** — any form of it hangs `claude -p`, even pointing at an empty
+config, and it killed three builds with zero-byte logs. ⛔ Never `nohup … &` — the harness kills the
+process group. `--effort max` is unreachable (Claude.ai subscriber gate, a BILLING gate).
+
+**Two `ui-ux-pro-max` exist.** The build invokes it by relative path, so with `cwd=app/` the VENDOR
+copy runs — correct, because it carries 11 data CSVs and 13 stacks including `nextjs`. The
+operator's global copy is React Native only. Do not "fix" the path.

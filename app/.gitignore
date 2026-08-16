@@ -1,0 +1,73 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+
+# Environment - NEVER commit. These contain credentials (API keys, access tokens, passwords).
+# The glob deliberately catches operator-made copies too (.env.backup,
+# .env.production, .env.old ...) — a copied secrets file is still a secrets file.
+.env*
+# ...but the example file is documentation, not a secret — keep it trackable.
+!.env.example
+.mcp.json
+# Microsoft OAuth token cache (Outlook / Microsoft 365 mailboxes) — holds a
+# refresh token, i.e. a durable credential. Written by scripts/ms_oauth.py.
+# The trailing * is load-bearing: the cache is written atomically via a
+# temporary sibling (.ms-token.json.<random>.tmp) which a hard kill can leave
+# behind, and a bare `.ms-token.json` would not match it — letting a live
+# refresh token be committed by anyone who git-inits their project folder.
+.ms-token.json*
+# WhatsApp pairing QR — a device-linking credential. Deleted when pairing
+# completes, but a timed-out/interrupted pairing can leave it behind.
+whatsapp-qr.png
+
+# Build outputs (root-level only; the build/ skill dir must NOT be ignored)
+.next/
+out/
+/build/
+/dist/
+*.log
+pipeline.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Vercel / Cloudflare / Netlify deploy tooling
+.vercel/
+.wrangler/
+.netlify/
+
+# Client build artefacts are local-only runtime output, not meant for git.
+# Each pipeline run produces hundreds of files per client (gathered content,
+# generated site source, screenshots) which add up fast. Vercel preserves
+# deployed sites and Supabase holds pipeline state — clients/ on disk is the
+# operational scratch space, not the canonical record. Inert if you didn't
+# git-init your workspace.
+clients/
+
+# Playwright
+.playwright-cli/
+
+# Parallel-orchestration scratch (per-run .summary / .cmd / .log children write here)
+orchestrator-logs/
+
+# Local Claude state (per-machine)
+.claude/settings.local.json
+.claude/worktrees/
+
+# Transient `klaudius update` working state. The manifest itself
+# (.klaudius/manifest.json) is deliberately NOT ignored — commit it.
+.klaudius/incoming/
+.klaudius/conflicts.md
+.klaudius/backup/
+.klaudius/base/
+
+# Backups
+*.bak
+*~

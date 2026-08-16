@@ -1,0 +1,9 @@
+{
+  "tokens_per_percent": 116134939.4,
+  "calibrated_from": {
+    "percent": 75.0,
+    "weighted_tokens": 8710120455
+  },
+  "ts": "2026-08-16T02:54:16+00:00",
+  "note": "Plan tier is baked in. Re-calibrate if the plan changes."
+}

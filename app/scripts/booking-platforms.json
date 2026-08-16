@@ -1,0 +1,2814 @@
+{
+  "schema_version": 1,
+  "description": "Booking-platform registry for the find skill's Booking mode golden check: a Google Business Profile whose website field points at one of these platforms' business-page URL shapes is a pre-qualified booking-mode lead. Consumed by scripts/booking-check.js. Region tags are prioritisation hints, not match filters (a URL match is a URL match anywhere).",
+  "classifications": {
+    "standard": "normal qualifier — a platform URL in the GBP website field pre-qualifies the lead",
+    "weak_embed_first": "platform primarily embeds booking on the business's OWN site, so a platform-hosted URL in GBP is rare/weak; still match but flag (Boulevard, Mangomint, bsport, Phorest-partial)",
+    "aggregator_exclude": "marketplace/aggregator, not the business's booking backend; NEVER the golden-check qualifier (ClassPass, Urban Sports Club, Secret Spa)",
+    "disqualifier": "always paying but wrong ICP — enterprise/chains (Zenoti); do not pitch",
+    "dead_platform": "platform is defunct; a GBP link here = broken web presence = PREMIUM lead (FitogramPro)",
+    "has_website": "the lead HAS a website (platform builds full sites); classify as has-website, not booking-as-website (Wix Bookings)"
+  },
+  "fee_line_legend": {
+    "true": "safe to pitch 'you're paying this platform (subscription and/or commission)'",
+    "false": "a genuine free tier or reverse-payment exists; a fee-saving pitch can be factually wrong — pitch professionalism/ownership instead",
+    "conditional": "fee line depends on a per-lead content check (e.g. paid classes visible) or is commission-only with human review"
+  },
+  "matcher_rules": [
+    "Unwrap social redirect wrappers before matching: instagram.com/linkshim/?u={enc}, l.facebook.com/l.php?u={enc}, lm.facebook.com — decode the u= param and classify the TARGET URL (validation found a square.site behind a linkshim misclassified as social_only)."
+  ],
+  "platforms": [
+    {
+      "id": "fresha",
+      "name": "Fresha",
+      "domains": [
+        "fresha.com",
+        "shedul.com",
+        "bookwell.com.au"
+      ],
+      "regions": [
+        "GLOBAL"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?fresha\\.com/(([a-z]{2}(-[A-Z]{2})?)/)?a/[a-z0-9-]+-[a-z0-9]{8}",
+          "note": "claimed, bookable, PAYING partner page: /a/{name-location-street}-{8-char LOWERCASE id}. Locale prefixes (/en-GB/a/, /it/a/) seen in UK/IE evidence though unprefixed is canonical and curl-404s prefixes (bot-block caveat)",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?fresha\\.com/(([a-z]{2}(-[A-Z]{2})?)/)?a/[a-z0-9-]+/booking",
+          "note": "direct booking flow of a claimed profile; may end /booking/offline for lapsed partners",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?fresha\\.com/(([a-z]{2}(-[A-Z]{2})?)/)?book-now/[a-z0-9-]+(/|\\?|$)",
+          "note": "Link-Builder share link — live 2026 form is /book-now/{slug}-{8char-id}/all-offer?pId=… (validated Miami+London 2026-07-18, 3 live URLs); older /services?lid= form also covered. Always a paying partner.",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://bookwell\\.com\\.au/venue/[a-z0-9-]+",
+          "note": "Fresha-owned AU marketplace (acquired Feb 2022) — treat as Fresha-family",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?fresha\\.com/(([a-z]{2}(-[A-Z]{2})?)/)?lvp/[a-z0-9-]+-[A-Za-z0-9]{5,8}([?/]|$)",
+          "note": "UNCLAIMED community listing (/lvp/{slug}-{6-char MIXED-case id}); page explicitly disclaims Fresha affiliation, no online booking. MUST NOT COUNT as a paying lead — but IS the strongest 'no bookable website at all' signal. ID tell: /a/=8 lowercase, /lvp/=6 mixed-case ID length widened to 5-8 chars: live Dublin /lvp/ URL (proper-fresh-bond-street-yKVNo) carries a 5-char ID.",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?fresha\\.com/lp/",
+          "note": "category/landing/directory pages — exclude",
+          "verified": true
+        }
+      ],
+      "model": "subscription + marketplace commission + payments",
+      "pricing_summary": {
+        "US": "$19.95/mo solo, $14.95/mo per team member",
+        "GB": "£14.95/mo solo, £9.95/mo per team member",
+        "EU": "€14.95/mo solo, €9.95/mo per team member",
+        "commission": "20% one-time new-client marketplace fee (min $6/£4/€6) + card processing (~1.19-2.79%)"
+      },
+      "fee_line_allowed": true,
+      "fee_line_notes": "FREE TIER DIED early 2025 (triple-verified) — any pre-2025 'Fresha is free' logic is stale/inverted. Now subscription + 20% new-client commission on marketplace-discovered clients (exactly the traffic a GBP link creates). Caveat: some legacy accounts grandfathered free — usually true, verify per lead where possible. /lvp/ pages are NOT paying (see exclude).",
+      "verticals": [
+        "hair",
+        "barber",
+        "nails",
+        "lashes/brows",
+        "massage",
+        "spa",
+        "aesthetics",
+        "tattoo"
+      ],
+      "prominence": "very high — the #1 booking-platform GBP fingerprint across UK/IE/EU/AU/NZ; strong US/CA"
+    },
+    {
+      "id": "square-appointments",
+      "name": "Square Appointments / Square Online",
+      "domains": [
+        "squareup.com",
+        "app.squareup.com",
+        "book.squareup.com",
+        "square.site"
+      ],
+      "regions": [
+        "GLOBAL"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(app\\.|www\\.)?squareup\\.com/appointments/book/[A-Z0-9]{10,}(/location/[A-Z0-9]+)?",
+          "note": "hosted booking flow: /appointments/book/{merchant-token}[/{slug} or /location/{locId}]",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://book\\.squareup\\.com/appointments/",
+          "note": "alternate hosted booking host",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.square\\.site(/|$)",
+          "note": "Square Online site (may include booking): {slug}.square.site — strong 'no own website' signal (incl. auto-slugs like my-site-105956.square.site)",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "freemium subscription per location + processing",
+      "pricing_summary": {
+        "US": "Free $0 / Plus $49 / Premium $149 per location",
+        "GB": "Free £0 / Plus £29+VAT / Premium £69+VAT",
+        "AU": "Free A$0 / Plus A$40 / Premium A$90 per location",
+        "processing": "always applies (~1.6-3.3%)"
+      },
+      "fee_line_allowed": false,
+      "fee_line_notes": "Real, indefinite free tier is the micro-business norm (a *.square.site subdomain specifically signals the FREE Square Online plan). Fee pitch can be false. Processing fees always apply but that is not a booking-software subscription. Pitch ownership/professionalism.",
+      "verticals": [
+        "barber",
+        "hair",
+        "nails/beauty",
+        "massage",
+        "tattoo",
+        "any SMB"
+      ],
+      "prominence": "very high US/AU; high UK/CA/NZ"
+    },
+    {
+      "id": "acuity",
+      "name": "Acuity Scheduling (by Squarespace)",
+      "domains": [
+        "app.acuityscheduling.com",
+        "acuityscheduling.com",
+        "as.me",
+        "app.squarespacescheduling.com",
+        "squarespacescheduling.com"
+      ],
+      "regions": [
+        "GLOBAL"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.as\\.me(/|\\?|$)",
+          "note": "vanity scheduler: {slug}.as.me[/schedule/{hex}|/{event}]",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://([a-z0-9-]+\\.)?acuityscheduling\\.com/schedule\\.php\\?owner=[0-9]+",
+          "note": "classic owner-id scheduling URL",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://app\\.squarespacescheduling\\.com/schedule\\.php\\?owner=[0-9]+",
+          "note": "legacy Squarespace-Scheduling domain (rebrand reversed; still live on older accounts) — treat identically to Acuity",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.squarespacescheduling\\.com(/|\\?|$)",
+          "note": "legacy Squarespace-Scheduling subdomain",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, no free tier",
+      "pricing_summary": "Emerging $16/mo (annual; $20 monthly), Growing $27/mo, Powerhouse $49/mo, Enterprise custom. 7-day trial only.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "No free tier — every live page = $16-61/mo. Prices are low so pitch weakly on cost; own-website angle stronger.",
+      "verticals": [
+        "hair",
+        "beauty/aesthetics",
+        "massage",
+        "wellness/therapy",
+        "coaching",
+        "photographers"
+      ],
+      "prominence": "high (US-heavy, global)"
+    },
+    {
+      "id": "calendly",
+      "name": "Calendly",
+      "domains": [
+        "calendly.com"
+      ],
+      "regions": [
+        "GLOBAL"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://calendly\\.com/(?!(pricing|features|blog|support|help|login|signup|about|careers|legal|terms|privacy|business|partners|contact|resources|integrations|customers|apps|press|sales|demo)(/|$))[a-z0-9_-]+(/[a-z0-9_-]+)?$",
+          "note": "calendly.com/{username}[/{event-slug}]",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://calendly\\.com/d/[a-z0-9-]+",
+          "note": "one-off meeting link",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "freemium per-seat",
+      "pricing_summary": "Free $0 (1 event type) widely used; Standard $10, Teams $16/seat/mo.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Free tier is the solo default. Rarely a beauty/services storefront; more consulting.",
+      "verticals": [
+        "consulting",
+        "services",
+        "occasionally beauty"
+      ],
+      "prominence": "medium as a GBP storefront link"
+    },
+    {
+      "id": "setmore",
+      "name": "Setmore",
+      "domains": [
+        "setmore.com",
+        "my.setmore.com"
+      ],
+      "regions": [
+        "GLOBAL"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.setmore\\.com(/|$)",
+          "note": "{slug}.setmore.com (no custom domains — iframe embed only)",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://my\\.setmore\\.com/(bookingpage/)?[a-z0-9-]+",
+          "note": "my.setmore.com/bookingpage/{uuid}[/bookappointment]",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "freemium",
+      "pricing_summary": "Free forever (4 users, 200 appts/mo, branded booking page); Pro $5/user/mo annual ($12 monthly).",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Generous free tier is the norm — a Setmore page usually implies $0 subscription.",
+      "verticals": [
+        "salon",
+        "barber",
+        "spa",
+        "clinics",
+        "SMB"
+      ],
+      "prominence": "medium"
+    },
+    {
+      "id": "simplybook",
+      "name": "SimplyBook.me",
+      "domains": [
+        "simplybook.me",
+        "simplybook.it",
+        "booking.page"
+      ],
+      "regions": [
+        "GLOBAL"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.simplybook\\.(me|it)(/v2/)?",
+          "note": "{slug}.simplybook.me OR .simplybook.it — .it is a SERVER SHARD, NOT Italy (UK businesses live on it); match both TLDs as one class",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://booking\\.page/[a-z-]+/company/page/[a-z0-9-]+",
+          "note": "newer consumer booking host",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "freemium by booking volume",
+      "pricing_summary": "Free 50 bookings/mo (1 provider); Basic ~$13.90; Standard ~$29.90; Premium ~$59.90.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Free tier covers typical micro-business volume.",
+      "verticals": [
+        "beauty",
+        "wellness",
+        "classes",
+        "clinics",
+        "generic"
+      ],
+      "prominence": "low-medium EN, higher EU"
+    },
+    {
+      "id": "vagaro",
+      "name": "Vagaro",
+      "domains": [
+        "vagaro.com",
+        "mysite.vagaro.com"
+      ],
+      "regions": [
+        "GLOBAL"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://mysite\\.vagaro\\.com/[A-Za-z0-9_-]+(/book-now)?",
+          "note": "canonical branded MySite host: mysite.vagaro.com/{slug}",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?vagaro\\.com/(?!listings/|book/|professionals/|pro/|learn/|help|pricing|features|login|sign|blog|about|support|business|partners|apps|integrations|resources)[A-Za-z0-9_-]+/?$",
+          "note": "vagaro.com/{slug} (302 -> mysite.vagaro.com; same paying business). CA uses vagaro.com/en-ca/{slug}, NOT a .ca domain",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?vagaro\\.com/(en-ca|en-au|en-gb)/[A-Za-z0-9_-]+/?$",
+          "note": "locale-path business page (CA/AU/UK) — NOT a country domain",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?vagaro\\.com/(listings|book|professionals)/",
+          "note": "marketplace directory pages by category/city/suburb — exclude",
+          "verified": true
+        }
+      ],
+      "model": "subscription per bookable calendar, no free tier",
+      "pricing_summary": {
+        "US": "$30/mo 1 calendar, +$10/calendar to ~$90",
+        "GB": "from ~£23.99/mo",
+        "AU": "from A$45/mo",
+        "note": "30-day trial only; $0 booking commission"
+      },
+      "fee_line_allowed": true,
+      "fee_line_notes": "No free tier — every live page = subscriber. 0% commission, so pitch the MONTHLY SUBSCRIPTION, NEVER a commission. Acquired Schedulicity Jan 2025.",
+      "verticals": [
+        "salon",
+        "spa",
+        "nails",
+        "hair",
+        "barber",
+        "massage",
+        "fitness",
+        "wellness",
+        "medspa"
+      ],
+      "prominence": "very high US; growing UK/AU/CA"
+    },
+    {
+      "id": "booksy",
+      "name": "Booksy",
+      "domains": [
+        "booksy.com",
+        "biz.booksy.com",
+        "booksy.net"
+      ],
+      "regions": [
+        "US",
+        "CA",
+        "GB",
+        "IE",
+        "AU",
+        "NL"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?booksy\\.com/(en-[a-z]{2}|[a-z]{2}-[a-z]{2})/\\d+_[a-z0-9-]+_[a-z0-9-]+_\\d+_[a-z0-9-]+",
+          "note": "business page: /{locale}/{numericBizId}_{slug}_{category}_{cityId}_{city}. Locales en-us/en-ca/en-gb/en-ie/en-au/en-nl/pl-pl/es-es/fr-fr. NOT present in DE or IT",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.booksy\\.(com|net)(/a/|/|$)",
+          "note": "per-business SUBDOMAIN form {slug}.booksy.com[/a/] (also .net) — the shape barbers actually put in GBP; validated live 2026-07-18 (4 real barbers, 57-145 reviews, US+UK). Bare subdomain w/o /a/: require a live Book button (lapsed-subscriber caveat).",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?booksy\\.com/[a-z-]+/s/",
+          "note": "/{locale}/s/{category}/{cityId}_{city} = 'TOP 20 near me' directory/search listicles, NOT profiles — exclude. Profiles always start with a numeric biz id",
+          "verified": true
+        }
+      ],
+      "model": "subscription + optional Boost commission",
+      "pricing_summary": {
+        "US": "$29.99/mo + $20/extra staff; Boost 30% new-client first visit (min $10, cap $100)",
+        "GB": "£40/mo + £5/extra member; Boost 30% (min £5)",
+        "note": "no free tier; Boost optional"
+      },
+      "fee_line_allowed": true,
+      "fee_line_notes": "No free tier — every venue page = paying subscriber. No unclaimed-profile class exists (residual risk = lapsed subscribers; require an active Book button). Boost commission line applies only if enabled (soften to 'subscription + up to 30% new-client fee').",
+      "verticals": [
+        "barber (dominant)",
+        "hair",
+        "nails",
+        "lashes/brows",
+        "waxing",
+        "tattoo",
+        "massage"
+      ],
+      "prominence": {
+        "US": "very high (barbers' default)",
+        "GB": "very high (UK barber default)",
+        "IE": "strong",
+        "AU": "low-moderate (urban barbers)",
+        "NL": "low (long-tail)"
+      }
+    },
+    {
+      "id": "zenoti",
+      "name": "Zenoti",
+      "domains": [
+        "zenoti.com"
+      ],
+      "regions": [
+        "GLOBAL"
+      ],
+      "classification": "disqualifier",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.zenoti\\.com/webstore(New)?",
+          "note": "{orgname}.zenoti.com/webstoreNew[/services]",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "enterprise SaaS, quote-only",
+      "pricing_summary": "SMB ~$300-600/mo to $800-1500/mo (10 users); enterprise chains $5,000-50,000+/mo; implementation $5k-20k+, annual contracts.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Always paying heavily BUT USE AS DISQUALIFIER: clients are chains/enterprise with full marketing teams and existing websites — wrong ICP. Near-zero small-business matches.",
+      "verticals": [
+        "med-spa chains",
+        "salon/spa chains",
+        "fitness chains"
+      ],
+      "prominence": "low for independents"
+    },
+    {
+      "id": "wix-bookings",
+      "name": "Wix Bookings",
+      "domains": [
+        "(no distinguishable booking host)"
+      ],
+      "regions": [
+        "GLOBAL"
+      ],
+      "classification": "has_website",
+      "fingerprints": [],
+      "exclude_fingerprints": [],
+      "model": "requires paid Wix Core+ plan",
+      "pricing_summary": "Core $29 / Business $39 / Elite $159 (annual).",
+      "fee_line_allowed": false,
+      "fee_line_notes": "A Wix-Bookings GBP link means the business ALREADY has a website — classify as has-website, never booking-as-website. Fails the qualification regardless of payment.",
+      "verticals": [
+        "any"
+      ],
+      "prominence": "n/a (not a booking-as-website signal)"
+    },
+    {
+      "id": "glossgenius",
+      "name": "GlossGenius",
+      "domains": [
+        "glossgenius.com"
+      ],
+      "regions": [
+        "US",
+        "CA"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.glossgenius\\.com/?",
+          "note": "{slug}.glossgenius.com — often the solo pro's ENTIRE web presence (Free/Standard can't use custom domains)",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?glossgenius\\.com/(?!(pricing|features|blog|support|help|login|signup|about|careers|legal|terms|privacy|business|partners|contact|resources|integrations|customers|apps|press|sales|demo)(/|$))[a-z0-9_-]+/?$",
+          "note": "path-form profile",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, no free tier",
+      "pricing_summary": "Standard $24/mo annual ($28 monthly), Gold $48/mo ($56), Platinum $148/mo ($168). Flat 2.6% processing. 14-day trial.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "No free tier — every live subdomain is a paying subscriber.",
+      "verticals": [
+        "hair",
+        "nails",
+        "lashes",
+        "esthetics",
+        "barber",
+        "makeup",
+        "spa",
+        "solo beauty pros"
+      ],
+      "prominence": "medium-high US beauty"
+    },
+    {
+      "id": "mindbody",
+      "name": "Mindbody",
+      "domains": [
+        "clients.mindbodyonline.com",
+        "mindbodyonline.com",
+        "brandedweb.mindbodyonline.com",
+        "cart.mindbodyonline.com",
+        "mindbody.io",
+        "sites.mindbody.io"
+      ],
+      "regions": [
+        "GLOBAL"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://clients\\.mindbodyonline\\.com/(classic/)?(ws|home)\\?.*studio(id)?=",
+          "note": "legacy consumer booking widget (?studioid={id} or ?studio={name}) — strong 'no real website' signal",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://brandedweb\\.mindbodyonline\\.com/iframe/(schedule|appointments)/[0-9]+",
+          "note": "HealCode 'Branded Web Tools' iframe (HealCode brand absorbed; URL persists on embedded sites)",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://cart\\.mindbodyonline\\.com/sites/[0-9]+/client",
+          "note": "consumer cart/booking host",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.sites\\.mindbody\\.io(/|$)",
+          "note": "Mindbody-hosted site",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?mindbodyonline\\.com/explore/locations/[a-z0-9-]+",
+          "note": "marketplace business profile — verify bookability (see exclude for directory variant)",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?mindbodyonline\\.com/explore/(fitness|wellness|beauty)/",
+          "note": "category/city directory pages — exclude",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://mindbody\\.io/locations/explore-",
+          "note": "directory/explore pages, not business signals — listings can outlive churned subs; require a working booking flow",
+          "verified": true
+        }
+      ],
+      "model": "subscription per location + marketplace commission",
+      "pricing_summary": "Starter $99/mo per location; Accelerate ~$259-279/mo; Ultimate ~$499-699/mo. PLUS ~20% marketplace commission (~23.5% blended with processing) on consumer-app bookings.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "No free tier, floor $99/mo/location; real pain is the ~20% marketplace commission. Dedupe by business identity against Booker + ClassPass (all Mindbody-owned — one owner can surface on three fingerprints).",
+      "verticals": [
+        "yoga/pilates (dominant)",
+        "boutique fitness/gyms",
+        "spa",
+        "wellness/med-spa",
+        "higher-end salons"
+      ],
+      "prominence": "high for studio GBP links (losing share to Momence/TeamUp on cost)"
+    },
+    {
+      "id": "booker",
+      "name": "Booker by Mindbody",
+      "domains": [
+        "go.booker.com",
+        "booker.com"
+      ],
+      "regions": [
+        "US",
+        "CA"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://go\\.booker\\.com/location/[A-Za-z0-9]+(/(service-menu|onlinecart|buy))?",
+          "note": "go.booker.com/location/{slug} (Mindbody-owned spa/salon arm)",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription",
+      "pricing_summary": "Paid subscription, historically ~$129/mo starting, quote-driven. No free tier.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid subscription only. Dedupe by business identity against Mindbody/ClassPass (same company).",
+      "verticals": [
+        "day spas",
+        "salons",
+        "massage studios",
+        "boutique beauty",
+        "barbershops"
+      ],
+      "prominence": "medium"
+    },
+    {
+      "id": "classpass",
+      "name": "ClassPass",
+      "domains": [
+        "classpass.com"
+      ],
+      "regions": [
+        "US",
+        "CA",
+        "GB"
+      ],
+      "classification": "aggregator_exclude",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?classpass\\.com/studios/[a-z0-9-]+",
+          "note": "marketplace studio listing — NOT the studio's own booking backend",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "commission (studio earns discounted per-visit payout)",
+      "pricing_summary": "No subscription to the studio; ClassPass (Mindbody-owned) pays per qualifying reservation at a steep discount (~30-50% effective take).",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Studios pay no fee — they EARN payouts. NEVER the golden-check qualifier: a studio on ClassPass still has its own booking system elsewhere and would rarely put a classpass.com link in GBP. Weak 'no own website' supplementary signal at most. Dedupe with Mindbody/Booker.",
+      "verticals": [
+        "boutique fitness",
+        "yoga/pilates",
+        "gyms",
+        "spa/recovery",
+        "beauty"
+      ],
+      "prominence": "aggregator; secondary signal only"
+    },
+    {
+      "id": "schedulicity",
+      "name": "Schedulicity",
+      "domains": [
+        "schedulicity.com"
+      ],
+      "regions": [
+        "US",
+        "CA"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?schedulicity\\.com/scheduling/[A-Za-z0-9]{6}",
+          "note": "legacy business booking page: /scheduling/{6-char code} — still resolving but SUNSETTING",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription",
+      "pricing_summary": "Solo $34.99/mo (1 provider); +$10/mo per provider up to 5; $94.99/mo for 7+. 14-day trial.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Acquired by Vagaro Jan 2025, brand retiring, base migrating to Vagaro. A live /scheduling/ link = double signal: platform-dependent AND stale web presence ('Vagaro customer with a stale link'). Soften absolute 'you're paying' claims — legacy free-plan users may exist.",
+      "verticals": [
+        "salon",
+        "spa",
+        "hair",
+        "nails",
+        "massage",
+        "fitness/classes",
+        "wellness"
+      ],
+      "prominence": "medium (shrinking as it migrates to Vagaro)"
+    },
+    {
+      "id": "boulevard",
+      "name": "Boulevard (BLVD)",
+      "domains": [
+        "blvd.app",
+        "joinblvd.com",
+        "boulevard.io",
+        "blvd.co"
+      ],
+      "regions": [
+        "US",
+        "CA"
+      ],
+      "classification": "weak_embed_first",
+      "fingerprints": [
+        {
+          "pattern": "^https?://blvd\\.app/@[A-Za-z0-9_.-]+",
+          "note": "client portal: blvd.app/@{slug} — the EXCEPTION; Boulevard usually embeds an overlay on the business's own site",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://dashboard\\.boulevard\\.io/booking/businesses/[0-9a-f-]{36}/widget",
+          "note": "customer-facing booking widget used as a GBP website — genuine golden-check candidate despite the weak_embed_first classification; validated live 2026-07-18.",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://dashboard\\.boulevard\\.io/(login|$)",
+          "note": "staff dashboard/login only — do NOT exclude the whole host; /booking/businesses/{uuid}/widget on the same host is a REAL customer booking widget (validated 2026-07-18).",
+          "verified": true
+        }
+      ],
+      "model": "subscription",
+      "pricing_summary": "Per location: Essentials ~$176/mo, Premier ~$293/mo, Prestige ~$410/mo (~10% off annual). Processing from 2.65%+15c. No free tier; premium/mid-market.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "High mandatory subscription ($176+/mo) BUT low detection value: booking is an OVERLAY on the business's OWN site, so these salons usually already have a real website — effectively a disqualifier segment, like Zenoti. A blvd.app GBP link is the rare exception.",
+      "verticals": [
+        "premium salon",
+        "spa",
+        "medspa",
+        "multi-location"
+      ],
+      "prominence": "low (embed-first)"
+    },
+    {
+      "id": "mangomint",
+      "name": "Mangomint",
+      "domains": [
+        "booking.mangomint.com",
+        "mangomint.com"
+      ],
+      "regions": [
+        "US",
+        "CA"
+      ],
+      "classification": "weak_embed_first",
+      "fingerprints": [
+        {
+          "pattern": "^https?://booking\\.mangomint\\.com/[A-Za-z0-9]+",
+          "note": "booking.mangomint.com/{slug or numeric id, e.g. /salonmb, /870336} — standalone link is less common than an own-site embed",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription",
+      "pricing_summary": "Essentials $165/mo (<=10 pros), Standard $245/mo (<=20), Unlimited $375/mo. Per-location add-on $95/$135/$175. No free tier.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "High-floor paid subscription ($165+/mo), no free tier. Markets a login-free widget EMBEDDED on the business's own site, so a standalone booking.mangomint.com GBP link is weaker/rarer than an own-site embed. Negligible UK presence.",
+      "verticals": [
+        "hair salon",
+        "spa",
+        "nail salon",
+        "medspa",
+        "beauty studio",
+        "barber",
+        "waxing",
+        "tattoo/piercing"
+      ],
+      "prominence": "medium US/CA; very low UK"
+    },
+    {
+      "id": "styleseat",
+      "name": "StyleSeat",
+      "domains": [
+        "styleseat.com"
+      ],
+      "regions": [
+        "US"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?styleseat\\.com/m/v/[A-Za-z0-9_.-]+/?$",
+          "note": "pro profile: /m/v/{username}",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?styleseat\\.com/(?!(m|blog|join|tos|pricing|features|support|help|login|about|press|careers|business|pro)(/|$))[a-z0-9]+$",
+          "note": "legacy vanity profile: styleseat.com/{username}",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?styleseat\\.com/m/search/[a-z-]+",
+          "note": "city/category directory — exclude",
+          "verified": true
+        }
+      ],
+      "model": "subscription + new-client commission",
+      "pricing_summary": "$35/mo ($31.50 annual). New-client marketplace fee 30% of appointment value (first booking, cap $50; Premium 20%). Smart Pricing boost ~5.25-5.5% (cap $16.50). Processing 2.5-2.6%+30c. 21-day trial.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Mandatory $35/mo plus among the steepest new-client takes in the category — strongest fee-pain pitch alongside Fresha.",
+      "verticals": [
+        "hair",
+        "barber",
+        "braiding/locs",
+        "nails",
+        "lashes/brows",
+        "makeup"
+      ],
+      "prominence": "high (US-only)"
+    },
+    {
+      "id": "squire",
+      "name": "Squire",
+      "domains": [
+        "getsquire.com",
+        "shops.getsquire.com",
+        "online.getsquire.com",
+        "getsquire.ca"
+      ],
+      "regions": [
+        "US",
+        "CA"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?getsquire\\.com/booking/book/[a-z0-9-]+",
+          "note": "shop booking: /booking/book/{shop-city}",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://shops\\.getsquire\\.com/book/[a-z0-9-]+",
+          "note": "alternate shop booking host",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://online\\.getsquire\\.com/",
+          "note": "online booking host",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?getsquire\\.com/discover/",
+          "note": "directory pages — exclude",
+          "verified": true
+        }
+      ],
+      "model": "subscription, no free tier/trial",
+      "pricing_summary": "Pro Independent Barber from $30/mo; full-shop unlimited ~$50/mo; Complete Barbershop $100/mo; Executive $100-150/mo; Titan $250/mo.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Subscription-only, no free tier at all ($30/mo floor) — cleanest 'definitely paying' signal, but barbershops only (~5,000 shops).",
+      "verticals": [
+        "barber (exclusively)"
+      ],
+      "prominence": "high (barber-only)"
+    },
+    {
+      "id": "thecut",
+      "name": "theCut",
+      "domains": [
+        "app.thecut.co",
+        "thecut.co"
+      ],
+      "regions": [
+        "US"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://app\\.thecut\\.co/barbers/[A-Za-z0-9]+/?$",
+          "note": "barber profile: /barbers/{username OR 24-char hex ObjectId}",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://top\\.thecut\\.co/",
+          "note": "top-10 directory pages — exclude",
+          "verified": true
+        }
+      ],
+      "model": "free-tier",
+      "pricing_summary": "Genuine Free plan $0/mo for barbers AND shops (2.75% processing; $10 per new client via discovery; ~$1 client-paid booking fee). PRO ~$25/mo.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Real, fully-functional $0/mo tier — a theCut page does NOT prove they pay anything. Monetises via client-paid ~$1 booking fee + discovery fees. Strong no-website signal, weak fee signal.",
+      "verticals": [
+        "barber (exclusively)"
+      ],
+      "prominence": "medium (US-only)"
+    },
+    {
+      "id": "janeapp",
+      "name": "Jane App",
+      "domains": [
+        "janeapp.com",
+        "jane.app"
+      ],
+      "regions": [
+        "CA",
+        "US"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.janeapp\\.com(/|$)",
+          "note": "clinic booking site: {slug}.janeapp.com[/locations/{loc}/book]",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, no free tier",
+      "pricing_summary": "CAD $54/mo Balance (1 practitioner, 20 appts/mo cap), $79/mo Practice (unlimited, +$39-59/mo per extra staff), $99/mo Thrive.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Pure subscription, no free tier — any business on Jane pays min ~$54 CAD/mo. Canada-dominant in allied health.",
+      "verticals": [
+        "massage therapy (RMT)",
+        "physio/chiro",
+        "naturopathy",
+        "acupuncture",
+        "mental health/counselling",
+        "allied health"
+      ],
+      "prominence": "high (CA-dominant, growing US)"
+    },
+    {
+      "id": "timely",
+      "name": "Timely",
+      "domains": [
+        "gettimely.com",
+        "book.gettimely.com",
+        "bookings.gettimely.com"
+      ],
+      "regions": [
+        "GB",
+        "AU",
+        "NZ",
+        "US",
+        "CA"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://book\\.gettimely\\.com/[Bb]ooking/[Ll]ocation/([0-9]+|[a-z0-9-]+)",
+          "note": "book.gettimely.com/Booking/Location/{slug-or-id} (case-insensitive path)",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://bookings\\.gettimely\\.com/[a-z0-9-]+(/bb)?/book",
+          "note": "bookings.gettimely.com/{slug}[/bb]/book",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://book\\.gettimely\\.com/[a-z0-9-]+/book/embed",
+          "note": "embed/overlay booking link",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription per bookable staff, no free tier",
+      "pricing_summary": {
+        "US": "Build $20 / Elevate $30 / Innovate $35 per staff/mo",
+        "GB": "~£11/£20/£28 per user/mo",
+        "AU": "Build ~A$42 / Elevate ~A$65 / Innovate ~A$79 per staff/mo",
+        "note": "14-day trial; no booking commission"
+      },
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid-only, no free tier — but charges NO commission, so pitch presence/SEO/brand, not 'stop paying booking fees'. NZ-origin (Dunedin).",
+      "verticals": [
+        "hair",
+        "barber",
+        "beauty",
+        "nails/lashes/brows",
+        "massage",
+        "aesthetics",
+        "tattoo (some)"
+      ],
+      "prominence": {
+        "AU": "very high",
+        "NZ": "very high",
+        "GB": "well-established mid-market",
+        "US": "medium",
+        "CA": "medium"
+      }
+    },
+    {
+      "id": "heygoldie",
+      "name": "Goldie (formerly Appointfix)",
+      "domains": [
+        "heygoldie.com",
+        "book.heygoldie.com"
+      ],
+      "regions": [
+        "US",
+        "CA",
+        "GB"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://book\\.heygoldie\\.com/(en/)?[A-Za-z0-9-]+(/|$)",
+          "note": "book.heygoldie.com/{human-name slug OR hex id}, sometimes /en/ prefix",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "free-tier",
+      "pricing_summary": "Starter FREE (scheduling + online booking, capped 20 appts/mo). Pro $19.99/mo, Pro Plus $39.99/mo (~20% off annual).",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Real free tier with online booking — a solo pro may pay $0. Many solo barbers/nail techs use the free page as their whole web presence: strong no-website signal, weak fee signal.",
+      "verticals": [
+        "barbers",
+        "hairstylists",
+        "nail techs",
+        "lash/brow",
+        "tattoo",
+        "solo beauty pros",
+        "PTs"
+      ],
+      "prominence": "medium"
+    },
+    {
+      "id": "wellnessliving",
+      "name": "WellnessLiving",
+      "domains": [
+        "wellnessliving.com",
+        "us.wellnessliving.com"
+      ],
+      "regions": [
+        "CA",
+        "US"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://([a-z]{2}\\.)?wellnessliving\\.com/(rs|ms)/[a-z0-9_-]+",
+          "note": "hosted schedule/booking portal: /rs|ms/{slug}",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://([a-z]{2}\\.)?wellnessliving\\.com/[a-z-]+/[a-z0-9_-]+/[a-z0-9_]+/schedule",
+          "note": "profile: /{vertical}/{city}/{slug}/schedule/",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://([a-z]{2}\\.)?wellnessliving\\.com/explore/(locations|class)/[a-z0-9_-]",
+          "note": "explore-profile variant (also a real subscriber page)",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, no free tier",
+      "pricing_summary": "Starter $69/mo, Business $199/mo, BusinessPro $349/mo, Enterprise custom. Real all-in $200-500+/mo with processing/PCI/SMS/add-ons.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Subscription-only, no free tier. Toronto-HQ'd. Use a cost RANGE not a headline tier (real cost 2-5x sticker).",
+      "verticals": [
+        "yoga/pilates",
+        "gyms",
+        "fitness",
+        "spas",
+        "beauty",
+        "wellness centres"
+      ],
+      "prominence": "medium"
+    },
+    {
+      "id": "momence",
+      "name": "Momence",
+      "domains": [
+        "momence.com"
+      ],
+      "regions": [
+        "US",
+        "CA",
+        "GB",
+        "AU",
+        "NZ"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://momence\\.com/u/[A-Za-z0-9-]+(-[A-Za-z0-9]{6})?",
+          "note": "hosted studio page: /u/{slug}[-{6-char id}] (newer accounts get the suffix)",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://momence\\.com/[A-Za-z-]+/[a-z0-9-]+/[0-9]+",
+          "note": "event URL: /{Host-Name}/{event-slug}/{numeric-id}",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "hybrid (free Basic + paid tiers)",
+      "pricing_summary": "Basic FREE (5% Momence fee + 4% client surcharge per transaction). Pro $60/mo (2.5% fee). Custom $199/mo (no platform fee). Plus ~3.9%+30c processing.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "OVERRIDE (two sub-reports verified a real free Basic tier): NEVER assert a monthly fee — a Momence business may be on $0 Basic. CONDITIONAL commission angle only: 'Momence skims 5% of every booking' is truthful on cheap tiers, but flag for human copy review, do NOT automate.",
+      "verticals": [
+        "yoga/pilates",
+        "boutique fitness",
+        "dance schools",
+        "spas",
+        "wellness events"
+      ],
+      "prominence": "medium (rising as a Mindbody alternative; UK studios migrating to it)"
+    },
+    {
+      "id": "noterro",
+      "name": "Noterro (formerly SOAP Vault)",
+      "domains": [
+        "noterro.com",
+        "app.noterro.com"
+      ],
+      "regions": [
+        "CA",
+        "US"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://app\\.noterro\\.com/clinics/view/[a-f0-9]{32}",
+          "note": "clinic booking: /clinics/view/{32-hex}",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.noterro\\.com(/|$)",
+          "note": "subdomain clinic site: {slug}.noterro.com — scanner must match BOTH shapes",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, no free tier",
+      "pricing_summary": "Per-practitioner subscription (~$25/practitioner/mo range; approximate — pricing page not fetched; 14-day trial).",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Subscription per practitioner, no free tier. Confidence medium on exact price. Strongly Canada-weighted (RMT massage).",
+      "verticals": [
+        "massage therapy (RMT)",
+        "physio",
+        "chiro",
+        "manual/allied health"
+      ],
+      "prominence": "medium (CA-heavy)"
+    },
+    {
+      "id": "arketa",
+      "name": "Arketa",
+      "domains": [
+        "arketa.com",
+        "app.arketa.co"
+      ],
+      "regions": [
+        "US",
+        "CA"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://app\\.arketa\\.co/[A-Za-z0-9-]+(/|$)",
+          "note": "app.arketa.co/{slug}",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://app\\.arketa\\.co/iframe/[A-Za-z0-9-]+/schedule",
+          "note": "embedded schedule iframe",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription (tiered/quote-based), no free tier advertised",
+      "pricing_summary": "Subscription, tiers not fetched (approximate). Positions as a modern Mindbody/Momence alternative.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Subscription-based, no free tier. Confidence medium on pricing. Fast-rising 2024-2026 boutique-studio entrant.",
+      "verticals": [
+        "yoga/pilates",
+        "boutique fitness",
+        "new/independent studios",
+        "wellness"
+      ],
+      "prominence": "low (growing)"
+    },
+    {
+      "id": "massagebook",
+      "name": "MassageBook",
+      "domains": [
+        "massagebook.com"
+      ],
+      "regions": [
+        "US"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?massagebook\\.com/biz/[A-Za-z0-9_-]+",
+          "note": "live business-page form /biz/{slug} — validated 2026-07-18 (2 real businesses).",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?massagebook\\.com/[A-Za-z]+~Massage~[A-Za-z_]+",
+          "note": "business page: /{City}~Massage~{Business_Name} (tilde-delimited) STALE: zero live matches in 2026-07-18 validation; possibly legacy directory shape. Kept pending deletion-verify.",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?massagebook\\.com/(search|massage)/",
+          "note": "directory pages — exclude",
+          "verified": true
+        }
+      ],
+      "model": "subscription (entry tier possibly free/near-free)",
+      "pricing_summary": "Tiered ~$10-40/mo (approximate; entry-tier/free-listing status unverified).",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Entry tier possibly free/near-free — verify before pitching fee savings.",
+      "verticals": [
+        "massage",
+        "bodywork"
+      ],
+      "prominence": "medium (US-only)"
+    },
+    {
+      "id": "daysmart-salon",
+      "name": "DaySmart Salon (formerly Salon Iris)",
+      "domains": [
+        "daysmartsalon.com",
+        "daysmart.com"
+      ],
+      "regions": [
+        "US",
+        "CA"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(online|cloud|booking)\\.daysmartsalon\\.com/",
+          "note": "client booking hosts observed (online./cloud.); exact per-business path shape NOT confirmed",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, no free tier",
+      "pricing_summary": "Basic $29/mo up to ~$99+/mo.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid subscription only. CAVEAT: registry-canada-niche EXCLUDED it for having no clean public per-business booking-URL fingerprint (businesses embed a widget on their own domain; hosts seen are account/portal). Keep with verified:false until a per-salon URL shape surfaces.",
+      "verticals": [
+        "salon",
+        "nails",
+        "barber"
+      ],
+      "prominence": "medium"
+    },
+    {
+      "id": "treatwell",
+      "name": "Treatwell (incl. Uala IT)",
+      "domains": [
+        "treatwell.co.uk",
+        "treatwell.ie",
+        "treatwell.nl",
+        "treatwell.be",
+        "treatwell.de",
+        "treatwell.ch",
+        "treatwell.at",
+        "treatwell.it",
+        "uala.it"
+      ],
+      "regions": [
+        "GB",
+        "IE",
+        "NL",
+        "BE",
+        "DE",
+        "CH",
+        "AT",
+        "IT"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?treatwell\\.(co\\.uk|ie|nl|be)/(salon|place)/[a-z0-9-]+(/|$)",
+          "note": "UK/IE/NL/BE venue page: /place/ (UK/IE) or /salon/ (NL/BE); /en/place/ also seen",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?treatwell\\.(de|ch|at)/(ort|lieu)/[a-z0-9-]+(/|$)",
+          "note": "DACH venue page: /ort/ (de) or /lieu/ (fr-CH)",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?treatwell\\.it/salone/[a-z0-9-]+(/|$)",
+          "note": "Italy venue page: /salone/",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?uala\\.it/[a-z0-9-]+_[a-z0-9-]+",
+          "note": "LEGACY Uala IT (uala.it/{business-slug}_{street-address}) — Uala acquired by Treatwell 2021, site now fully Treatwell-branded but old URLs still live in Italian GBP fields. Treat as Treatwell IT",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.mytreatwell\\.co\\.uk(/|$)",
+          "note": "Treatwell per-business mini-site (claimed paying partner) — surfaced by live dogfooding 2026-08-02 (vasl.mytreatwell.co.uk in a GBP website field); distinct from the treatwell.co.uk/place/ marketplace profile.",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.mytreatwell\\.(ie|nl|de|ch|at|it|fr|es)(/|$)",
+          "note": "assumed national-market variants of the mini-site shape; only .co.uk observed live so far.",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?treatwell\\.[a-z.]+/(salons|places|places-near-me)/",
+          "note": "category/browse pages, not venue pages — exclude",
+          "verified": true
+        }
+      ],
+      "model": "subscription (Treatwell Connect) + marketplace commission on new-client first booking",
+      "pricing_summary": {
+        "commission": "35% (+VAT, ~42% effective) on a new marketplace client's FIRST booking in UK/IE/DACH/NL/BE; 25% in Italy. 0% on repeats/direct.",
+        "monthly": "software fee not published; NL from €35/mo; UK Capterra 'Connect from £195/yr', third parties ~£40/mo+VAT; +2%-2.5% online prepayment fee",
+        "note": "since Apr 2025 commission charged even if the salon cancels"
+      },
+      "fee_line_allowed": true,
+      "fee_line_notes": "Every listed venue is a paying partner; the 35%+VAT new-client commission is the strongest fee-saving line in the whole registry. LOCALISE: 35% in UK/IE/DACH/NL/BE vs 25% in Italy. Treatwell and Uala are the same company — dedupe. Salonized has a Treatwell integration, so some salons fingerprint on both; dedupe by business.",
+      "verticals": [
+        "hair",
+        "barber",
+        "beauty",
+        "nails",
+        "massage",
+        "spa",
+        "aesthetics",
+        "waxing"
+      ],
+      "prominence": "high — Europe's largest beauty marketplace (75,000+ partners, 15 countries); leader IT, top-2 DE, very common GBP link NL/BE/UK/IE"
+    },
+    {
+      "id": "phorest",
+      "name": "Phorest",
+      "domains": [
+        "phorest.me",
+        "phorest.com"
+      ],
+      "regions": [
+        "GB",
+        "IE",
+        "DE",
+        "AU",
+        "NZ"
+      ],
+      "classification": "weak_embed_first",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.phorest\\.me/book",
+          "note": "official booking-link format: {business}.phorest.me/book",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?phorest\\.com/salon/[a-z0-9-]+/book",
+          "note": "phorest.com/salon/{phorest-domain}/book[/categories/{id}]",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?phorest\\.com/book/salons/[a-z0-9-]+",
+          "note": "legacy, still live",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription (quote-only) + per-online-booking fees",
+      "pricing_summary": {
+        "GB": "~£80-250/mo, quote-only; ~£0.60-1.50 per online booking (third-party, unverified)",
+        "DE": "~€99-100+/mo",
+        "AU": "~US$99-300+/mo, 12-month initial contract; ~A$1.25 per online booking (some markets)",
+        "note": "no free tier"
+      },
+      "fee_line_allowed": true,
+      "fee_line_notes": "Premium quote-only subscription, no free tier. EMBED-FIRST/partial: premium salons often DO have their own site (widget embed + branded client app), so a phorest.me/phorest.com link in GBP is a weaker signal — check before pitching.",
+      "verticals": [
+        "hair salons",
+        "spas",
+        "aesthetics/medi",
+        "beauty"
+      ],
+      "prominence": {
+        "IE": "incumbent for established salons (home market)",
+        "GB": "strong",
+        "DE": "medium (premium segment)",
+        "AU": "moderate (upper end)",
+        "NZ": "low"
+      }
+    },
+    {
+      "id": "ovatu",
+      "name": "Ovatu (BookApp)",
+      "domains": [
+        "book.app",
+        "ovatu.me",
+        "ovatu.com"
+      ],
+      "regions": [
+        "GB",
+        "AU",
+        "NZ"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.book\\.app(/|$)",
+          "note": "current OvatuNext 'BookApp' minisite: {slug}.book.app — high-precision once known; generic-sounding host, corroborate it is Ovatu's",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.ovatu\\.me(/|$)",
+          "note": "legacy Ovatu Classic (being migrated) — will decay",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, no free tier",
+      "pricing_summary": "Neat US$25/mo (+$7 per extra employee), Loaded US$38/mo (+$10). 30-day trial.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Subscription-only, no free tier; 0% commission so pitch subscription only. AU-born.",
+      "verticals": [
+        "beauty",
+        "hair",
+        "lashes/brows",
+        "massage",
+        "tattoo"
+      ],
+      "prominence": "moderate AU (home market); popular UK solo/small beauty; low-moderate NZ"
+    },
+    {
+      "id": "bookwhen",
+      "name": "Bookwhen",
+      "domains": [
+        "bookwhen.com"
+      ],
+      "regions": [
+        "GB"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://bookwhen\\.com/[a-z0-9-]+(/[a-z0-9-]+)?$",
+          "note": "bookwhen.com/{slug}[/passes] — single path segment = business page; exclude reserved paths (/pricing, /inperson, /customerstory-*, /class-booking-system)",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://bookwhen\\.com/(pricing|inperson|class-booking-system|customerstory-)",
+          "note": "marketing/reserved paths — exclude",
+          "verified": true
+        }
+      ],
+      "model": "freemium subscription",
+      "pricing_summary": "FREE plan (~50 bookings/mo, FREE EVENTS ONLY — no payments). Paid ~£13-50/mo ($15/$29/$59) unlocks payments. No commissions.",
+      "fee_line_allowed": "conditional",
+      "fee_line_notes": "CONDITIONAL: the free plan cannot take payments, so a Bookwhen page that LISTS PAID CLASSES / takes payment => the business MUST be on a paid plan => 'paying subscriber' is truthful. A free-events-only page is NOT paying. Needs a per-lead content check.",
+      "verticals": [
+        "yoga",
+        "pilates",
+        "fitness classes",
+        "workshops",
+        "kids activities"
+      ],
+      "prominence": "UK-native, very common for small class-based operators"
+    },
+    {
+      "id": "cliniko",
+      "name": "Cliniko",
+      "domains": [
+        "cliniko.com"
+      ],
+      "regions": [
+        "GB",
+        "IE",
+        "AU",
+        "NZ"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://[a-z0-9-]+(\\.[a-z0-9]+)?\\.cliniko\\.com/bookings",
+          "note": "match *.cliniko.com/bookings — Cliniko SHARDS subdomains by region ({slug}.cliniko.com AND {slug}.{au1|uk2|...}.cliniko.com), so do NOT fix the second-level shape",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "per-practitioner subscription, no free tier",
+      "pricing_summary": "$45/mo (1 practitioner) -> $95 (2-5) -> $145 (6-8) etc., currency-localised (AUD/GBP/USD; unchanged since 2011). 30-day trial.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Subscription-only, no free tier. AU-born (Melbourne); a top fingerprint for massage/allied-health GBP listings.",
+      "verticals": [
+        "massage therapy",
+        "physio/osteo/myo",
+        "aesthetics clinics",
+        "wellness clinics"
+      ],
+      "prominence": {
+        "AU": "very high",
+        "NZ": "very high",
+        "GB": "clinic-side standard",
+        "IE": "present"
+      }
+    },
+    {
+      "id": "glofox",
+      "name": "Glofox (ABC Glofox)",
+      "domains": [
+        "app.glofox.com",
+        "glofox.com"
+      ],
+      "regions": [
+        "GB",
+        "IE",
+        "AU",
+        "NZ"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://app\\.glofox\\.com/portal",
+          "note": "match app.glofox.com/portal ALONE — booking is a hash-fragment SPA (/portal/#/branch/{24-hex-id}/...) and anything after # is stripped by GBP/scrapers",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://app\\.glofox\\.com/dashboard",
+          "note": "admin console — not a customer link",
+          "verified": true
+        }
+      ],
+      "model": "subscription (quote-based), no free tier",
+      "pricing_summary": "~US$99-110/mo (Essential) up to $400-600+ (Enterprise); ~2.9%+30c payment surcharge on top of Stripe. Acquired by ABC Fitness (completed Aug 2022; now 'ABC Glofox').",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Premium subscription, no free tier. App/embedded-widget-first, so a bare portal link as a GBP website is LESS common than TeamUp/Mindbody/Momence — lower hit rate.",
+      "verticals": [
+        "gyms",
+        "boutique fitness",
+        "yoga",
+        "pilates",
+        "martial arts",
+        "HIIT"
+      ],
+      "prominence": {
+        "IE": "major (home market)",
+        "GB": "solid boutique fitness",
+        "AU": "moderate",
+        "NZ": "low-moderate"
+      }
+    },
+    {
+      "id": "teamup",
+      "name": "TeamUp",
+      "domains": [
+        "goteamup.com"
+      ],
+      "regions": [
+        "GB",
+        "AU",
+        "NZ"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://goteamup\\.com/p/[0-9]+-[a-z0-9-]+(/|$)",
+          "note": "goteamup.com/p/{numeric-id}-{slug}/ with subpaths /contact//memberships//courses//store — the /p/ root IS the business's public customer site",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription scaled by active members, no free tier",
+      "pricing_summary": {
+        "GB": "from ~£83/mo (0-100 customers) to ~£309/mo flat at 601+",
+        "US": "from ~$99/mo to $309/mo",
+        "AU": "e.g. $189/mo at 101-200 actives (USD/AUD selectable)",
+        "note": "branded app +$99/mo; no commission"
+      },
+      "fee_line_allowed": true,
+      "fee_line_notes": "No free plan — 'you pay £80+/month' is truthful. UK-native (London HQ). One of the most common platforms among UK/IE independent studios/boxes.",
+      "verticals": [
+        "crossfit/functional",
+        "yoga",
+        "pilates",
+        "bootcamps",
+        "group fitness",
+        "PTs"
+      ],
+      "prominence": {
+        "GB": "very common (UK-native)",
+        "AU": "low-moderate",
+        "NZ": "low-moderate"
+      }
+    },
+    {
+      "id": "gymcatch",
+      "name": "Gymcatch",
+      "domains": [
+        "gymcatch.com"
+      ],
+      "regions": [
+        "GB"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://gymcatch\\.com/app/",
+          "note": "gymcatch.com/app/... business booking link (verified to /app prefix; sub-path likely id/slug, not publicly documented). Admin is portal.gymcatch.com (NOT a customer link)",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://portal\\.gymcatch\\.com/",
+          "note": "admin portal — not a customer link",
+          "verified": true
+        }
+      ],
+      "model": "low-cost subscription + bolt-ons, no free tier",
+      "pricing_summary": "£10+VAT/mo base + optional bolt-ons (~£2+VAT each); effective avg ~$15/mo, max ~$24/mo. 1-month trial.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "No permanent free tier, but the £ is small (£10-24/mo) so a fee-SAVING pitch is weak on ROI. Better angle: 'your booking link isn't your own website.'",
+      "verticals": [
+        "fitness classes",
+        "bootcamps",
+        "yoga/pilates",
+        "PTs",
+        "small studios"
+      ],
+      "prominence": "UK-native, strong among solo instructors and micro-studios"
+    },
+    {
+      "id": "bsport",
+      "name": "bsport",
+      "domains": [
+        "bsport.io",
+        "backoffice.bsport.io"
+      ],
+      "regions": [
+        "GB",
+        "DE",
+        "CH"
+      ],
+      "classification": "weak_embed_first",
+      "fingerprints": [
+        {
+          "pattern": "^https?://backoffice\\.bsport\\.io/m/[0-9]+(/|$)",
+          "note": "member booking page: backoffice.bsport.io/m/{studioId}/... (inferred; also a verified customer payment-offer shape /customer/payment/offer/{id})",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://backoffice\\.bsport\\.io/login",
+          "note": "admin login — not a customer link",
+          "verified": true
+        }
+      ],
+      "model": "subscription (quote-based), annual contract, no free tier",
+      "pricing_summary": "~€150+/mo, five tiers (Start->Scale), pricing behind demo; annual contract + 2-month notice; low transaction fees.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid-only premium subscription (subscription framing). EMBED-FIRST: booking 'stays within the website widget' on the studio's OWN domain, so a bsport GBP link is usually the studio's own site, not a bsport.io URL — detect via embedded widget code, weak URL fingerprint.",
+      "verticals": [
+        "pilates (esp. reformer)",
+        "yoga",
+        "boutique fitness",
+        "barre",
+        "spin/HIIT"
+      ],
+      "prominence": "growing UK reformer-pilates; low-medium DACH (FR-origin)"
+    },
+    {
+      "id": "glowday",
+      "name": "Glowday",
+      "domains": [
+        "glowday.com"
+      ],
+      "regions": [
+        "GB"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?glowday\\.com/clinics/[a-z0-9-]+",
+          "note": "bookable clinic profile (GlowdayPRO users): glowday.com/clinics/{slug}",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "software (GlowdayPRO subscription) + marketplace commission",
+      "pricing_summary": "GlowdayPRO subscription; listing at no extra cost; 0% on consultations; 30%+VAT one-time commission when a Glowday-sourced patient's first aesthetic procedure converts; 0% on direct-link bookings.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid software + heavy new-patient commission; medically-registered practitioners only, so directory presence implies a paying relationship.",
+      "verticals": [
+        "aesthetics (injectables, skin)"
+      ],
+      "prominence": "leading UK medical-aesthetics directory/booking"
+    },
+    {
+      "id": "facesconsent",
+      "name": "Faces Consent",
+      "domains": [
+        "facesconsent.com"
+      ],
+      "regions": [
+        "GB"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?facesconsent\\.com/clinics/[a-z0-9-]+",
+          "note": "practitioner directory/booking profile (free Faces mini-website)",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "free software + transaction/deposit fees + upsells",
+      "pricing_summary": "Core consent + booking software is FREE; monetised via deposits/payments processing, finance, shop, insurance upsells.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Explicitly free by design — no truthful subscription/commission pitch. Pitch angle = unprofessional shared-platform web presence, not cost. Huge among UK budget/solo aesthetics practitioners.",
+      "verticals": [
+        "aesthetics",
+        "brows/lashes",
+        "PMU",
+        "beauty"
+      ],
+      "prominence": "high among UK solo/budget aesthetics"
+    },
+    {
+      "id": "pabau",
+      "name": "Pabau",
+      "domains": [
+        "pabau.com",
+        "pabau.me"
+      ],
+      "regions": [
+        "GB"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.pabau\\.me(/|$)",
+          "note": "GAP — hosted booking-portal URL shape not verified this pass; pabau.me subdomain plausible, confirm before use",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, no free tier",
+      "pricing_summary": "Paid clinic-management tiers (from ~£69+/mo).",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid clinic software. FINGERPRINT GAP — public booking-page shape unverified; keep verified:false until confirmed.",
+      "verticals": [
+        "aesthetics clinics",
+        "medispa"
+      ],
+      "prominence": "significant UK clinic software"
+    },
+    {
+      "id": "slick",
+      "name": "Slick",
+      "domains": [
+        "getslick.com",
+        "theslickapp.com"
+      ],
+      "regions": [
+        "GB"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://book\\.getslick\\.com/#/salon/[0-9]+",
+          "note": "book.getslick.com/#/salon/{numeric id} — hash-routed SPA, optional ?categoryName= stylist param",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, no free tier",
+      "pricing_summary": "Essential £20/mo (+£12/extra stylist), Advanced £35/mo (+£18), Supercharged £219/mo unlimited; +VAT; NO commission; 90-day money-back.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Subscription-only, anti-marketplace positioning (0% commission) — pitch MONTHLY SUBSCRIPTION, never commission. UK-built, exclusively hairdressers & barbers.",
+      "verticals": [
+        "hair",
+        "barber"
+      ],
+      "prominence": "strong growing UK presence (industry-backed)"
+    },
+    {
+      "id": "beu",
+      "name": "Beu",
+      "domains": [
+        "beuapp.com",
+        "app.beuapp.com"
+      ],
+      "regions": [
+        "GB"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(app\\.)?beuapp\\.com/[a-z0-9-]+",
+          "note": "PROVISIONAL — app-first (branded native apps); web booking under app.beuapp.com; no clean per-shop web slug verified. CAUTION: match on DOMAIN only, never the name 'Beu' (a 'Beu'-named barbershop actually used Square)",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, no free tier",
+      "pricing_summary": "Solo £25/mo, Business £59/mo (unlimited employed staff); 0% commission; 30-day trial.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Flat paid subscription, no free plan (pitch as subscription not commission). UK barbershops/salons with self-employed/chair-rent staff.",
+      "verticals": [
+        "barbers",
+        "salons with self-employed staff"
+      ],
+      "prominence": "UK barbershop/chair-renter niche"
+    },
+    {
+      "id": "nearcut",
+      "name": "Nearcut",
+      "domains": [
+        "nearcut.com"
+      ],
+      "regions": [
+        "GB"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.nearcut\\.com(/|$)",
+          "note": "{shop}.nearcut.com free branded website incl. booking — shape inferred, verify",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription per barber + consumer booking fee",
+      "pricing_summary": "£27.50/mo solo + £10 per extra barber; paid bolt-ons; Nearcut ALSO charges consumers a per-appointment booking fee (amount unpublished).",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid subscription AND their customers pay a per-appointment booking fee — double pitch angle. Established UK barber-specific platform.",
+      "verticals": [
+        "barbers"
+      ],
+      "prominence": "established UK barber platform (Cheshire, since 2012)"
+    },
+    {
+      "id": "planity",
+      "name": "Planity",
+      "domains": [
+        "planity.com",
+        "planity.be"
+      ],
+      "regions": [
+        "DE",
+        "BE"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?planity\\.com/(de-DE|nl-BE|fr-BE)/[a-z0-9-]+-[0-9]{4,5}(-[a-z0-9-]+)?",
+          "note": "planity.com/{locale}/{slug}-{postcode}[-{city}] — slug embeds the postcode (handy for region extraction). DE + BE only",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "fixed monthly subscription, monthly cancellable, explicitly ZERO commission",
+      "pricing_summary": "Two base packages + add-ons, quote-based (FR reference ~€69+/mo); no commission, no per-booking fees.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid-only, no free tier — but subscription-framed ONLY; NEVER claim commission savings (0% commission is Planity's own headline). NOT LIVE IN NL (planity.com/nl-NL 404s despite announced expansion); CH/AT announced-not-live.",
+      "verticals": [
+        "hair",
+        "barber",
+        "beauty institutes",
+        "nails"
+      ],
+      "prominence": {
+        "DE": "high (fast-growing #2)",
+        "BE": "growing"
+      }
+    },
+    {
+      "id": "salonkee",
+      "name": "Salonkee",
+      "domains": [
+        "salonkee.de",
+        "salonkee.ch",
+        "salonkee.at",
+        "salonkee.be",
+        "salonkee.nl",
+        "salonkee.lu",
+        "salonkee.com"
+      ],
+      "regions": [
+        "DE",
+        "CH",
+        "AT",
+        "BE",
+        "NL",
+        "LU"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?salonkee\\.(de|ch|at|be|nl|lu)/salon/[a-z0-9-]+",
+          "note": "salonkee.{tld}/salon/{slug} — one regex covers all markets; /widget/ variant also seen",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?salonkee\\.[a-z]+/search/",
+          "note": "listing/search pages — exclude",
+          "verified": true
+        }
+      ],
+      "model": "subscription (opaque, sales-quoted) + one-off setup fee; no commission",
+      "pricing_summary": {
+        "DACH": "~€80+/mo typical (PLUS ~€87/mo for 3 staff), €499 setup, +€8/mo per extra staff column",
+        "BENELUX": "Start €49 / Plus €79 / Business €109 per mo; +€50/mo payments module",
+        "note": "no free tier"
+      },
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid-only subscription with setup fee; subscription-framed fee line OK, no commission to attack. Luxembourg company, 5,000+ salons across LU/DE/CH/AT/BE/NL.",
+      "verticals": [
+        "hair",
+        "barber",
+        "beauty",
+        "nails",
+        "massage"
+      ],
+      "prominence": {
+        "BE": "high",
+        "DE": "medium (growing)",
+        "CH": "medium (border regions)",
+        "NL": "medium/growing"
+      }
+    },
+    {
+      "id": "shore",
+      "name": "Shore",
+      "domains": [
+        "connect.shore.com",
+        "shore.com"
+      ],
+      "regions": [
+        "DE",
+        "CH",
+        "AT"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://connect\\.shore\\.com/(bookings|widget)(/nolayout)?/[a-z0-9-]+",
+          "note": "connect.shore.com/bookings/{slug} or /widget/{slug}",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription only (12-month contracts), no commission",
+      "pricing_summary": "Booking €39.90-49.90/mo, Booking+Marketing €69.90-79.90/mo, All-in-One €119.90-129.90/mo; add-ons €25-80/mo.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid-only annual-contract subscription; subscription-framed fee line OK. Munich-based, sells hard into salons/barbers.",
+      "verticals": [
+        "hair",
+        "barber",
+        "beauty",
+        "fitness-lite",
+        "local services"
+      ],
+      "prominence": "medium DE (well-known DACH booking SaaS)"
+    },
+    {
+      "id": "timify",
+      "name": "TIMIFY",
+      "domains": [
+        "book.timify.com",
+        "timify.com"
+      ],
+      "regions": [
+        "DE",
+        "CH",
+        "AT"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://book\\.timify\\.com/(services)?\\?accountId=[a-f0-9]{24}",
+          "note": "book.timify.com/?accountId={24-hex}",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?timify\\.com/[a-z-]+/profile/[a-z0-9-]+(/|$)",
+          "note": "timify.com/{locale}/profile/{slug}/",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "freemium SaaS: free Classic + paid Premium/Enterprise",
+      "pricing_summary": "Classic = permanently free (calendar, booking widget, mini-website); Premium €25-31/mo, Enterprise €42-53/mo. No commission ever.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Free Classic tier exists — the business may pay nothing, so a fee-saving pitch can be factually wrong. Qualify on 'booking page instead of own website' only.",
+      "verticals": [
+        "hair",
+        "beauty",
+        "services",
+        "medical",
+        "enterprise chains"
+      ],
+      "prominence": "medium DACH (Munich-based, strong CH/DE)"
+    },
+    {
+      "id": "belbo",
+      "name": "Belbo",
+      "domains": [
+        "belbo.com",
+        "belbosoftware.be"
+      ],
+      "regions": [
+        "DE",
+        "NL",
+        "BE"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.belbo\\.com(/login)?(/|$)",
+          "note": "{business}.belbo.com (booking-URL = business-name subdomain, per Belbo docs)",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, monthly cancellable, quote-based/modular",
+      "pricing_summary": "From €19.90 net/mo incl. 2 staff; scales with bookable staff. No commission. (Benelux pricing quote-only, unverifiable — avoid citing numbers there.)",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid-only subscription (weak fee line — cheap; lead with own-website angle). DE-core; low NL/BE density via reseller belbosoftware.be (verified subdomain examples are German salons).",
+      "verticals": [
+        "hair",
+        "barber",
+        "beauty"
+      ],
+      "prominence": {
+        "DE": "low-medium (niche salon software)",
+        "NL": "low",
+        "BE": "low"
+      }
+    },
+    {
+      "id": "studiobookr",
+      "name": "StudioBookr (studiolution)",
+      "domains": [
+        "studiobookr.com"
+      ],
+      "regions": [
+        "DE"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?studiobookr\\.com/(en/)?[a-z0-9-]+-[0-9]+",
+          "note": "studiobookr.com/{slug}-{numericId} (or /en/{slug}-{id})",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "marketplace face of studiolution (subscription software, 0% commission)",
+      "pricing_summary": "studiolution from €22.95/mo (annual, 1 staff), POS tier from €32.95/mo; studiobookr listing included, no commission.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid-only subscription behind it (weak fee line; subscription framing only, 0% commission).",
+      "verticals": [
+        "hair",
+        "barber",
+        "beauty",
+        "spa"
+      ],
+      "prominence": "low-medium DE (used by KLINCK and similar German chains)"
+    },
+    {
+      "id": "terminland",
+      "name": "Terminland",
+      "domains": [
+        "terminland.de"
+      ],
+      "regions": [
+        "DE"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www[0-9]?\\.)?terminland\\.de/[a-z0-9-]+(/|$)",
+          "note": "terminland.de/{business-slug}/ (also www1-www3 shards)",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "freemium: Free + Easy €14.90/mo + Profi/Enterprise",
+      "pricing_summary": "Terminland Free is genuinely free; Easy €14.90+VAT/mo; Profi/Enterprise quoted.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Free tier exists. Skews medical/services but plenty of beauty/massage users; dated pages = strong 'no real website' signal.",
+      "verticals": [
+        "services",
+        "medical",
+        "beauty",
+        "massage"
+      ],
+      "prominence": "medium DE (long-established German scheduler)"
+    },
+    {
+      "id": "eversports",
+      "name": "Eversports",
+      "domains": [
+        "eversports.de",
+        "eversports.at",
+        "eversports.ch",
+        "eversports.it",
+        "eversports.nl",
+        "eversports.be",
+        "eversports.com",
+        "eversportsmanager.com"
+      ],
+      "regions": [
+        "DE",
+        "AT",
+        "CH",
+        "IT",
+        "NL",
+        "BE"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?eversports\\.(de|at|ch|it|nl|be|com)/s/[a-z0-9-]+",
+          "note": "eversports.{tld}/s/{studio-slug} — one shape across all markets",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?eversports\\.[a-z]+/widget/w/[a-z0-9]+",
+          "note": "embedded widget",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?eversports\\.[a-z]+/l/[a-z0-9-]+/[a-z0-9-]+",
+          "note": "/l/{sport}/{city} listing pages — exclude",
+          "verified": true
+        }
+      ],
+      "model": "subscription + 25% referral commission on marketplace-sourced new customers",
+      "pricing_summary": "Manager plans €49-229/mo (Light->Champion) + €99 onboarding + 25% referral fee per new marketplace customer, capped €75/person.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Both subscription AND a real new-customer commission — a GBP pointing at eversports routes Google traffic through the 25% referral fee. Absorbed FitogramPro (DE) and Fitmanager (NL).",
+      "verticals": [
+        "yoga",
+        "pilates",
+        "fitness",
+        "dance",
+        "martial arts",
+        "racket sports",
+        "cycling"
+      ],
+      "prominence": {
+        "AT": "high (Vienna-born market leader)",
+        "DE": "high (yoga/boutique)",
+        "NL": "high (dominant studio marketplace)",
+        "BE": "high",
+        "CH": "medium",
+        "IT": "medium"
+      }
+    },
+    {
+      "id": "urbansportsclub",
+      "name": "Urban Sports Club",
+      "domains": [
+        "urbansportsclub.com"
+      ],
+      "regions": [
+        "DE",
+        "IT"
+      ],
+      "classification": "aggregator_exclude",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?urbansportsclub\\.com/[a-z-]+/venues/[a-z0-9-]+",
+          "note": "urbansportsclub.com/{locale}/venues/{slug} — aggregator venue page, NOT the studio's booking backend",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "aggregator membership — USC PAYS the venue per check-in (~€8-19); venue pays no fee",
+      "pricing_summary": "Free for venues to join; individually negotiated per-check-in payouts. AT = corporate memberships only. Acquired by Wellhub 2025.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Venue pays NOTHING — USC is a revenue channel, not a cost; a fee-saving pitch would be embarrassingly wrong. Qualify only on 'their GBP points at a USC venue page instead of an own site' (venue pages also don't sell the studio's own memberships).",
+      "verticals": [
+        "fitness",
+        "yoga",
+        "wellness",
+        "gyms"
+      ],
+      "prominence": {
+        "DE": "high (Germany's largest sports aggregator)",
+        "IT": "present"
+      }
+    },
+    {
+      "id": "magicline-mysports",
+      "name": "Magicline / MySports",
+      "domains": [
+        "mysports.com",
+        "magicline.com"
+      ],
+      "regions": [
+        "DE"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?mysports\\.com/studio/[A-Za-z0-9+/=]+(/|$)",
+          "note": "mysports.com/studio/{base64Id}/[course]",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "freemium gym-management SaaS; MySports marketplace listing is free",
+      "pricing_summary": "Magicline Free (<=25 members) -> Basic €189 -> Advanced €349 -> Pro €449 -> Ultimate €699/mo + €399 setup. No booking commission; MySports listing free.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Free tier exists and the MySports listing itself costs nothing (real gyms are on paid tiers, but the claim isn't safe per-lead).",
+      "verticals": [
+        "gyms",
+        "fitness chains",
+        "EMS studios"
+      ],
+      "prominence": "high DE gym market (dominant DACH gym software, Sport Alliance)"
+    },
+    {
+      "id": "salonized",
+      "name": "Salonized",
+      "domains": [
+        "salonized.com",
+        "widget.salonized.com"
+      ],
+      "regions": [
+        "NL",
+        "BE",
+        "DE"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.salonized\\.com(/bookings/new)?",
+          "note": "{slug}.salonized.com[/bookings/new] (home market NL/BE)",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://widget\\.salonized\\.com/widget/\\?company=[a-z0-9]+",
+          "note": "embedded widget (rarer in GBP; lower-volume — DE usage)",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, no marketplace, no commission",
+      "pricing_summary": "Appointments €19/mo, Basic €35/mo (1 employee), Pro €55/mo + €7.50/extra employee; +Boost add-on ~€6/mo; 10% off annual; no free tier.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid subscription always (no free tier) — but it's software they'd likely keep for the calendar; pitch the WEBSITE angle, not full fee replacement. Salonized has a Treatwell integration since 2019 — some salons fingerprint on both; dedupe by business.",
+      "verticals": [
+        "hair salons",
+        "beauty salons",
+        "nails",
+        "barbers",
+        "massage"
+      ],
+      "prominence": {
+        "NL": "high (market leader, 6,000+ salons)",
+        "BE": "present",
+        "DE": "low (minor but real)"
+      }
+    },
+    {
+      "id": "fitogrampro",
+      "name": "FitogramPro (DEFUNCT)",
+      "domains": [
+        "widget.fitogram.pro",
+        "app.fitogram.pro"
+      ],
+      "regions": [
+        "DE"
+      ],
+      "classification": "dead_platform",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(widget|app)\\.fitogram\\.pro/[a-z0-9-]+",
+          "note": "widget.fitogram.pro/{studio-slug}/ — ORPHANED; platform shut down 2024-12-31",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "DEFUNCT — shut down 2024-12-31, users migrated to Eversports",
+      "pricing_summary": "n/a (dead platform).",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Platform no longer exists — but a GBP website field still pointing at fitogram.pro is a PREMIUM lead signal: the business's only web presence is now a dead link. Arguably the hottest qualification signal in the DE fitness vertical.",
+      "verticals": [
+        "yoga",
+        "fitness",
+        "pilates"
+      ],
+      "prominence": "historical DE (was the big free German studio tool)"
+    },
+    {
+      "id": "optios",
+      "name": "Optios",
+      "domains": [
+        "optios.net"
+      ],
+      "regions": [
+        "BE",
+        "NL",
+        "LU"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://booking\\.optios\\.net/[0-9]+",
+          "note": "booking.optios.net/{numeric-id} — anonymous numeric IDs, a strong 'no real website' signal",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://client\\.optios\\.net/online_booking\\.html",
+          "note": "client.optios.net/online_booking.html?{params}",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, no marketplace, no commission",
+      "pricing_summary": "€29 / €39 / €49 / €79 per month tiers; 14-day trial, no free tier.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid subscription only. Booking URLs are anonymous numeric IDs — an unusually strong 'no web presence at all' qualifier for Flemish salons.",
+      "verticals": [
+        "hair",
+        "barbers",
+        "beauty",
+        "nails"
+      ],
+      "prominence": "high in BE/Flanders (3,500+ salons across BeNeLux)"
+    },
+    {
+      "id": "momoyoga",
+      "name": "Momoyoga",
+      "domains": [
+        "momoyoga.com"
+      ],
+      "regions": [
+        "NL",
+        "BE"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?momoyoga\\.com/[a-z0-9-]+/schedule",
+          "note": "momoyoga.com/{studio-slug}/schedule (also /{slug}/ studio root)",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "freemium SaaS: free tier funded by 5% platform fee on online payments",
+      "pricing_summary": "Free €0 (+5% platform fee on every online payment + Stripe fees), Standard €29/mo, Plus €59/mo, Custom €179/mo.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Free tier exists and you cannot tell from the URL which tier a studio is on — no fee-saving claims (though free-tier studios still bleed a 5% payment fee). Pitch professional-website/SEO angle.",
+      "verticals": [
+        "yoga",
+        "pilates",
+        "meditation studios"
+      ],
+      "prominence": "medium-high among NL yoga studios (the default small-studio choice)"
+    },
+    {
+      "id": "sportbit",
+      "name": "Sportbit",
+      "domains": [
+        "sportbitapp.nl",
+        "sportbitmanager.nl"
+      ],
+      "regions": [
+        "NL",
+        "BE"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.sportbitapp\\.nl(/|$)",
+          "note": "{club}.sportbitapp.nl register/schedule/webshop portal — clean GBP fingerprint for CrossFit/PT boxes",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription packages + payment transaction costs",
+      "pricing_summary": "Package pricing not fully public; no setup fee; third-party review cites ~€100-140/mo transaction costs at ~200 members; no free tier.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid packages, no free tier.",
+      "verticals": [
+        "CrossFit",
+        "personal training",
+        "group training",
+        "martial arts",
+        "yoga/pilates boxes"
+      ],
+      "prominence": "medium NL box/PT segment; some BE use"
+    },
+    {
+      "id": "kitomba",
+      "name": "Kitomba",
+      "domains": [
+        "kitomba.com",
+        "apps.kitomba.com"
+      ],
+      "regions": [
+        "NZ",
+        "AU"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://apps\\.kitomba\\.com/bookings/[a-z0-9-]+",
+          "note": "apps.kitomba.com/bookings/{slug}",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription, quote-based, no commission",
+      "pricing_summary": "No published pricing — custom quote per package/staff count; users report it prices above competitors. Free trial only, no free tier.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid-only, quote-based, no free tier. No commission though — same nuance as Timely (pitch presence not fee-saving).",
+      "verticals": [
+        "hair",
+        "beauty",
+        "spa",
+        "clinics"
+      ],
+      "prominence": {
+        "NZ": "very high (long-time salon-software leader)",
+        "AU": "solid"
+      }
+    },
+    {
+      "id": "shortcuts",
+      "name": "Shortcuts (BookME / Aire / MyLocalSalon)",
+      "domains": [
+        "shortcutssoftware.com",
+        "home.shortcutssoftware.com",
+        "mylocalsalon.com.au",
+        "shortcuts.com.au",
+        "shortcutsaire.com"
+      ],
+      "regions": [
+        "AU",
+        "NZ"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://home\\.shortcutssoftware\\.com/[a-z0-9-]+",
+          "note": "BookME / Aire online booking: home.shortcutssoftware.com/{slug}",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://(www\\.)?mylocalsalon\\.com\\.au/[a-z0-9-]+\\.html",
+          "note": "Shortcuts-run consumer booking directory: mylocalsalon.com.au/{slug}.html (also {guid}.html older listings)",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription (packages), quote-oriented; no commission",
+      "pricing_summary": "Reported Shortcuts Live from ~$29/mo, Essentials ~$85/mo, Evolve ~$159/mo, Elevate ~$209/mo (currency ambiguous, AU quotes); Aire is the newer entry product. No free tier.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid-only, no free tier. Two distinct fingerprints for one vendor (hosted BookME/Aire + the mylocalsalon.com.au marketplace); the new Aire product also funnels small AU salons to the home.shortcutssoftware.com shape.",
+      "verticals": [
+        "hair (legacy AU incumbent)",
+        "barbers",
+        "beauty",
+        "spa"
+      ],
+      "prominence": {
+        "AU": "high (longest-established, older/franchise salons)",
+        "NZ": "moderate"
+      }
+    },
+    {
+      "id": "simple-salon",
+      "name": "Simple Salon",
+      "domains": [
+        "simplesalon.com",
+        "makeonlinebooking.com",
+        "bookings.simplesalon.com"
+      ],
+      "regions": [
+        "AU",
+        "NZ"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?makeonlinebooking\\.com/location/[0-9]+/[a-z0-9-]+",
+          "note": "CURRENT: makeonlinebooking.com/location/{numeric-id}/{slug} — SILENT-MISS TRAP: no brand words in the domain, easy to misclassify as a generic site",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://bookings\\.simplesalon\\.com/",
+          "note": "LEGACY: redirects to makeonlinebooking.com",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription per operator count; no commission",
+      "pricing_summary": "Starter $20 / Pro $34 / Max $41 per month (geo-localised USD/AUD), scales with operators, SMS metered. 14-day trial, no free tier.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid-only. Explicitly commission-free ('no new client fees'), so pitch presence not fee-saving. Booking domain MIGRATED from bookings.simplesalon.com to makeonlinebooking.com — a registry on the old domain would silently miss every current Simple Salon business.",
+      "verticals": [
+        "hair",
+        "beauty",
+        "nails"
+      ],
+      "prominence": "moderate-high AU among independent salons"
+    },
+    {
+      "id": "punchpass",
+      "name": "Punchpass",
+      "domains": [
+        "punchpass.com",
+        "app.punchpass.com"
+      ],
+      "regions": [
+        "AU",
+        "NZ",
+        "US"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.punchpass\\.com/classes",
+          "note": "{slug}.punchpass.com/classes",
+          "verified": true
+        },
+        {
+          "pattern": "^https?://app\\.punchpass\\.com/org/[0-9]+/classes",
+          "note": "app.punchpass.com/org/{numeric-id}/classes",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "flat SaaS subscription; no commission (Stripe fees separate)",
+      "pricing_summary": "Grow US$59 / Flow US$99 / Pro US$149 per month. 14-day trial, no free tier.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid-only.",
+      "verticals": [
+        "yoga",
+        "pilates",
+        "small studios"
+      ],
+      "prominence": "low AU/NZ (solo/boutique yoga niche) but a clean subdomain fingerprint"
+    },
+    {
+      "id": "halaxy",
+      "name": "Halaxy",
+      "domains": [
+        "halaxy.com"
+      ],
+      "regions": [
+        "AU",
+        "NZ"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(www\\.)?halaxy\\.com/profile/[a-z0-9-]+(/location/[0-9]+)?",
+          "note": "halaxy.com/profile/{slug}[/location/{numeric-id}]",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "free core platform + pay-per-use credits + optional subscriptions",
+      "pricing_summary": "Core software genuinely free, unlimited practitioners; SMS ~$0.15-0.22 metered; optional subscriptions from ~A$25/mo; processing from ~1.5%.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Free tier — no fee-saving pitch. Pitch own-brand presence vs a Halaxy directory profile instead.",
+      "verticals": [
+        "allied health",
+        "massage",
+        "psychology",
+        "health-adjacent wellness"
+      ],
+      "prominence": "high AU in health; GBP fields sometimes point at halaxy.com/profile/ directory pages"
+    },
+    {
+      "id": "nookal",
+      "name": "Nookal",
+      "domains": [
+        "nookal.com",
+        "book.nookal.com"
+      ],
+      "regions": [
+        "AU",
+        "NZ"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://book\\.nookal\\.com/bookings/",
+          "note": "book.nookal.com/bookings/... per-clinic unique link (domain confirmed; exact path shape inferred from vendor docs)",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "per-practitioner SaaS; no commission; metered SMS/claims",
+      "pricing_summary": "Essentials A$49/practitioner/mo, Professional A$59, Enterprise custom; SMS 7c, ACC claims 12c. Free trial, no free tier.",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid-only. Fingerprint domain confirmed (book.nookal.com) but exact path shape inferred — keep verified:false.",
+      "verticals": [
+        "allied health",
+        "massage clinics"
+      ],
+      "prominence": "moderate AU/NZ clinics"
+    },
+    {
+      "id": "gymmaster",
+      "name": "GymMaster",
+      "domains": [
+        "gymmaster.com",
+        "gymmasteronline.com"
+      ],
+      "regions": [
+        "NZ",
+        "AU"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.gymmasteronline\\.com/portal/(login|book/service|shop/[0-9]+)",
+          "note": "{slug}.gymmasteronline.com/portal/...",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "subscription tiers scaled by member count, no free tier",
+      "pricing_summary": "Foundation from ~US$89/mo up to ~US$299 Enterprise (NZD localised; scales on members).",
+      "fee_line_allowed": true,
+      "fee_line_notes": "Paid-only.",
+      "verticals": [
+        "gyms",
+        "24hr fitness",
+        "recreation centres"
+      ],
+      "prominence": {
+        "NZ": "high (home turf)",
+        "AU": "moderate"
+      }
+    },
+    {
+      "id": "clubworx",
+      "name": "Clubworx",
+      "domains": [
+        "clubworx.com"
+      ],
+      "regions": [
+        "AU",
+        "NZ"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.clubworx\\.com/",
+          "note": "member portal / hosted pages — exact public URL shape UNVERIFIED. CAUTION: clubworx.net is an unrelated US gym — do NOT fingerprint it",
+          "verified": false
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "freemium: free up to 20 members, then AUD tiers",
+      "pricing_summary": "A$0 (<=20 members) to ~A$169/mo; add-ons (gradings +$10, branded app extra).",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Free tier exists (tiny cap — most real gyms pay, but the rule stands; treat as no-fee-pitch unless member count evidently >20). Booking-page fingerprint not verified.",
+      "verticals": [
+        "martial arts",
+        "gyms",
+        "yoga/dance"
+      ],
+      "prominence": "moderate AU (martial-arts niche especially)"
+    },
+    {
+      "id": "appointy",
+      "name": "Appointy",
+      "domains": [
+        "appointy.com"
+      ],
+      "regions": [
+        "GLOBAL"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.appointy\\.com(/|$)",
+          "note": "tenant subdomain {slug}.appointy.com; 110k-customer global scheduler with free tier. Surfaced by 2026-07-18 US validation scan (live GBP URLs); URL shape verified, platform NOT yet researched.",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "unresearched",
+      "pricing_summary": "UNRESEARCHED — added from validation-scan gap list; research pricing/free-tier before any fee claims.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Default FALSE until pricing researched — never claim a fee that isn't verified. (Appointy is known freemium — stays false regardless.)",
+      "verticals": [
+        "salon",
+        "spa",
+        "fitness",
+        "services"
+      ],
+      "prominence": "medium"
+    },
+    {
+      "id": "zoca",
+      "name": "Zoca",
+      "domains": [
+        "zoca.com"
+      ],
+      "regions": [
+        "US"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.zoca\\.com(/|$)",
+          "note": "tenant subdomain {slug}.zoca.com; US salon/spa AI booking+marketing; appeared 4x in Sacramento barbers. Surfaced by 2026-07-18 US validation scan (live GBP URLs); URL shape verified, platform NOT yet researched.",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "unresearched",
+      "pricing_summary": "UNRESEARCHED — added from validation-scan gap list; research pricing/free-tier before any fee claims.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Default FALSE until pricing researched — never claim a fee that isn't verified.",
+      "verticals": [
+        "barber",
+        "salon",
+        "spa"
+      ],
+      "prominence": "low"
+    },
+    {
+      "id": "offeringtree",
+      "name": "OfferingTree",
+      "domains": [
+        "offeringtree.com"
+      ],
+      "regions": [
+        "US"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.offeringtree\\.com(/|$)",
+          "note": "tenant subdomain {slug}.offeringtree.com; yoga/wellness all-in-one site+booking. Surfaced by 2026-07-18 US validation scan (live GBP URLs); URL shape verified, platform NOT yet researched.",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "unresearched",
+      "pricing_summary": "UNRESEARCHED — added from validation-scan gap list; research pricing/free-tier before any fee claims.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Default FALSE until pricing researched — never claim a fee that isn't verified.",
+      "verticals": [
+        "yoga",
+        "wellness",
+        "pilates"
+      ],
+      "prominence": "low"
+    },
+    {
+      "id": "gymdesk",
+      "name": "Gymdesk",
+      "domains": [
+        "gymdesk.com"
+      ],
+      "regions": [
+        "US"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.gymdesk\\.com(/|$)",
+          "note": "tenant subdomain {slug}.gymdesk.com; gym management with hosted pages. Surfaced by 2026-07-18 US validation scan (live GBP URLs); URL shape verified, platform NOT yet researched.",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "unresearched",
+      "pricing_summary": "UNRESEARCHED — added from validation-scan gap list; research pricing/free-tier before any fee claims.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Default FALSE until pricing researched — never claim a fee that isn't verified.",
+      "verticals": [
+        "gyms",
+        "martial arts",
+        "yoga",
+        "pilates"
+      ],
+      "prominence": "low"
+    },
+    {
+      "id": "lovie",
+      "name": "Lovie",
+      "domains": [
+        "loviebooking.co.uk"
+      ],
+      "regions": [
+        "GB"
+      ],
+      "classification": "standard",
+      "fingerprints": [
+        {
+          "pattern": "^https?://(?!(www|support|help|blog|status|api|docs|developers|careers|press|about|admin|assets|cdn|static|mail|biz|sales|business|partners|shop|store)\\.)[a-z0-9-]+\\.loviebooking\\.co\\.uk(/|$)",
+          "note": "tenant subdomain {slug}.loviebooking.co.uk; UK nail/beauty booking sites. Surfaced by 2026-07-18 US validation scan (live GBP URLs); URL shape verified, platform NOT yet researched.",
+          "verified": true
+        }
+      ],
+      "exclude_fingerprints": [],
+      "model": "unresearched",
+      "pricing_summary": "UNRESEARCHED — added from validation-scan gap list; research pricing/free-tier before any fee claims.",
+      "fee_line_allowed": false,
+      "fee_line_notes": "Default FALSE until pricing researched — never claim a fee that isn't verified.",
+      "verticals": [
+        "nails",
+        "beauty"
+      ],
+      "prominence": "low"
+    }
+  ]
+}
