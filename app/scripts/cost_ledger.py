@@ -75,27 +75,69 @@ CALIB_FILE = ROOT / "data" / "plan-calibration.json"
 MARK = ROOT / "data" / "build-marks.json"
 
 
-def session_tokens(path: Path) -> dict:
-    """Exact token totals for one session transcript."""
-    t = {"input": 0, "output": 0, "cache_write": 0, "cache_read": 0}
-    turns = 0
+def _usage_by_message_id(path: Path, by_id: dict) -> None:
+    """Fold one transcript's usage blocks into by_id, deduped per API call.
+
+    BUG FOUND 2026-08-16 (Fable review, klaudius token-cost audit): Claude Code writes one
+    JSONL line PER CONTENT BLOCK, and every line of the same streamed API response repeats
+    the full `usage` object. Summing every line — the previous behaviour — inflated
+    cache_write ~3.9x and cache_read ~2.2x on a measured real build (540 usage-bearing lines,
+    only 234 distinct API calls by message.id). `output_tokens` specifically ACCUMULATES
+    across a message's streamed lines (it's a running total), so it needs max() per id, not
+    sum(); input/cache_write/cache_read are constant across one message's lines, so max() is
+    also correct there (and safe either way, since duplicates of an unchanged value have no
+    effect under max()). Keying by `message.id` and maxing each field, rather than summing
+    lines, is what turns "540 usage lines" back into "234 real API calls".
+    """
     try:
         for line in path.read_text(errors="replace").splitlines():
             try:
                 d = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            u = (d.get("message") or {}).get("usage") or {}
+            msg = d.get("message") or {}
+            u = msg.get("usage") or {}
             if not u:
                 continue
-            turns += 1
-            t["input"] += u.get("input_tokens", 0) or 0
-            t["output"] += u.get("output_tokens", 0) or 0
-            t["cache_write"] += u.get("cache_creation_input_tokens", 0) or 0
-            t["cache_read"] += u.get("cache_read_input_tokens", 0) or 0
+            mid = msg.get("id") or f"{path}:{d.get('timestamp', '')}"
+            slot = by_id.setdefault(
+                mid, {"input": 0, "output": 0, "cache_write": 0, "cache_read": 0}
+            )
+            slot["input"] = max(slot["input"], u.get("input_tokens", 0) or 0)
+            slot["output"] = max(slot["output"], u.get("output_tokens", 0) or 0)
+            slot["cache_write"] = max(
+                slot["cache_write"], u.get("cache_creation_input_tokens", 0) or 0
+            )
+            slot["cache_read"] = max(
+                slot["cache_read"], u.get("cache_read_input_tokens", 0) or 0
+            )
     except OSError:
         pass
-    t["turns"] = turns
+
+
+def session_tokens(path: Path) -> dict:
+    """Exact token totals for one session, INCLUDING everything it delegated.
+
+    BUG FOUND 2026-08-16 (same review as above): a build's subagent spawns (QA reviewer,
+    blog-prose writer, auto-compaction summarizers) write their own transcripts to
+    `<session-id>/subagents/*.jsonl`, a sibling directory `sessions_since()` never scanned —
+    so a build's real cost was undercounted by everything it delegated. On the measured build,
+    the QA subagent alone was another ~1.59M true-weighted tokens (25% of the whole build) that
+    the top-level number silently dropped. "The session's tokens" means the session PLUS
+    whatever it spawned to get the work done, not just its own top-level transcript.
+    """
+    by_id: dict = {}
+    _usage_by_message_id(path, by_id)
+    subagent_dir = path.with_suffix("") / "subagents"
+    if subagent_dir.is_dir():
+        for sub_path in sorted(subagent_dir.glob("*.jsonl")):
+            _usage_by_message_id(sub_path, by_id)
+
+    t = {"input": 0, "output": 0, "cache_write": 0, "cache_read": 0}
+    for slot in by_id.values():
+        for k in t:
+            t[k] += slot[k]
+    t["turns"] = len(by_id)
     # Cache READS are billed far below fresh input, and on a subscription the
     # plan meter tracks something closer to total work. Report the raw parts
     # and a weighted total so the calibration is against ONE stable number.

@@ -52,6 +52,14 @@ find clients/{slug}/site/src/app -name 'page.tsx' -not -path '*/admin/*' | sort
 
 Hold that list as **ROUTES** and carry it through every remaining step. Then read **every** file in it, plus `clients/{slug}/site/src/app/globals.css`, `layout.tsx`, and everything in `src/app/_components/`. Note what the site is doing on each page.
 
+**On a SCOPED round only** (the prompt says so explicitly — see § Your task): skip re-reading
+template-frozen component files (`Motion.tsx`, `HeroVideo.tsx`, `SiteChat.tsx`, `schema.ts`) if
+they are NOT in the routes/files the prompt named as touched and no deterministic gate implicates
+them — they are byte-identical across builds and re-reading them found nothing new on a build
+that read one of them 5 times across QA rounds (Fable token-cost review, 2026-08-16). If a gate
+result or your own review of a touched route makes you suspect one of these files, read it — this
+is a default to skip, not a ban.
+
 **Route-coverage gate (hard FAIL).** Multi-page is the default; the build skill's § Site structure gates each route on **content sufficiency**, and requires the builder to write its decision and counts into `clients/{slug}/data/status.md`.
 
 So: `grep -i -A4 'Structure' clients/{slug}/data/status.md` FIRST.

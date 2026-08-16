@@ -14,6 +14,18 @@ allowed-tools: Bash(npx *), Bash(npm *), Bash(node *), Bash(python3 *), Bash(cd 
 
 Create a bespoke Next.js site using ONLY the content in `clients/$ARGUMENTS/data/gathered-content.md`. Read `prompts/lessons/build.md` before starting.
 
+### After a compaction: re-read narrow, never re-read whole
+
+Measured 2026-08-16 (Fable token-cost review): a real build re-read `page.tsx` 5x and
+`site-data.ts` 7x across its own auto-compactions — tens of thousands of redundant characters,
+each one re-charged at fresh-read cost. **Never re-read a whole file you already authored this
+session.** If you need to check something after a compaction: (a) re-read only the specific
+section you're about to edit, with `offset`/`limit`, not the whole file; (b) never re-read a
+file immediately after `Write`ing or `Edit`ing it — the tool already told you it succeeded, and
+the content is what you just wrote; (c) if you genuinely lost track of overall state after a
+compaction, `status.md` and the file list (`find clients/$ARGUMENTS/site/src -type f`) are
+cheaper ways to reorient than re-reading generated code.
+
 ## Pre-build checks (MANDATORY - do these before writing any code)
 
 ### 0. Retrofit guard (CMS / booking system)

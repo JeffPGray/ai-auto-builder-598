@@ -10,6 +10,6 @@
     ]
   },
   "env": {
-    "PATH": "/Users/jeffgray/.local/bin:${PATH}"
+    "PATH": "/Users/jeffgray/.local/bin:/Users/jeffgray/.npm-global/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH}"
   }
 }
