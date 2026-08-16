@@ -139,19 +139,27 @@ Use the returned palette, typography, and layout pattern as input to `/build`. T
 #### QA Loop (replaces /qa)
 After `/build` completes, QA is handled by an **independent agent** — the session that built the site subconsciously does lenient QA because it already knows the content and compromises, so a fresh agent with zero build context reviews the site as a business owner would: cold and critical. The agent that built the site must NOT review it.
 
-```
-1. Spawn the qa-reviewer agent. Use the dedicated subagent_type — NOT general-purpose —
-   and give it the full deliverables contract in the prompt. A thin "follow the agent file"
-   prompt has historically led agents to skip the screenshot and report-write steps:
+**Round 1 is ALWAYS full — never scoped, no exceptions.** It is the only full look the site
+ever gets, and it is not merely a formality: on a real build, round 1's fix was a one-character
+JSX change on `/about`, and round 2's FULL re-review (not a scoped one) is what caught a
+badly mismatched photo on the HOME page that round 1 had missed. A scoped round 2 that only
+re-checked `/about` would have shipped it. That is why scoping only ever applies to round 2+,
+gated on real evidence, never to round 1.
 
-   Agent(subagent_type="qa-reviewer", prompt="""Run a full QA check for client slug: {slug}.
-   Follow .claude/agents/qa-reviewer.md exactly.
+```
+1. Spawn the qa-reviewer agent for ROUND 1 (always full). Use the dedicated subagent_type —
+   NOT general-purpose — and give it the full deliverables contract in the prompt. A thin
+   "follow the agent file" prompt has historically led agents to skip the screenshot and
+   report-write steps:
+
+   Agent(subagent_type="qa-reviewer", prompt="""Run a FULL QA check for client slug: {slug}.
+   Follow .claude/agents/qa-reviewer.md exactly. This is round 1 — review every route.
 
    Mandatory deliverables — your run is invalid without all three:
    (a) Run `npx next build`, serve `out/`, take all 3 desktop screenshots (qa-top, qa-mid,
        qa-bottom) AND all 3 mobile screenshots (qa-mobile-top, qa-mobile-mid, qa-mobile-bottom)
-       AND visually review each one with the Read tool. Source-code grep is not a substitute
-       for visual review of the rendered site.
+       for EVERY route AND visually review each one with the Read tool. Source-code grep is
+       not a substitute for visual review of the rendered site.
    (b) Write the full report to clients/{slug}/data/qa-report.md. The file must exist on
        disk when you finish — not just included in your final message.
    (c) Delete the screenshot PNGs after review (Step 6 cleanup).
@@ -163,10 +171,15 @@ After `/build` completes, QA is handled by an **independent agent** — the sess
        FAIL however good the site looks — none of it is visible in a screenshot, which is why it
        is scripted. See § MANDATORY: ship scan in .claude/agents/qa-reviewer.md.
 
+   (e) Tag every critical issue you report as LOCAL (confined to the specific route/file you
+       found it in, would not appear elsewhere) or SYSTEMIC (a shared component, globals.css,
+       layout.tsx, config, or a pattern likely repeated across routes). This tag is read by the
+       orchestrator, not decorative — be honest, default to SYSTEMIC when unsure.
+
    In your final message back to me, explicitly confirm:
      • the ship-scan verdict, with every FAIL line verbatim and what --fix changed
      • the absolute path of the qa-report.md you wrote
-     • that you took and visually reviewed all 6 screenshots (3 desktop + 3 mobile)
+     • that you took and visually reviewed all screenshots for every route (desktop + mobile)
      • that the screenshot PNGs were deleted
 
    If you could not complete any of (a)/(b)/(c), say so honestly and mark your verdict
@@ -179,8 +192,7 @@ After `/build` completes, QA is handled by an **independent agent** — the sess
 
 3. Read the verdict:
    - If PASS: continue to /deploy
-   - If FAIL: run /qa-fix {business-name} to fix the reported issues
-     Then go back to step 1 (spawn a FRESH qa-reviewer agent)
+   - If FAIL: go to the qa-fix + round-2+ procedure below.
    - **Any TRUE in the report's "Hard-blocker contract" section is itself a FAIL, full stop —
      never deploy on a report where all 5 are FALSE is missing or any is TRUE**, even if the
      Verdict line says PASS. That line existing separately from the 5 booleans is exactly the
@@ -190,6 +202,80 @@ After `/build` completes, QA is handled by an **independent agent** — the sess
 4. Maximum 3 QA iterations. If still failing after 3 rounds, stop and
    ask the user for guidance.
 ```
+
+##### Round 2+: scoped, double-keyed against a real footprint (never against self-report)
+
+**Why this exists.** Every deterministic gate re-running plus a full 6-screenshot review on
+every single round is real, measured cost — one build's own transcript showed 31 total
+deterministic-gate invocations across 3 rounds. Most of that is legitimate (round 1 must be
+full), but round 2+ re-reviewing routes qa-fix never touched is pure waste **once there is a
+real, independent way to know it's safe** — which there now is: `verify-photos.mjs` closes the
+exact defect class (a wrong/uncleared photo) that used to make a full re-review the only safety
+net, and it runs as part of the deterministic battery on every round regardless of scope.
+
+**The double key — BOTH must say "local", or force full re-review:**
+
+1. **Key 1, the reviewer's own tag** (from step 1(e) above, or the equivalent scoped-round tag
+   below): no SYSTEMIC-tagged critical in this round's report.
+2. **Key 2, the orchestrator's own measurement — never the fixer's self-report.** Before running
+   `/qa-fix`, snapshot the client's source tree: `find clients/{slug}/site/src clients/{slug}/site/public -type f | sort | xargs shasum -a 256 > /tmp/{slug}-pre-fix.sha256`. After `/qa-fix`
+   completes, snapshot again the same way and diff the two files. The diff is the REAL footprint
+   — a fixer that touched `globals.css` while "just fixing a typo" is exactly the case that must
+   escalate, and only a real file-content diff catches that; an agent's own claim of what it
+   touched is not evidence.
+
+**Escalation triggers — any ONE of these forces a FULL, unscoped round (same as round 1), no
+exceptions:**
+   - the diff touches `globals.css`, `layout.tsx`, `tailwind.config.ts`, `next.config.mjs`, or
+     anything under `_components/` (including `blog-data.ts`, `site-data.ts`)
+   - the diff touches any `public/` file referenced from more than one route
+   - any deterministic gate (font/contrast/token/photo/ship-scan/richness/HyperUI-usage) FAILed
+   - the reviewer tagged any critical SYSTEMIC
+   - the real diff touches a route the reviewer's scoped review did NOT cover
+
+**If no trigger fires, scope round 2+:**
+
+```
+PRE: snapshot source tree (shasum) before /qa-fix runs.
+Run /qa-fix {business-name} to fix round N's reported issues.
+POST: snapshot source tree (shasum) again, diff against PRE -> TOUCHED_FILES.
+
+Map TOUCHED_FILES to routes: a changed clients/{slug}/site/src/app/{route}/page.tsx
+touches exactly that route. A changed file under _components/ or a shared config file is
+an escalation trigger (above) — stop here and run a full round instead.
+
+If no trigger fired:
+  CANARY = one route NOT in the touched set, chosen deterministically so it rotates rather
+  than always landing on the same page: sort all routes alphabetically, exclude the touched
+  ones, pick index = (round_number - 1) mod (remaining count).
+
+  Agent(subagent_type="qa-reviewer", prompt="""Run a SCOPED QA check for client slug: {slug}.
+  Follow .claude/agents/qa-reviewer.md exactly, with this scope override:
+
+  This is round {N}, scoped. qa-fix's real diff touched only: {TOUCHED_ROUTES}.
+  - Run the FULL deterministic battery exactly as normal (font/contrast/token/photo/ship-scan/
+    richness/HyperUI-usage) — these are scripts, ~2-3 minutes, and they cover every page
+    regardless of scope. Do not skip or narrow them.
+  - Screenshot and visually review ONLY: {TOUCHED_ROUTES} plus this rotating canary route:
+    {CANARY_ROUTE}. Do not screenshot the rest of the site this round.
+  - Tag every critical LOCAL or SYSTEMIC (see round-1 instructions for what each means).
+    If you find anything that makes you suspect an untouched route could also be affected,
+    say so explicitly and tag it SYSTEMIC — do not stay silent because it's out of nominal
+    scope.
+  """)
+
+  Read the report. Apply the double key:
+    - reviewer tagged everything LOCAL, AND
+    - the orchestrator's own shasum diff didn't touch anything on the escalation list
+      and didn't touch a route outside {TOUCHED_ROUTES}
+  Both true -> scoped result stands (PASS -> deploy, FAIL -> another qa-fix round at the
+  same scope discipline). Either key says otherwise -> discard the scoped result and run
+  a full, unscoped round instead before deploying. Never split the difference.
+```
+
+**Never scope round 1. Never trust a scoped PASS against only one key.** When in doubt, run
+full — the full round costs ~10-12 extra minutes; a defect that reaches a real business owner
+costs the lead.
 
 **Quality over quantity.** 2 excellent sites with real photos, accurate content and polished design are worth more than 5 mediocre gradient-only sites. Every site gets sent to a real business owner. If it looks like a low-effort template, it damages the brand and wastes the lead. Never cut corners on gather (photos, reviews) or build (design quality) to increase throughput. The pipeline exists to produce sites good enough that a business owner thinks "someone actually built this for me", not "an AI spat this out".
 
