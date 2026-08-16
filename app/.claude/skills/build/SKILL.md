@@ -319,92 +319,15 @@ The template also ships three components you do NOT write yourself — `Motion.t
 
 Route additions from other skills (`/book` from the booking facade, `/admin` from `/cms`) sit alongside the marketing routes and are never counted toward the threshold.
 
-## Legal pages (MANDATORY — `/privacy` and `/terms` on every build)
+## Legal pages (MANDATORY — `/privacy` and `/terms` on every build; full spec: `reference/legal-pages.md`)
 
-**Jeff, 2026-08-16: "on every single build we need to port over our terms and conditions and privacy policy to be in the footer or sub footer, built for each site."** Both routes ship every time. The old conditional ("only if the contact form collects data") is what produced inconsistent coverage — one site with a privacy page, one with neither, and no site with terms at all.
+**Jeff, 2026-08-16: "on every single build we need to port over our terms and conditions and privacy policy to be in the footer or sub footer, built for each site."** Both routes ship every time, no exceptions, no threshold.
 
-**Then read the constraint that governs every word on them.** These pages make legal representations on behalf of a business that has not hired us, has not read them, and does not know they exist. So there are two failure modes and the second is the dangerous one:
+**Read `reference/legal-pages.md` in full before writing either page** — it has the disclosure inventory (what to grep for and what each finding means for the copy), the chat-widget disclosure template, the per-page content spec, and the wiring checklist (canonical URLs, footer links, sitemap/llms.txt entries). This is not a section to skip or paraphrase from memory: these pages make legal representations on behalf of a business that never reviewed them, and a fabricated clause is a liability we manufactured for them.
 
-- **Absent** — a site with a contact form and a chat widget and no policy reads unfinished, and it is the page an owner checks when they are deciding whether we did real work.
-- **Boilerplate** — a generic policy reciting cookies, analytics, advertising partners, data retention periods and international transfers for a static site that does none of it. Every sentence of that is a false statement published under the business's name. It is worse than no page, because it is a liability we manufactured for them.
+**Kept here verbatim as a floor, never skip even under time pressure — the full never-write list, with reasoning, is in the reference file:** company registration number, VAT/EIN/tax number, a named data-protection officer, a statutory-rights recital (GDPR/CCPA), data retention periods, international transfer clauses, "we may share your data with trusted partners", a cookie table for cookies the site doesn't set, children's-privacy clauses, arbitration/venue/jurisdiction beyond the business's own state, indemnities, a money liability cap, prices/deposits/refund terms, guarantees or SLAs, licence/accreditation claims not in `gathered-content.md`, "your continued use constitutes acceptance", and any promise about what the business does with an enquiry after it reaches them. **The rule that covers the whole class: if you cannot point at the fact in `gathered-content.md`, `site-data.ts`, or code you just read, it does not go on the page.**
 
-The rule that resolves both: **describe only what this specific site actually does, and omit anything you cannot source.** An omission is a gap the owner fills at conversion. A fabricated clause is theirs to defend.
-
-### Step 1 — inventory what THIS build actually does (run the checks, don't recall them)
-
-Run these against `clients/$ARGUMENTS/site/src` before writing a line. The answers differ per build, which is the whole point.
-
-| Thing | Check | Disclose, if present | If absent |
-|---|---|---|---|
-| `mailto:` contact form | `grep -rn 'mailto:' src/app` | the form opens the visitor's own email program, and the message goes from there to the business's inbox — the website itself never receives or stores it | — |
-| No-email stub form | `grep -rn 'preventDefault' src/app --exclude=SiteChat.tsx` | the form shows a confirmation but does not transmit or store anything yet | — |
-| Chat assistant | `grep -n '<SiteChat' src/app/layout.tsx` | see § The chat widget below — it is the largest real disclosure on the site and the easiest to miss | say nothing about chat |
-| Google Maps embed | `grep -rn 'output=embed' src/app` | the map is loaded from Google, so opening that page tells Google someone viewed it | say nothing about maps |
-| Photos served by Google | `grep -rn 'lh3.googleusercontent' src/app` | fold into the same sentence as the map — some photos load from Google's servers | — |
-| Booking facade | `grep -rn 'data-booking\|/book' src/app` | the booking steps run entirely in the visitor's browser and nothing is sent anywhere (build § Booking facade: zero network requests) | — |
-| Analytics / pixels | `grep -rniE 'gtag\|googletagmanager\|fbq\|hotjar\|clarity\|plausible\|posthog' src/app` | **expect zero hits.** Zero means the honest line is that the site runs no analytics and no advertising trackers. A hit means your build added one — disclose it by name, or remove it | — |
-| Cookies / storage | `grep -rn 'document.cookie\|localStorage\|sessionStorage' src/app` | **expect zero hits.** Zero means the site sets no cookies of its own; only the Google map iframe, if present, sets any | — |
-
-**Fonts are not a third-party disclosure.** `next/font/google` self-hosts the woff2 into the build (§ Font), so no visitor request ever reaches Google Fonts. Writing that fonts are loaded from Google would be a false statement about this site.
-
-### The chat widget — the disclosure nobody writes and every build needs
-
-`SiteChat` ships on every site, and it is the only part of a static export that moves a visitor's words off the page. Verified 2026-08-16 by reading `services/site-chat/src` and `templates/trade-site/src/app/_components/SiteChat.tsx`:
-
-- What the visitor types is POSTed to the shared chat service (`klaudius-site-chat.vercel.app`), with the last 12 messages of the conversation.
-- The service writes the reply with a third-party AI model. **Name the provider only if you have confirmed it on this install** (`grep -n 'MODEL\|Anthropic' services/site-chat/src/app/api/chat/route.ts`); otherwise write "an AI service" and leave it there.
-- **If the visitor gives a name plus a phone number or email in the chat, the assistant captures it as an enquiry and passes it on so someone can get back to them** (`capture_lead` in the same file). This is the one a visitor would actually want to know, and no boilerplate policy contains it.
-- The visitor's IP address is used to rate-limit the endpoint. Conversations are not published, and there is no conversation database — but do not claim messages are "deleted immediately" either; you cannot source that.
-
-Write it in three or four plain sentences under a heading a person would recognise ("The chat on this site"). Do not turn it into a sub-processor table.
-
-### Step 2 — what goes on each page
-
-Both pages: the business named rather than "we", real facts from `gathered-content.md` and `site-data.ts` only, and a closing block with the business name, phone and email. **That closing block is functional, not decorative** — `scripts/aeo-check.mjs` fails the whole build if the business name or phone is missing from the rendered text of *any* route, and these two routes are no exception.
-
-Legal prose names the business far more often than marketing copy does, so **watch the sentence-final `{biz.name}.`** when the name itself ends in `Co.`, `Ltd.`, `Inc.` or `LLC.` — it renders "Marchetti & Sons Tile Co.." Caught on the scratch build in both a `<p>` and a `metadata.description`. End those sentences on another word.
-
-`/privacy` — what the site does with a visitor's information, drawn entirely from the Step 1 inventory. Nothing else. Typically 250–450 words.
-
-`/terms` — only what can be sourced:
-
-- who runs the site: the trading or legal name from `gathered-content.md`, their town, and how to reach them;
-- that the site is information about the business's services, and not a quote, a price or a contract;
-- that an enquiry, a call or a chat is a request to be contacted — nothing is booked or agreed until the business confirms it;
-- that hours, services and the area covered are as published at the time of writing and can change;
-- **whose words and pictures these are, accurately.** The reviews are quoted verbatim from the business's public listing and belong to the people who wrote them; some photos are served from the business's Google listing. A blanket "all content on this site is the property of X" is false on a site built this way — do not write it;
-  > **Each clause is conditional on what this build actually renders.** A site with no reviews section gets no reviews clause; a site whose photos are all hotlinked from Google does not claim the photographs. Caught on the 2026-08-16 scratch build: the first draft asserted "the reviews on this site are quoted word for word" on a page that displayed no reviews. That is the same manufactured-liability failure as a cookie clause on a cookieless site, just harder to spot — it reads correct because it is the sort of thing that is usually true.
-- links to other sites are outside the business's control;
-- a plain accuracy line: the business keeps the site accurate but does not promise it is free of errors;
-- governing law **from their own address** — the state or country in `site-data.ts`, nothing more. Not Texas, not England, not the operator's jurisdiction. Never name a court or a venue.
-
-Typically 300–500 words. `Last updated <build date>` on both.
-
-### Never write these (each one is a fabricated legal fact)
-
-Company registration number · VAT / EIN / tax number · a named data protection officer or privacy contact who is not the business's own published contact · a statutory rights recital (GDPR / UK-GDPR / CCPA article-by-article) · data retention periods · international transfer clauses · "we may share your data with trusted partners" · a cookie table or consent-banner language for cookies the site does not set · children's-privacy clauses · arbitration, class-action waiver, venue or jurisdiction beyond the business's own state · indemnities · a liability cap in money · prices, deposits, payment terms, refunds or cancellation windows · guarantees, warranties, response times or any service-level promise · insurance, licence or accreditation claims not in `gathered-content.md` · "your continued use constitutes acceptance".
-
-**And one that reads harmless and is not:** never make a promise about what the business does with an enquiry *after* it reaches them ("we never sell your details", "we delete enquiries after 12 months"). You can describe the website's behaviour because you built it. You know nothing about theirs.
-
-One line covers the whole class: **if you cannot point at the fact in `gathered-content.md`, in `site-data.ts`, or in code you have just read, it does not go on the page.**
-
-### The review line
-
-Both pages carry one plain sentence saying the page was written from the business's published details and inviting a correction. It reads as ordinary site copy, not an apology or a disclaimer box:
-
-> This page was written from the details PowerWash-ington publishes about itself. If anything here needs changing, email trevinopowered@gmail.com and it will be updated.
-
-Put it at the end, above the contact block. No "please note", no "we apologise", no italics-and-a-warning-triangle.
-
-### Wiring (same invariants as every other route)
-
-- `src/app/privacy/page.tsx` and `src/app/terms/page.tsx`, one `<h1>` each ("Privacy" / "Terms"), own `metadata` with a distinct `title` and `description`, and **`alternates: { canonical: "/privacy" }` / `"/terms"`** — their own path, never the root's.
-- Shared chrome: `<SiteNav />` and `<SiteFooter />`, exactly like every other page.
-- Per-page `WebPage` node with the route's own `@id`, plus `BreadcrumbList` (§ AEO baseline). `noindex` is inherited from `layout.tsx` on spec builds — do not add or remove it here.
-- **Footer links, both of them**, in the sub-footer row alongside the copyright. Never in `SiteNav`. The row already carries `data-chat-gutter`; keep it.
-- **Add both routes to `src/app/sitemap.ts` and to the key-pages list in `llms.txt`** — `aeo-check` fails on a built route missing from the sitemap and warns on one missing from `llms.txt`.
-- Register: `anti-ai-slop` applies to the human-readable prose. Legal text has its own register — plain, direct, short sentences — so do not make it chatty, and equally do not pad it. Every sentence says something the reader did not already know.
-
+---
 ## Blog (MANDATORY — `/blog` plus five articles, on every build)
 
 **Render article dates with a GUARDED anchor:**
@@ -739,102 +662,24 @@ Bitter, Fraunces, Literata, Bodoni Moda, Zilla Slab, Vollkorn, Crimson Pro, Corm
 - **Reviews displayed as social proof MUST carry a verified OVERALL star rating of 4 or 5 stars.** If a gathered review doesn't explicitly record the overall stars (e.g. it only shows a per-category sub-score from Restaurant Guru/TripAdvisor like "Food: 5/5", or the stars were never captured), do NOT include it. Mis-rating a 2-star review as 5-star social proof burns the lead the moment the owner sees it.
 - Only include social media links (Instagram, Facebook, TikTok) if the business ACTUALLY has that profile. Never show an icon linking to a platform they're not on.
 
-## ⚠️ `env(safe-area-inset-*)` IS ZERO IN PORTRAIT SAFARI — read this before using it
+## iOS safe-area, one-line requirements (full story: `reference/ios-safe-area.md`)
 
-This single fact caused three separate bugs on one build, and each one looked like something else:
+Three requirements, all mandatory, all independently required — missing any one reproduces a
+real shipped bug (a white/light strip above a dark fixed nav on a real iPhone, invisible in any
+desktop browser or 1440x900 screenshot). Read `reference/ios-safe-area.md` before touching any of
+this code; the condensed form below is not enough context to debug it if something looks wrong.
 
-1. **Navbar** — `padding-top: env(safe-area-inset-top)` on a fixed nav was a NO-OP, so the strip
-   above it showed page content. Two attempts were spent on `theme-color` instead.
-2. **Chat panel** — an `inset-0` full-screen mobile sheet padded with the same env() put its 66px
-   header BEHIND the status bar. On a real iPhone the panel opened to blank space with no header and
-   no greeting, while the identical markup rendered perfectly at 375x812 in a desktop browser.
-3. Any future full-bleed mobile overlay will do the same.
+1. **Never a bare `env()` for clearance — always floor it**: `padding-top: max(env(safe-area-inset-top, 0px), 48px);`
+2. **`html` background paints the strip, not `theme-color`**: `html { background-color: <the nav's surface colour>; }` in `globals.css`, PLUS the fixed nav needs a `before:` pseudo-element projecting its own fill upward (see reference file for the exact class string) so the strip revealed mid-scroll-collapse is nav colour, not page background.
+3. **`theme-color` still required in every `layout.tsx`, but it does NOT fix #2 alone**:
+   ```tsx
+   export const viewport = { viewportFit: "cover", themeColor: "#<nav's surface colour, LITERAL hex — a CSS var resolves to nothing here>" };
+   ```
+   and the fixed nav pads itself: `style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}`.
 
-The insets are only non-zero in **landscape, standalone/PWA, and fullscreen**. In normal portrait
-browsing Safari's chrome occupies that region and the layout viewport starts below it —
-`viewport-fit=cover` does not change this.
+Use the **NAV's** surface colour for both `html` background and `theme-color`, never the page's.
 
-**So never use a bare `env()` for clearance. Always floor it:**
-
-```css
-padding-top: max(env(safe-area-inset-top, 0px), 48px);
-```
-
-And remember a desktop browser at 375x812 **cannot reproduce any of this** — it has no browser
-chrome overlaying the viewport. These are device-only bugs; verify on a handset or not at all.
-
-## The iPhone "hollow notch" — `html` background, NOT theme-color (settled 2026-08-16)
-
-⚠️ **`env(safe-area-inset-top)` is ZERO in portrait Safari.** The safe-area insets are only non-zero
-in landscape, in standalone/PWA mode, and in fullscreen. In normal portrait browsing Safari's own
-chrome occupies that region and the layout viewport starts BELOW it — `viewport-fit=cover` does not
-change this. So padding a fixed nav with `env(safe-area-inset-top)` is a **no-op on the exact device
-showing the bug**, which is why two earlier attempts at this failed.
-
-**What actually paints that strip is the ROOT element's background.** With no `html` background it
-falls through to `body`, which on these sites is cream — hence a light band above a dark navbar, and
-page content visibly bleeding through during the URL-bar collapse animation.
-
-**Both parts are required:**
-
-```css
-/* globals.css — the load-bearing half */
-html { background-color: <the nav's surface colour>; }   /* body stays light */
-```
-
-```tsx
-/* the fixed nav projects upward, so the strip revealed mid-collapse is nav, not content */
-className="fixed top-0 left-0 right-0 z-50 bg-surface-dark
-           before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full
-           before:h-[100px] before:bg-surface-dark before:content-['']"
-```
-
-`body` keeps its light background — only the canvas outside the body box goes dark, which also makes
-both rubber-band overscroll zones match (top = nav, bottom = footer, since footers here are dark).
-
-**`theme-color` does NOT fix this and never did.** On iOS it tints Safari's own chrome surfaces in
-some states; the moment the user scrolls, that bar becomes a translucent blur over live page pixels
-and no meta tag reaches the strip. Keep it (it darkens the expanded chrome) but never treat it as
-the fix. Its real power is standalone PWA mode, which these sites are not.
-
-## `theme-color` in every `layout.tsx` (keep it, but see above)
-
-```tsx
-export const viewport = {
-  viewportFit: "cover",    // REQUIRED — see below
-  themeColor: "#261f1a",   // the NAV's surface colour, as a literal hex
-};
-```
-
-And the fixed nav must pad itself into the inset:
-
-```tsx
-<nav style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} className="fixed top-0 ...">
-```
-
-⚠️ **`theme-color` ALONE DOES NOT FIX THE WHITE BAND, and this cost two attempts.** Without
-`viewport-fit=cover` the page never extends under the status bar, `env(safe-area-inset-top)` stays
-**0**, and a `fixed top-0` nav therefore starts BELOW the inset — iOS fills that strip itself. The
-meta can be present and correct (verified in the served HTML) while the handset still shows white.
-You need all three: `viewportFit: "cover"`, `themeColor`, and safe-area padding on the nav.
-
-iOS paints the area around its own browser chrome — the strip above a `fixed` navbar, plus the
-overscroll gutters — from `theme-color`, **not** from the page background. With no `theme-color`
-Safari uses a light default, so a site with a dark navbar shows a **white band above the nav on an
-iPhone** while looking perfect in every desktop browser and in every screenshot taken at 1440x900.
-
-Reported from a real handset 2026-08-16 ("above navbar isnt color still either, need to fix that
-window on iphones"), and the live page had **no theme-color meta at all** — nor did the skill, nor
-the template. It had never been set on any build.
-
-Two rules that matter:
-- Use the **NAV's** surface colour, not the page's. The nav is what abuts the chrome.
-- It must be a **literal hex**. This is emitted into `<head>` at build time, so `var(--surface-dark)`
-  resolves to nothing and silently does nothing.
-
-If the nav is transparent over the hero and only gains its fill on scroll, still use the scrolled
-fill — the chrome strip is opaque from the first pixel of scroll, which is when the mismatch shows.
-
+---
 ## Colour: choose CHARACTER first, harmony second
 
 ⚠️ **Corrected 2026-08-16 against the `color-expert` skill** (meodai's 171-file colour-science
@@ -2041,27 +1886,9 @@ Either way, replace the scaffold's default `favicon.ico` (overwrite it, or add `
 ## Book Now button (if applicable)
 If the business is on a booking platform (Booksy, Fresha, Treatwell, Vagaro), add a prominent "Book Online" button linking to their booking page. Check gathered-content.md for booking URLs. **Exception:** booking-mode leads (`extra.mode` = `booking`) get the built-in booking facade below as the PRIMARY booking UI. `golden_check` leads ALSO get a visibly secondary "or book on {Platform}" link to their claimed platform page — it keeps real bookings working from the preview (the facade delivers none) and shows coexistence. The facade stays the hero; the platform link is never the CTA. `no_website` AND `dead_platform` leads get the facade only — never link a platform that doesn't exist or has shut down.
 
-## Booking facade (booking-mode leads only)
+## Booking facade (booking-mode leads only; full spec: `reference/booking-facade.md`)
 
-When this client's `extra.mode` is `booking` (status.md or Supabase), the site includes a **client-side booking facade** — a fully working booking flow with zero back-end. It demonstrates "your own booking system" on the preview; the real system arrives at conversion (see below). Five steps, one page or route (`/book` or a `#book` section, linked from nav + hero + sticky CTA):
-
-1. **Service** — the real captured menu from gathered-content.md, exact names/prices/durations, grouped by category if the platform grouped them. Never invent, merge, or reprice services. **Price-free menus are valid**: when the business doesn't publish prices (or durations), list services without them — an unpublished price is silence, never a number you make up.
-2. **Staff** (only if staff names were published) — otherwise skip this step entirely.
-3. **Date & time** — a slot picker honouring the REAL opening hours: closed days disabled, slots only within published hours, sensible slot length from the service's duration.
-4. **Details** — name / phone / email with validation.
-5. **Confirmation** — a booking reference like `{3-LETTER-PREFIX}-XXXX` (derived from the business name, random digits), a "we'll confirm by text/email" line, and the service/time summary.
-
-**Hard rules (each one is a QA fail):**
-- **Zero network requests** in the whole flow — state lives in React memory only. No fetch, no form POST, no third-party widgets.
-- **No "demo", "preview", "sample", or "not live" labels anywhere.** The site must read as the business's own finished site. The demo-mode conversation happens in outreach replies, never on the page.
-- **Facade builds ship `noindex`**: set `robots: { index: false, follow: false }` in the layout metadata. A fake booking flow must not get indexed. (`/seo`'s Step 0 refuses to run while the facade is live, and removes the noindex once the real system or platform links are in.)
-- **The facade never ships to a live client domain.** At conversion, BEFORE any custom domain is attached, either run `/booking {business-name}` (Vercel — replaces the facade with the real system: confirmations, dashboard, reminders) or, if the client prefers keeping their current platform, rewire every booking CTA to link out to it (their platform stays unless THEY choose otherwise) and write `clients/{business-name}/data/booking-rewired.md` (one line: date + CTA target) so `/seo`'s facade gate knows the demo is gone. **Non-Vercel installs** (`/booking` is Vercel-only): `golden_check` leads rewire to their platform; `no_website` leads convert the booking CTAs to the contact pattern from "Contact form" below — or move the site to Vercel first if the client wants real online booking.
-- **Credential ceiling by silence** (booking verticals are often regulated-adjacent — aesthetics, massage, lash/brow): publish ONLY credentials the business itself published, verbatim. And never write compliance meta-commentary on the page ("qualifications not listed", "details available on request") — if they didn't publish it, the site is simply silent.
-- **Home-based businesses get area-only treatment**: if gathered-content.md recorded area-only disclosure, the site shows town/area only — NO street address, NO postcode, NO map embed. The Google Maps CID rule elsewhere in this skill does not override this.
-- **Per-platform review counts stay separate** — "212 reviews on Fresha" and Google's count are different facts; never conflate, never sum. Menu copy may have typos tidied (note each fix in status.md); reviews stay verbatim to the character as everywhere else.
-
-**Fallback:** if gather couldn't capture a real service menu (rare — the platform page is public), do NOT fake one. Build the standard site with a "Book Online" button linking to their platform page instead, and note the downgrade in status.md — outreach must then drop the "its own booking page" line.
-
+**Only relevant when this client's `extra.mode` is `booking` (status.md or Supabase) — if it isn't, skip this entire section, do not read the reference file.** When it is: read `reference/booking-facade.md` in full before building the flow. It specifies the 5-step client-side facade (service/staff/date-time/details/confirmation), and the hard rules that are each their own QA fail: zero network requests, no "demo"/"preview" labels anywhere, `noindex` while the facade is live, never ships to a live client domain unmodified, credential ceiling by silence for regulated-adjacent verticals, home-based businesses get area-only treatment, and per-platform review counts never get conflated with Google's.
 ## Contact form (always include)
 Every site MUST have a contact section.
 - **If email is known (default)**: Wire the contact section as a `mailto:` — simplest reliable implementation, no third-party service, submissions land directly in the client's inbox. Either a clear "Email us" button (`<a href="mailto:EMAIL">`) alongside the email address, or a form whose submit handler constructs a `mailto:?subject=...&body=...` URL from the form fields and opens the visitor's mail client. Pick whichever fits the design language better — both are valid.
