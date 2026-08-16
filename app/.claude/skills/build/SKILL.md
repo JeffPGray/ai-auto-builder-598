@@ -1280,18 +1280,58 @@ tabs, toasts, and 26 more) plus 174 marketing-tier sections (heroes, CTAs, prici
 footers, and 17 more). Both tiers are available on this branch — an earlier version of this section
 said marketing was excluded; it is not, per the operator's explicit override on 2026-08-16.
 
-**Read `.claude/skills/build/reference/hyperui/INDEX.md` first, not the raw directories.** It lists
-every file with its category, light/dark variant, word count, and two machine-checked flags:
-`[LOREM]` (the file's body text is literal placeholder Latin — measured: **70 of 295 application
-files and 104 of 174 marketing files carry it**, so this is a per-file property, not a tier
-property — never assume a file is clean because it's in the "application" tier) and its generic
-Tailwind colour classes. Browsing 469 files blind burns turns this pipeline does not have — this
-project's own measurement is that 86% of build wall-clock is token generation.
+### 🚨 MANDATORY, not optional: this branch exists to test HyperUI-as-reference, not to make it available
+
+**The first real test on this branch failed to test anything.** The reference set was vendored,
+indexed, and available — the build read `INDEX.md` once, never opened a single one of the 469
+actual files, and shipped entirely custom components. `status.md` said, truthfully: *"None
+directly copied... informed the FAQ section's approach, but no file was used as a structural
+template."* That is what "available but not required" produces: a build that behaves exactly like
+a non-experiment build, because nothing forced it to behave differently. **Do not repeat this.**
+
+The floor, enforced by `scripts/hyperui-usage-check.mjs` in QA and treated as a hard-FAIL line the
+same way `PHOTO_CHECK` is:
+
+- **At least 4 distinct application-tier components**, from **at least 3 distinct categories**,
+  each genuinely used as the structural starting point for a real element on the site — not
+  merely "referenced" or "informed by". Concretely, pick real candidates for this client's actual
+  needs from categories like: `accordions` (FAQ), `stats` (review/trust numbers), `badges`
+  (licences/certifications/guarantees), `tabs` (service categories), `timelines` (process steps),
+  `modals` (photo lightbox / contact), `dropdown` / `select` (any filter or menu), `tables` /
+  `details-list` (pricing-adjacent comparison content that stays off the SERVICES/PRICING
+  hard-blocker). If the client genuinely has no plausible use for 3+ categories, that itself is
+  worth a line in `status.md` — but check the list above for a real fit before concluding that.
+- Marketing-tier citations are allowed and logged but **do not count toward the floor** — that
+  tier is the proven-risky one (see below), and counting it toward a quota would recreate the
+  exact incentive that produced the 3-4/10 outcome it's named after.
+
+### Targeted lookup, not a blind full-index read (cache-locality — do this ONCE, early)
+
+**Do not re-read `INDEX.md` (591 lines, 469 files) to find what you need.** Before writing any
+`page.tsx` — right after the design-system and palette decisions are made, in the same pass —
+decide which categories this client's site plausibly needs (aim for the 4-6 that fit a trade
+site: accordions, stats, badges, tabs or timelines, maybe modals), then query exactly those:
+
+```bash
+node scripts/hyperui-lookup.mjs accordions --tier application
+node scripts/hyperui-lookup.mjs stats --tier application
+node scripts/hyperui-lookup.mjs badges --tier application
+```
+
+This returns only the matching category's entries (path, `[LOREM]` flag, word count, generic
+colour classes) — a deterministic $0 filter over `index.json`, not a model call and not a full-file
+read. **Read the specific candidate files you're going to use in this same early batch**, not
+scattered across the build as you happen to reach each section. Loading reference material once,
+early, in a stable position lets Claude's own prompt cache actually apply to it; reading it ad hoc
+throughout generation fights the cache instead of using it, and is a real, separate contributor to
+this branch's inflated token cost (see `HYPERUI-01` in the ledger for the measurement).
 
 **Every file you actually use, without exception:**
 1. **Replace every colour class with the derived palette token playing the same role**
    (`gray-900`→`--ink`, `purple-100`→`--accent`/`--secondary`, `emerald-600`→`--accent-fill`,
-   etc.) — never ship a raw Tailwind colour name.
+   etc.) — never ship a raw Tailwind colour name. `hyperui-usage-check.mjs` greps the shipped
+   source for a leaked literal class from a cited file and warns (not blocks) if it finds one —
+   treat that warning as a real defect to fix, not noise.
 2. **Replace every word flagged `[LOREM]`** with real content from `gathered-content.md`. A lorem
    ipsum string reaching the shipped site is a `ship-scan.mjs` FAIL regardless of source, and the
    hard-blocker contract's SERVICES/PRICING check fails on a stock price figure the same way.
@@ -1307,9 +1347,26 @@ above load-bearing, not optional, for every marketing-tier file you touch — a 
 with its lorem ipsum and stock colours intact is exactly the proven-negative outcome this whole
 experiment exists to test against.
 
-**Record in `status.md` every HyperUI file that genuinely informed a component**, tier and path,
-so the eventual comparison against a non-HyperUI build is honest about what was actually used —
-not claimed to have been used because the reference set was available.
+### Record usage as a checkable claim, not prose
+
+Write a section in `status.md` titled **exactly** `## HyperUI components used` (not "references
+used" — that heading is what the failed first test used, and `hyperui-usage-check.mjs` treats it
+as absent). One line per component, citing the exact vendored path in backticks:
+
+```
+## HyperUI components used
+
+- `accordions/2.html` -> FAQ section (details/summary + group-open:, palette-mapped)
+- `stats/1-dark.html` -> reviews stat block (4.7 stars / 475 reviews)
+- `badges/3.html` -> TACLA/licence badges in trust strip
+- `tabs/1.html` -> services category switcher
+```
+
+This is what makes the eventual comparison against a non-HyperUI build honest — a specific,
+falsifiable claim instead of "informed by", which is exactly the sentence that let the first test
+ship with zero verifiable usage. `hyperui-usage-check.mjs` validates every cited path is real and
+enforces the floor above; QA reports `HYPERUI_USAGE_CHECK=PASS/FAIL` the same way it reports
+`PHOTO_CHECK`.
 
 ## Photo art direction (mandatory) — the real ceiling on "premium"
 

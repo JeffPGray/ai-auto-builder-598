@@ -1,0 +1,154 @@
+#!/usr/bin/env node
+/**
+ * hyperui-usage-check.mjs <slug>
+ *
+ * EXPERIMENT-BRANCH-ONLY gate. Fixes the exact failure this branch's first real test exposed:
+ * a build that had the vendored 469-file HyperUI reference set available, read INDEX.md once,
+ * and then wrote entirely custom components — status.md said "None directly copied... informed
+ * the FAQ section's approach, but no file was used as a structural template." That is a true,
+ * honest sentence, and it is also a build that did not do the thing this branch exists to test.
+ * Nothing upstream of QA required it to.
+ *
+ * THIS SCRIPT MAKES ADOPTION VERIFIABLE THE SAME WAY verify-photos.mjs MADE PHOTO CLEARANCE
+ * VERIFIABLE: a build must cite, by exact vendored path, which components it structurally
+ * started from — not "informed by" prose, a checkable claim. Reads the "## HyperUI components
+ * used" section of clients/<slug>/data/status.md, validates every cited path is real, and
+ * enforces a floor: >= 4 distinct application-tier components from >= 3 distinct categories.
+ *
+ * WHY APPLICATION-TIER ONLY COUNTS TOWARD THE FLOOR: marketing-tier files are the proven-risky
+ * category (61% stock content in the sibling project, scored 3-4/10) — build/SKILL.md already
+ * treats them as "available, higher risk, needs the harder look", not a target to hit a quota
+ * with. Requiring marketing-tier usage to pass this gate would re-create exactly the incentive
+ * that produced that outcome. A build MAY cite marketing-tier files too (logged, not blocked) —
+ * they just don't count toward the mandatory minimum.
+ *
+ * WHY A SKIP, NOT A FAIL, WHEN THE REFERENCE SET IS ABSENT: `main` (and any non-experiment
+ * branch) has no `.claude/skills/build/reference/hyperui/` directory at all — this gate must
+ * never block a normal build. It only activates when the vendored set is present on disk, i.e.
+ * only on experiment/hyperui-components.
+ *
+ * HONESTY LIMIT, stated plainly rather than oversold: citing a real path proves the path exists
+ * and was named, not that the generated TSX actually inherited its structure. That is a floor,
+ * not proof — but it is a materially higher bar than the zero-citation "informed by" prose that
+ * let the first test ship with no verifiable HyperUI usage at all. As a partial, cheap secondary
+ * signal (not a blocker), this script also greps the built site source for raw Tailwind colour
+ * classes copied verbatim from a cited file — build/SKILL.md's rule 1 says every such class must
+ * be replaced with a derived palette token, so a literal match is worth a warning, not a FAIL,
+ * since a generic class like `bg-gray-900` can legitimately appear for unrelated reasons.
+ *
+ * Prints HYPERUI_USAGE_CHECK=PASS|FAIL|SKIP. FAIL is used the same way PHOTO_CHECK=FAIL is in
+ * qa-reviewer.md: a hard-FAIL line the reviewer must report verbatim and never overrule by eye.
+ */
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, dirname, extname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const REF_ROOT = join(REPO_ROOT, '.claude', 'skills', 'build', 'reference', 'hyperui');
+const MIN_COUNT = 4;
+const MIN_CATEGORIES = 3;
+
+const slug = process.argv[2];
+if (!slug) {
+  console.error('usage: hyperui-usage-check.mjs <slug>');
+  process.exit(2);
+}
+
+if (!existsSync(join(REF_ROOT, 'index.json'))) {
+  console.log('HYPERUI_USAGE_CHECK=SKIP (no vendored HyperUI reference set on this branch)');
+  process.exit(0);
+}
+
+const index = JSON.parse(readFileSync(join(REF_ROOT, 'index.json'), 'utf8'));
+const byPath = new Map(index.entries.map((e) => [e.path, e]));
+
+const statusPath = join(REPO_ROOT, 'clients', slug, 'data', 'status.md');
+if (!existsSync(statusPath)) {
+  console.log(`HYPERUI_USAGE_CHECK=FAIL — ${statusPath} does not exist`);
+  process.exit(1);
+}
+const status = readFileSync(statusPath, 'utf8');
+
+// Find the "## HyperUI components used" section by walking level-2 headings, not a single fragile
+// regex — robust regardless of what section (if any) follows it or whether it's the last in the file.
+const lines = status.split('\n');
+let sectionLines = null;
+let capturing = false;
+for (const line of lines) {
+  if (/^##\s+/.test(line)) {
+    if (capturing) break;
+    if (/^##\s+HyperUI components used\b/i.test(line.trim())) {
+      capturing = true;
+      sectionLines = [];
+    }
+    continue;
+  }
+  if (capturing) sectionLines.push(line);
+}
+
+if (!sectionLines) {
+  console.log('HYPERUI_USAGE_CHECK=FAIL — status.md has no "## HyperUI components used" section (the old "## HyperUI references used" heading is not enough — rename it and cite real paths)');
+  process.exit(1);
+}
+const body = sectionLines.join('\n');
+
+// Each citation line looks like: - `application/accordions/1.html` -> FAQ section accordion
+const cited = [...body.matchAll(/`([a-z0-9-]+\/[a-z0-9-]+\.html)`/gi)].map((m) => m[1]);
+const uniqueCited = [...new Set(cited)];
+
+if (!uniqueCited.length) {
+  console.log('HYPERUI_USAGE_CHECK=FAIL — "## HyperUI components used" section has zero path citations in `category/file.html` format. "Informed by" prose does not count — cite exact vendored paths.');
+  process.exit(1);
+}
+
+const invalid = uniqueCited.filter((p) => !byPath.has(p));
+if (invalid.length) {
+  console.log(`HYPERUI_USAGE_CHECK=FAIL — ${invalid.length} cited path(s) do not exist in the vendored set: ${invalid.join(', ')}`);
+  process.exit(1);
+}
+
+const validEntries = uniqueCited.map((p) => byPath.get(p));
+const applicationEntries = validEntries.filter((e) => e.tier === 'application');
+const applicationCategories = new Set(applicationEntries.map((e) => e.category));
+
+const failures = [];
+if (applicationEntries.length < MIN_COUNT) {
+  failures.push(`only ${applicationEntries.length} distinct application-tier component(s) cited, minimum is ${MIN_COUNT} (marketing-tier citations don't count toward this floor — see script header for why)`);
+}
+if (applicationCategories.size < MIN_CATEGORIES) {
+  failures.push(`application-tier citations span only ${applicationCategories.size} distinct categor${applicationCategories.size === 1 ? 'y' : 'ies'} (${[...applicationCategories].join(', ') || 'none'}), minimum is ${MIN_CATEGORIES}`);
+}
+
+if (failures.length) {
+  console.log(`HYPERUI_USAGE_CHECK=FAIL — ${failures.join('; ')}`);
+  process.exit(1);
+}
+
+// Secondary, non-blocking signal: did a cited file's raw Tailwind colour classes survive verbatim
+// into the shipped source? (build/SKILL.md rule 1: every such class must become a palette token.)
+const siteRoot = join(REPO_ROOT, 'clients', slug, 'site', 'src');
+const sourceFiles = [];
+function walk(dir) {
+  if (!existsSync(dir)) return;
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    const st = statSync(p);
+    if (st.isDirectory()) walk(p);
+    else if (['.tsx', '.ts', '.css'].includes(extname(name))) sourceFiles.push(p);
+  }
+}
+walk(siteRoot);
+const sourceText = sourceFiles.map((f) => readFileSync(f, 'utf8')).join('\n');
+
+const colourLeaks = [];
+for (const e of validEntries) {
+  for (const cls of e.genericColorClasses) {
+    const re = new RegExp(`(^|[\\s"'\`])${cls.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([\\s"'\`]|$)`);
+    if (re.test(sourceText)) colourLeaks.push(`${cls} (from ${e.path})`);
+  }
+}
+
+console.log(`HYPERUI_USAGE_CHECK=PASS — ${applicationEntries.length} application-tier components cited across ${applicationCategories.size} categories (${[...applicationCategories].join(', ')})${validEntries.length > applicationEntries.length ? `, plus ${validEntries.length - applicationEntries.length} marketing-tier citation(s) (informational, not counted toward the floor)` : ''}`);
+if (colourLeaks.length) {
+  console.log(`HYPERUI_USAGE_CHECK_WARNING — raw HyperUI Tailwind colour classes appear verbatim in shipped source (should be derived palette tokens per build/SKILL.md rule 1): ${[...new Set(colourLeaks)].join(', ')}`);
+}
