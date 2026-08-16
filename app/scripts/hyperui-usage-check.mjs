@@ -52,9 +52,20 @@ import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const REF_ROOT = join(REPO_ROOT, '.claude', 'skills', 'build', 'reference', 'hyperui');
-const MIN_COUNT = 4;
-const MIN_CATEGORIES = 3;
-const MIN_MARKETING_SECTIONS = 2;
+// RAISED 2026-08-16, operator directive after seeing the 4-component floor pass while the site
+// "still has the same feel": the floor is a MINIMUM AUDIT TARGET, not a target to just clear.
+// "Use it on every component possible" — floors raised so genuinely broad usage is required, not
+// just checkbox compliance. Was 4/3; the application tier has 34 categories, so 6/4 is still a
+// small fraction, not exhaustive use — but it can no longer be satisfied by e.g. one accordion,
+// one badge, one stat block, one timeline (4 items, done). See build/SKILL.md's HyperUI section
+// for the "default to a HyperUI structural starting point" instruction this floor backs up.
+const MIN_COUNT = 6;
+const MIN_CATEGORIES = 4;
+// Was 2/2; raised the same way. Still excludes footers/headers (fixed, tested pattern already
+// exists for those — see below) so the floor can't be satisfied by citing the two categories
+// that were never the point.
+const MIN_MARKETING_SECTIONS = 4;
+const MIN_MARKETING_CATEGORIES = 3;
 // footers/headers excluded from the marketing-tier floor — the site already has a fixed, tested
 // pattern for those (SiteFooter/SiteNav), so citing one wouldn't demonstrate new structural reach.
 const MARKETING_FLOOR_EXCLUDED = new Set(['footers', 'headers']);
@@ -134,6 +145,9 @@ if (applicationCategories.size < MIN_CATEGORIES) {
 }
 if (marketingEntries.length < MIN_MARKETING_SECTIONS) {
   failures.push(`only ${marketingEntries.length} distinct marketing-tier SECTION(s) cited (excluding footers/headers), minimum is ${MIN_MARKETING_SECTIONS} — atomic components alone (accordions, badges, stats blocks) don't demonstrate real structural influence on the page's actual composition (hero layout, feature grids, CTA bands). See build/SKILL.md's "MANDATORY, not just available" note on the marketing tier.`);
+}
+if (marketingCategories.size < MIN_MARKETING_CATEGORIES) {
+  failures.push(`marketing-tier citations span only ${marketingCategories.size} distinct categor${marketingCategories.size === 1 ? 'y' : 'ies'} (${[...marketingCategories].join(', ') || 'none'}), minimum is ${MIN_MARKETING_CATEGORIES} — citing the same section category repeatedly (e.g. 4x stats) isn't broad structural reach, it's one idea reused.`);
 }
 
 if (failures.length) {

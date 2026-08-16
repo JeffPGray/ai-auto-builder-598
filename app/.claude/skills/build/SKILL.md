@@ -1315,18 +1315,33 @@ a non-experiment build, because nothing forced it to behave differently. **Do no
 The floor, enforced by `scripts/hyperui-usage-check.mjs` in QA and treated as a hard-FAIL line the
 same way `PHOTO_CHECK` is:
 
-- **At least 4 distinct application-tier components**, from **at least 3 distinct categories**,
+- **At least 6 distinct application-tier components**, from **at least 4 distinct categories**,
   each genuinely used as the structural starting point for a real element on the site — not
   merely "referenced" or "informed by". Concretely, pick real candidates for this client's actual
   needs from categories like: `accordions` (FAQ), `stats` (review/trust numbers), `badges`
   (licences/certifications/guarantees), `tabs` (service categories), `timelines` (process steps),
   `modals` (photo lightbox / contact), `dropdown` / `select` (any filter or menu), `tables` /
   `details-list` (pricing-adjacent comparison content that stays off the SERVICES/PRICING
-  hard-blocker). If the client genuinely has no plausible use for 3+ categories, that itself is
-  worth a line in `status.md` — but check the list above for a real fit before concluding that.
-- Marketing-tier citations are allowed and logged but **do not count toward the floor** — that
-  tier is the proven-risky one (see below), and counting it toward a quota would recreate the
-  exact incentive that produced the 3-4/10 outcome it's named after.
+  hard-blocker), `progress-bars`, `steps`, `toggles`, `checkboxes` (any interactive form element),
+  `empty-states`, `breadcrumbs`. 34 application categories exist — 6 is still a small fraction,
+  not exhaustive use. If the client genuinely has no plausible use for 4+ categories, that itself
+  is worth a line in `status.md` — but check the full list (`hyperui-lookup.mjs --list-categories
+  --tier application`) for a real fit before concluding that.
+- Marketing-tier citations count toward their OWN separate floor (below) — they never substitute
+  for application-tier citations, and vice versa. Hitting one floor does not excuse skipping the
+  other.
+
+**🚨 Default to a HyperUI structural starting point for every eligible section — added 2026-08-16,
+operator directive: "used... on every component possible", after floors this exact size were met
+by an earlier build that still "has the same feel."** The floors above and below are an AUDITED
+MINIMUM, not a target — they exist so a QA gate can catch a build that used nothing, not so a
+build can stop the moment it clears them. Before writing any section — hero excepted, and any
+section whose content genuinely has no structural analogue in the library — check whether a
+vendored file (either tier) fits the job first, and use it as the structural starting point unless
+there's a real reason not to (a genuinely bespoke layout the content specifically calls for is a
+real reason; "I already wrote something" is not). This is a discipline change, not a new floor
+number: the floors stay the enforced minimum because they're what a script can verify, but the
+target for actual usage is "most sections," not "the fewest that clear the gate."
 
 ### Targeted lookup, not a blind full-index read (cache-locality — do this ONCE, early)
 
@@ -1376,11 +1391,16 @@ experiment exists to test against.
 > only counted APPLICATION-tier atomic widgets (accordions, badges, stats blocks, timelines) —
 > real, but grafted onto an otherwise 100%-custom page. The bones of the page — the hero layout,
 > the feature grid, the CTA band — never drew on the library at all, which is why 4 real components
-> still read as "the same feel". **At least 2 distinct marketing-tier SECTIONS** (from
-> `feature-grids`, `sections`, `stats`, `ctas`, `team-sections`, `logo-clouds`, `announcements`, or
-> similar page-composition categories — not `footers`/`headers`, which the site already has a fixed
-> pattern for) must inform the STRUCTURE of a real page section: the grid/flex composition, the
-> card arrangement, the spacing rhythm, the visual hierarchy. This is a structural transplant, not a
+> still read as "the same feel". **At least 4 distinct marketing-tier SECTIONS, from at least 3
+> distinct categories** (raised again 2026-08-16, same operator directive as the application-tier
+> floor above — from `feature-grids`, `sections`, `stats`, `ctas`, `team-sections`, `logo-clouds`,
+> `announcements`, `faqs`, `pricing`, `newsletter-signup`, `polls`, `product-cards`,
+> `product-collections`, `blog-cards`, or similar page-composition categories — not
+> `footers`/`headers`, which the site already has a fixed pattern for) must inform the STRUCTURE of
+> a real page section: the grid/flex composition, the card arrangement, the spacing rhythm, the
+> visual hierarchy. Four citations from ONE repeated category (e.g. four stat bands) does not
+> satisfy this — `hyperui-usage-check.mjs` requires category spread, not just count, because one
+> idea reused four times is not broad structural reach. This is a structural transplant, not a
 > content one — rules 1-2 above are even MORE load-bearing here than on the application tier,
 > because marketing-tier files carry more prose per file to strip. Use `hyperui-lookup.mjs
 > <category> --tier marketing` to find candidates the same way as application-tier ones. Counted
