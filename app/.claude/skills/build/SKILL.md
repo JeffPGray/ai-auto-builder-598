@@ -1272,6 +1272,36 @@ still seeded per business, so fleet variety and reproducibility are preserved.
 5. **Stagger the grids.** `data-reveal-group` on every multi-item wrapper (service cards, photo
    grids, review cards, FAQ lists). Whole-section fades read as a slideshow; stagger reads as craft.
 
+## 🧪 EXPERIMENT BRANCH ONLY — HyperUI component reference (`experiment/hyperui-components`)
+
+144 real HyperUI application-component examples are vendored at `.claude/skills/build/reference/hyperui/{accordions,badges,breadcrumbs,button-groups,charts,checkboxes,details-list,dividers,dropdown,empty-states,file-uploaders,filters,grids,inputs,loaders}/`.
+
+**Use these for STRUCTURE and CSS TECHNIQUE only.** Verified 2026-08-16 by pulling live examples:
+they carry zero real content — literal `Lorem, ipsum dolor sit amet` as heading/body text, and
+generic un-tokenized Tailwind colours (`purple-100`, `gray-900`, `emerald-600`). Every file you
+reference:
+- **Replace every colour class with the derived palette token that plays the same role**
+  (`gray-900`→`--ink`, `purple-100`→`--accent`/`--secondary` as appropriate, `emerald-600`→
+  `--accent-fill`, etc.) — never ship a raw Tailwind colour name.
+- **Replace every word of placeholder text** with real content from `gathered-content.md`. A lorem
+  ipsum string reaching the shipped site is a `ship-scan.mjs` FAIL regardless of source.
+- **The accordion pattern (native `<details>`/`<summary>` + `group-open:` variant) needs no new
+  dependency** — prefer it over inventing your own toggle state for FAQ-shaped content.
+
+**Do NOT reach for anything under a `marketing/` path if you see one referenced elsewhere** — this
+vendored set deliberately excludes HyperUI's marketing/section category (heroes, CTAs, pricing,
+testimonials). That category was evaluated and rejected before this branch existed: the sibling
+`gr-no-website-builds` project's own 2,347-section library is 61% stock HyperUI/Flowbite marketing
+content and scored 3-4/10 on the operator's own calibration — assembly of stock marketing copy is
+not design. This branch exists specifically to test the DIFFERENT, narrower hypothesis that atomic
+UI primitives (accordion, badge, breadcrumb, dropdown, loader, input styling) are a legitimately
+different, lower-risk category than full marketing sections, because they carry technique, not
+content. If you find yourself copying a hero or CTA's copy/layout from anywhere, stop — that is the
+proven-negative path, not what this experiment is testing.
+
+**Record in `status.md`** which HyperUI reference files (if any) genuinely informed a component, so
+the eventual comparison against a non-HyperUI build is honest about what was actually used.
+
 ## Photo art direction (mandatory) — the real ceiling on "premium"
 
 **Scraped Google Maps/Facebook photos are inconsistent raw material — customer-uploaded, uneven
