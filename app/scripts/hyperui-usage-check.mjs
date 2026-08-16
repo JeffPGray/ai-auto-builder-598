@@ -13,14 +13,21 @@
  * VERIFIABLE: a build must cite, by exact vendored path, which components it structurally
  * started from — not "informed by" prose, a checkable claim. Reads the "## HyperUI components
  * used" section of clients/<slug>/data/status.md, validates every cited path is real, and
- * enforces a floor: >= 4 distinct application-tier components from >= 3 distinct categories.
+ * enforces a floor: >= 4 distinct application-tier components from >= 3 distinct categories,
+ * PLUS >= 2 distinct marketing-tier SECTIONS (structural composition, not content).
  *
- * WHY APPLICATION-TIER ONLY COUNTS TOWARD THE FLOOR: marketing-tier files are the proven-risky
- * category (61% stock content in the sibling project, scored 3-4/10) — build/SKILL.md already
- * treats them as "available, higher risk, needs the harder look", not a target to hit a quota
- * with. Requiring marketing-tier usage to pass this gate would re-create exactly the incentive
- * that produced that outcome. A build MAY cite marketing-tier files too (logged, not blocked) —
- * they just don't count toward the mandatory minimum.
+ * WHY A SECOND, SEPARATE MARKETING-TIER FLOOR — added 2026-08-16, real operator feedback on the
+ * build that passed the application-tier-only floor: "it still doesn't feel like that hyper UI is
+ * completely embedded... I don't see a lot of that sections library there." He was right: 4 real
+ * atomic widgets (accordion, badges, stats block, timeline) were grafted onto a page whose actual
+ * STRUCTURE — hero layout, feature grid, CTA band — was 100% custom, because the application tier
+ * is small standalone components, not page-section composition. Marketing-tier files ARE the
+ * section-composition library (feature-grids, sections, stats bands, ctas, team-sections,
+ * logo-clouds, announcements) — `footers`/`headers` are excluded from this floor since the site
+ * already has a fixed, tested pattern for those. The original marketing-tier risk (61% stock
+ * content in the sibling project, scored 3-4/10) is still real, which is why rules 1-2 in
+ * build/SKILL.md (replace every colour, replace every word) stay load-bearing — this floor
+ * requires STRUCTURAL citation, not a licence to ship stock copy.
  *
  * WHY A SKIP, NOT A FAIL, WHEN THE REFERENCE SET IS ABSENT: `main` (and any non-experiment
  * branch) has no `.claude/skills/build/reference/hyperui/` directory at all — this gate must
@@ -47,6 +54,10 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const REF_ROOT = join(REPO_ROOT, '.claude', 'skills', 'build', 'reference', 'hyperui');
 const MIN_COUNT = 4;
 const MIN_CATEGORIES = 3;
+const MIN_MARKETING_SECTIONS = 2;
+// footers/headers excluded from the marketing-tier floor — the site already has a fixed, tested
+// pattern for those (SiteFooter/SiteNav), so citing one wouldn't demonstrate new structural reach.
+const MARKETING_FLOOR_EXCLUDED = new Set(['footers', 'headers']);
 
 const slug = process.argv[2];
 if (!slug) {
@@ -111,12 +122,18 @@ const validEntries = uniqueCited.map((p) => byPath.get(p));
 const applicationEntries = validEntries.filter((e) => e.tier === 'application');
 const applicationCategories = new Set(applicationEntries.map((e) => e.category));
 
+const marketingEntries = validEntries.filter((e) => e.tier === 'marketing' && !MARKETING_FLOOR_EXCLUDED.has(e.category));
+const marketingCategories = new Set(marketingEntries.map((e) => e.category));
+
 const failures = [];
 if (applicationEntries.length < MIN_COUNT) {
   failures.push(`only ${applicationEntries.length} distinct application-tier component(s) cited, minimum is ${MIN_COUNT} (marketing-tier citations don't count toward this floor — see script header for why)`);
 }
 if (applicationCategories.size < MIN_CATEGORIES) {
   failures.push(`application-tier citations span only ${applicationCategories.size} distinct categor${applicationCategories.size === 1 ? 'y' : 'ies'} (${[...applicationCategories].join(', ') || 'none'}), minimum is ${MIN_CATEGORIES}`);
+}
+if (marketingEntries.length < MIN_MARKETING_SECTIONS) {
+  failures.push(`only ${marketingEntries.length} distinct marketing-tier SECTION(s) cited (excluding footers/headers), minimum is ${MIN_MARKETING_SECTIONS} — atomic components alone (accordions, badges, stats blocks) don't demonstrate real structural influence on the page's actual composition (hero layout, feature grids, CTA bands). See build/SKILL.md's "MANDATORY, not just available" note on the marketing tier.`);
 }
 
 if (failures.length) {
@@ -148,7 +165,7 @@ for (const e of validEntries) {
   }
 }
 
-console.log(`HYPERUI_USAGE_CHECK=PASS — ${applicationEntries.length} application-tier components cited across ${applicationCategories.size} categories (${[...applicationCategories].join(', ')})${validEntries.length > applicationEntries.length ? `, plus ${validEntries.length - applicationEntries.length} marketing-tier citation(s) (informational, not counted toward the floor)` : ''}`);
+console.log(`HYPERUI_USAGE_CHECK=PASS — ${applicationEntries.length} application-tier components across ${applicationCategories.size} categories (${[...applicationCategories].join(', ')}); ${marketingEntries.length} marketing-tier section(s) across ${marketingCategories.size} categories (${[...marketingCategories].join(', ') || 'none'})`);
 if (colourLeaks.length) {
   console.log(`HYPERUI_USAGE_CHECK_WARNING — raw HyperUI Tailwind colour classes appear verbatim in shipped source (should be derived palette tokens per build/SKILL.md rule 1): ${[...new Set(colourLeaks)].join(', ')}`);
 }

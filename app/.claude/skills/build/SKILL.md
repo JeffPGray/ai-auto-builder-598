@@ -1358,6 +1358,23 @@ above load-bearing, not optional, for every marketing-tier file you touch — a 
 with its lorem ipsum and stock colours intact is exactly the proven-negative outcome this whole
 experiment exists to test against.
 
+> 🚨 **MANDATORY, not just available — added 2026-08-16 after a real operator read of build 2:**
+> "it still doesn't feel like that hyper UI is completely embedded... I don't see a lot of that
+> sections library there." He was right, and the mechanism was exactly this: the 4-component floor
+> only counted APPLICATION-tier atomic widgets (accordions, badges, stats blocks, timelines) —
+> real, but grafted onto an otherwise 100%-custom page. The bones of the page — the hero layout,
+> the feature grid, the CTA band — never drew on the library at all, which is why 4 real components
+> still read as "the same feel". **At least 2 distinct marketing-tier SECTIONS** (from
+> `feature-grids`, `sections`, `stats`, `ctas`, `team-sections`, `logo-clouds`, `announcements`, or
+> similar page-composition categories — not `footers`/`headers`, which the site already has a fixed
+> pattern for) must inform the STRUCTURE of a real page section: the grid/flex composition, the
+> card arrangement, the spacing rhythm, the visual hierarchy. This is a structural transplant, not a
+> content one — rules 1-2 above are even MORE load-bearing here than on the application tier,
+> because marketing-tier files carry more prose per file to strip. Use `hyperui-lookup.mjs
+> <category> --tier marketing` to find candidates the same way as application-tier ones. Counted
+> toward its own floor in `hyperui-usage-check.mjs`, separate from the application-tier floor —
+> hitting one does not excuse skipping the other.
+
 ### Record usage as a checkable claim, not prose
 
 Write a section in `status.md` titled **exactly** `## HyperUI components used` (not "references
@@ -1371,6 +1388,9 @@ as absent). One line per component, citing the exact vendored path in backticks:
 - `stats/1-dark.html` -> reviews stat block (4.7 stars / 475 reviews)
 - `badges/3.html` -> TACLA/licence badges in trust strip
 - `tabs/1.html` -> services category switcher
+- `marketing-feature-grids/2.html` -> services overview section structure (card composition,
+  grid rhythm; every word and colour replaced with real content)
+- `marketing-stats/1-dark.html` -> home page trust-strip section layout (structure only)
 ```
 
 This is what makes the eventual comparison against a non-HyperUI build honest — a specific,
