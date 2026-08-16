@@ -421,16 +421,26 @@ here is the business's phone number and the free consultation.
 - A closing block that names the business, the licence or years if gathered, and the phone.
 - A "more articles" list at the foot linking two siblings, plus a link back to `/blog`.
 
-### Files
+### Files — the TYPES and PAGE TEMPLATES ship in the template (2026-08-16); you write `POSTS`
 
-| File | What it holds |
-|---|---|
-| `src/app/_components/blog-data.ts` | `POSTS: Post[]` — slug, title, description, dek, published, readMinutes, image, and `blocks` (`p` / `h2` / `list`). The single source of truth for article text, schema, sitemap and `llms.txt`. |
-| `src/app/blog/page.tsx` | The index. Cards from `POSTS`. |
-| `src/app/blog/[slug]/page.tsx` | The article. `generateStaticParams()` from `POSTS`, `generateMetadata()` per post. |
+**`blog-data.ts`'s `Post`/`Block` types, `blog/page.tsx`, and `blog/[slug]/page.tsx` are now
+template files — copy them from `templates/trade-site/src/app/blog/` and
+`templates/trade-site/src/app/_components/blog-data.ts` rather than authoring them fresh.** Added
+after a real build hand-authored the types, exported `Block` inconsistently between files, and
+shipped 5 articles with a broken build **and zero JSON-LD** — 26 AEO failures, caught by QA, that
+a template removes the possibility of. `schema.ts` (already a template file) gained two new
+exports for this: `blogPostingSchema()` and `blogIndexSchema()` — read them before touching the
+article schema block.
+
+| File | What it holds | Yours to write? |
+|---|---|---|
+| `src/app/_components/blog-data.ts` | `Post`/`Block` types + helpers ship in the template. **You fill in `export const POSTS: Post[] = [...]`** — slug, title, description, dek, published, image, `blocks` (`p` / `h2` / `list`). The single source of truth for article text; `wordCountOf()`/`readMinutesOf()` are computed, never typed by hand. | Content only |
+| `src/app/blog/page.tsx` | Ships in the template — the index, cards from `POSTS`, full JSON-LD wiring. Restyle to match this client's design system; do not touch the schema/metadata block. | Restyle only |
+| `src/app/blog/[slug]/page.tsx` | Ships in the template — the article, `generateStaticParams()`, `generateMetadata()`, full JSON-LD wiring. Restyle typography/spacing; do not touch `generateStaticParams`, `generateMetadata`, or the schema block. | Restyle only |
 
 `generateStaticParams()` is load-bearing: under `output: 'export'` a dynamic segment without it
-emits **no article HTML at all**, and `npx next build` still exits 0.
+emits **no article HTML at all**, and `npx next build` still exits 0. The template ships it
+correctly; do not remove it while restyling.
 
 **Blog goes in the main nav.** Add `{ href: "/blog", label: "Blog" }` to `NAV_LINKS` and a footer
 link. A blog nobody can reach from the nav is filler, and the breadcrumb `name` must match the
