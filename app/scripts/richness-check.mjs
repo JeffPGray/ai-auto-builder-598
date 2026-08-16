@@ -183,11 +183,23 @@ if (home) {
    * over-applied into "the hero has no motion at all" — an operator looking at a finished,
    * otherwise-improved build called it out by name: "no hero motion". `data-hero-reveal` is the
    * LCP-safe fix (Motion.tsx tweens only y/scale for it, opacity never moves), and it must
-   * actually be present on the hero's text/CTA wrapper, not just theoretically available. Same
-   * pragmatic hero-area heuristic as the composition check below: the hero is always the first
-   * thing on the page, so the first slice of the document is "the hero area" without needing a
-   * real HTML parse. */
-  const heroHasReveal = /data-hero\b/.test(h) && /data-hero-reveal\b/.test(h.slice(0, 6000));
+   * actually be present on the hero's text/CTA wrapper, not just theoretically available.
+   *
+   * FIXED 2026-08-16 (real false positive, caught live on build 3): this originally used the same
+   * "first 6000 chars = hero area" fixed-window heuristic as the composition check below. On an
+   * assetPrefix-deployed build (`/klaudius/{slug}/`-prefixed asset URLs throughout <head> and nav)
+   * the real `data-hero-reveal` attribute landed at byte 7427 — past the window — so a build that
+   * had correctly done everything reported FAIL. Verified directly against the built HTML before
+   * fixing (`grep -bo data-hero-reveal out/index.html`), not just trusting the build's own claim.
+   * Fix: find the hero SECTION's real boundary (its own `data-hero` tag to the next top-level
+   * `<section`) instead of guessing a byte count — correct regardless of how large <head>/nav is. */
+  const heroTagIdx = h.search(/<section\b[^>]*\bdata-hero\b/);
+  let heroHasReveal = false;
+  if (heroTagIdx !== -1) {
+    const nextSectionIdx = h.indexOf('<section', heroTagIdx + 1);
+    const heroSectionChunk = h.slice(heroTagIdx, nextSectionIdx === -1 ? heroTagIdx + 20000 : nextSectionIdx);
+    heroHasReveal = /data-hero-reveal\b/.test(heroSectionChunk);
+  }
   facts.heroReveal = heroHasReveal;
   if (/data-hero\b/.test(h) && !heroHasReveal) {
     failures.push(
