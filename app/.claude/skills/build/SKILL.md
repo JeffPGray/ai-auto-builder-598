@@ -1145,6 +1145,30 @@ working; prefer the numbered rungs on new work.
 Contrast still governs everything on top: `contrast-check.mjs` runs against whatever you place, and
 `--ink` / `--on-dark` are the solved text colours for the light and dark ends of the ladder.
 
+### Canvas mode: FULL-TINT (default) vs NEUTRAL-CANVAS (the luxury lever)
+
+**Every rung above is brand-tinted, including the ones the code calls "neutral."** That is
+deliberate — FULL-TINT is the right default for most trades, where a colour-forward page reads
+warm and approachable. But it means the page's *base* — hero, body copy sections, the default
+ground a visitor sits on for most of a scroll — always carries the brand hue, never a true white
+or true dark. **Caught live 2026-08-16** (Jeff, looking at a blue-brand HVAC build): "the AC is
+cool, but I think would look more luxury with a white background and colored sections vs all blue
+variants... think Ritz-Carlton." He is describing a second, real mode this system did not yet have
+a name for:
+
+| | FULL-TINT (default) | NEUTRAL-CANVAS |
+|---|---|---|
+| `--surface` / `--surface-alt` (page base, most sections) | drawn from the tinted ladder (`--surface-1`/`-2`) | **true neutral** — `#ffffff` / near-white for a light-first brand, true near-black (`#0a0a0a`-ish, not a tinted `--surface-6`) for a dark-first one |
+| The 6-rung tinted ladder | used everywhere, is the whole rhythm system | **demoted to an accent device** — used only on a minority of sections (a stat strip, a testimonial band, the footer) as deliberate colour punctuation against the neutral base |
+| Reads as | warm, colour-forward, approachable — right for most everyday trades | restrained, premium — restraint IS the signal, same reasoning § Colour CHARACTER already gives for `none` harmony on jewellers/tailors/galleries/funeral masons |
+
+**Choosing it is a CHARACTER decision, made once, at the same point you pick harmony** — not a
+per-section toggle. Default FULL-TINT for everyday service trades. Consider NEUTRAL-CANVAS when
+the gathered content itself signals premium positioning (high-end brands serviced, decades of
+awards, a heritage/family narrative, premium pricing already implied) even inside an "ordinary"
+trade like HVAC — a colour-saturated page under-sells a business the content says is upmarket.
+**Record the choice in `status.md`** next to the harmony decision, same as CHARACTER.
+
 ### Motion usage floors (the engine now offers six hooks — use them)
 
 Amplitude was only half the problem. The other half was REACH: for a long time the engine offered
