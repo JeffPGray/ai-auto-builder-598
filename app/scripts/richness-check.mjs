@@ -58,6 +58,27 @@ const pages = files.filter((f) => f.endsWith('.html') && !/404|_not-found/.test(
 const html = pages.map((f) => readFileSync(f, 'utf8')).join('\n');
 const all = css + '\n' + html;
 
+/* 0. INVALID NUMERIC TAILWIND FONT-WEIGHT CLASSES. Caught live 2026-08-16: a build used
+ * `font-700`/`font-800`/`font-900` (52 occurrences) — none are real Tailwind v3 utilities (the
+ * named scale is font-thin/extralight/light/normal/medium/semibold/bold/extrabold/black), so they
+ * compiled to nothing and every affected heading silently rendered at the browser default weight.
+ * A source grep alone can look clean-ish (the class IS there, just wrong); this checks the
+ * COMPILED CSS actually has no rule for it, which is the real, unambiguous test. */
+const usedFontWeightNums = [...new Set((html.match(/\bfont-[0-9]00\b/g) || []))];
+const compiledFontWeightNums = new Set(
+  [...css.matchAll(/\.font-([0-9]00)\\?\{/g)].map((m) => `font-${m[1]}`),
+);
+const deadFontWeightClasses = usedFontWeightNums.filter((c) => !compiledFontWeightNums.has(c));
+if (deadFontWeightClasses.length) {
+  failures.push(
+    `[css] used but never compiled: ${deadFontWeightClasses.join(', ')} — these are not real ` +
+    'Tailwind v3 utilities (the named scale is font-thin/extralight/light/normal/medium/' +
+    'semibold/bold/extrabold/black; e.g. font-800 -> font-extrabold, font-900 -> font-black). ' +
+    'Every element using one of these renders at the browser default weight instead of the ' +
+    'designed one. Confirmed against the compiled CSS, not just source — the class not compiling ' +
+    'is the actual defect, independent of whether the source "looks" intentional.');
+}
+
 /* 1. IS THE DERIVED PALETTE ACTUALLY IN PLAY?
  * derive-palette emits --secondary and its text/fill variants specifically so a page has a second
  * hue to reach for. A page using only the accent is a page that threw away half the design system,

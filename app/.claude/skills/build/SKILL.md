@@ -310,6 +310,7 @@ The template also ships three components you do NOT write yourself — `Motion.t
 **Hard rules:**
 
 - **Nav links are real hrefs, not anchors.** `<Link href="/services">`, not `<a href="#services">`. In-page anchors are fine *within* a page (e.g. `/#contact` from the hero), but the primary nav must navigate. Use `next/link`, not bare `<a>`, for internal routes.
+- **When ≥3 dedicated `/services/<slug>` pages ship (previous section), the nav's Services entry becomes a dropdown, not a flat link.** Caught live 2026-08-16 (the-woodlands-plumbing-and-air, 4 dedicated pages): shipping the pages without exposing them in the nav makes the site feel like it "collapsed to one page" even though the routes are real — a visitor has no way to discover them except clicking through `/services` first. Desktop: the `Services` `<Link>` gets a chevron and an `onMouseEnter`/`onMouseLeave` (or `onFocus` for keyboard) panel listing each dedicated page by name + one-line description, plus a "View all services" link to `/services` itself. Mobile: an expandable inline group (button + chevron toggling `max-h-0`/`max-h-[Npx]`, not a second-level route) listing the same links. Keep the category list itself in `site-data.ts` (e.g. `SERVICE_CATEGORIES`) so `SiteNav`, the `/services` overview cross-links, and each dedicated page draw from one array rather than three hand-maintained lists. With 1-2 dedicated pages a flat `Services` link to the overview is still correct — the dropdown earns its complexity only once there's a real submenu's worth of destinations.
 - **Every page exports its own `metadata`** — a distinct `title` and `description` naming that page's subject plus the town. Four pages sharing one title is the same SEO failure as one page.
 - **Exactly one `<h1>` per page**, specific to that page ("Landscaping services in Frisco", not the business name repeated).
 - **Every page is a real page.** No route may be a thin stub or a redirect to a homepage anchor. A route that exists must clear its threshold above; if it cannot, fold the content into a sibling page and **do not create the route at all** — a 404 is more honest than a 60-word placeholder. Record the drop and the counts in `status.md`. **Working floor: any marketing page under ~120 rendered words is a stub** — QA hard-fails on that number, so treat it as the line, not a guideline.
@@ -529,6 +530,20 @@ lost 5 minutes is not a reason to ship prose you have not vouched for.
 
 ## Font
 Do NOT use Inter, Geist, or system-ui (the Next.js defaults) - they scream "template". Remove any Inter/Geist imports from layout.tsx. **Read "How to LOAD the fonts" below before you write a single line of `globals.css`** — the loading mechanism is where this step silently fails. NEVER use `style={{ fontFamily: "system-ui, sans-serif" }}` or any inline fontFamily override - let globals.css cascade to all elements.
+
+> 🚨 **`font-800` / `font-900` / `font-700` are NOT real Tailwind v3 classes — caught live on a real
+> build, 52 occurrences across every page, every heading silently rendering at the browser default
+> weight instead of the designed one.** This section and § Trade personality both describe heading
+> weight numerically ("weight >=800") because that's how typography specs work — but numeric weight
+> **in a Tailwind `className`** needs the NAMED utility, not the number as a class suffix:
+> `font-thin`(100) `font-extralight`(200) `font-light`(300) `font-normal`(400) `font-medium`(500)
+> `font-semibold`(600) `font-bold`(700) `font-extrabold`(800) `font-black`(900). So "weight >=800"
+> means `font-extrabold` or `font-black` in a className — never `font-800`/`font-900`. This is a
+> DIFFERENT axis from `next/font/google`'s own `weight: ["400","700","900"]` array (that one
+> correctly takes numeric strings — it's a font-loading argument, not a Tailwind class, and is not
+> what broke). Verify after any heading-weight change: `grep -c 'font-[0-9]00"' src/app -r` must be
+> `0`, and `grep -c '\.font-[0-9]00{' out/_next/static/chunks/*.css` (the compiled artefact) must
+> also be `0` — a source grep alone can look clean while the compiled CSS still has no rule for it.
 
 ### The font test: "Would a business owner think a human designer picked this?"
 Before committing to any pairing, ask: would anyone guess AI picked this? If maybe, pick again.
@@ -1661,6 +1676,16 @@ The scaffold provides these; you wire them up. They are three of the things the
 ${PRICING_MONTHLY} recurring fee is sold on, so a site missing them is a site that
 cannot be sold at the advertised price.
 
+> 🚨 **Scrolled-state nav background must be on the full-width `<header>`, never the inner
+> `max-w-7xl` content div — caught live 2026-08-16 ("navbar on scroll isnt edge to edge").** A
+> fixed nav is commonly built as `<header className="fixed inset-x-0 ..."><nav className="mx-auto
+> max-w-7xl ...">`, and it's tempting to put the scrolled `bg-surface-dark` conditional on the
+> INNER `<nav>` since that's where the visible content lives — but that div is width-constrained
+> and centred, so the solid background only fills the centre column, leaving visible gaps at both
+> edges on any viewport wider than the content max-width. Put the conditional background class on
+> the OUTER `<header>` (genuinely full-width, `left-0 right-0`); the inner `<nav>` stays a plain
+> layout container with no background of its own.
+
 ### 1. `<Motion />` — Lenis smooth scroll + GSAP ScrollTrigger
 
 Mount it once, first thing inside `<body>` in `layout.tsx`:
@@ -1885,8 +1910,8 @@ it, and doubling up turns the photography to mud.
 A bespoke site shouldn't wear a generic icon, and if the business has a real logo it should appear in the **nav/header, footer, favicon, and og:image** -- not just the browser tab. The scaffold's placeholder `favicon.ico` is identical on every build and is a visible "AI template" tell (it's the tab icon and the link-preview thumbnail in WhatsApp/iMessage/SMS).
 
 **If gathered-content.md has a `## Brand` block with a `Logo:` line** (captured + graded by the gather "Social harvest" step):
-- The build setup copies `data/images/logo.png` into `site/public/images/` like any photo. Use it in the **nav/header** and **footer** (`<img src="/images/logo.png" className="h-10 w-10 object-contain">`) and for **og:image**; use it as the **favicon** (`app/icon.png`) only when its `shape` is roundel/square (a horizontal-wordmark/stacked logo letterboxes into an unreadable square -- keep the monogram `app/icon.svg` favicon for those, while still using the logo in the nav).
-- **Size the container to the `shape` field**: roundel/square -> fixed square box (`h-10 w-10`); horizontal-wordmark/stacked -> `h-8 w-auto` with a sensible `max-w`. Always `object-contain`, never stretch.
+- The build setup copies `data/images/logo.png` into `site/public/images/` like any photo. Use it in the **nav/header** and **footer** (`<img src="/images/logo.png" className="h-11 w-auto max-w-[220px] object-contain">`) and for **og:image**; use it as the **favicon** (`app/icon.png`) only when its `shape` is roundel/square (a horizontal-wordmark/stacked logo letterboxes into an unreadable square -- keep the monogram `app/icon.svg` favicon for those, while still using the logo in the nav).
+- **Size the container to the `shape` field, nav height minimum `h-11` (44px)**: roundel/square -> fixed square box (`h-11 w-11`); horizontal-wordmark/stacked -> `h-11 w-auto` with a `max-w` sensible for the wordmark's aspect ratio (e.g. `max-w-[220px]`). Always `object-contain`, never stretch. **Caught live 2026-08-16**: an earlier default of `h-8` (32px) shipped and read as "tiny" against a full-height nav bar — `h-11` is the floor, go larger if the nav itself is taller.
 - **Respect the `background` field for contrast**: a transparent or light logo sits fine on a dark nav; a dark-on-transparent logo on a dark nav needs a small light chip behind it (and vice-versa). A text wordmark beside a roundel is fine but optional.
 
 **Otherwise (no `Logo:` line, or `grade: rejected`)**: make a simple **monogram** -- the business's initial on a colour from the design-system palette, as a static `app/icon.svg` that App Router wires up automatically. This is the guaranteed fallback; a clean monogram always beats a wonky real logo.
