@@ -255,6 +255,22 @@ A per-service page must carry: what the job actually involves, what the customer
 CTA. It must NOT invent prices, permit rules, timelines or regulated numbers — the same bar as the
 blog. If it needs invention to reach 120 words, it does not qualify.
 
+> 🚨 **A card grid quoting the gathered bullet verbatim is NOT a page — caught live 2026-08-16
+> ("on AC it just ends up with 4 blocks and no text").** The-woodlands-plumbing-and-air's four
+> dedicated service pages each shipped a hero + a 3-card grid where every card's body was the
+> ~20-word gathered-content.md line, restated, and nothing else — real routes, real cross-links,
+> but no actual page underneath the cards. **Apply § Blog's three-bucket truth rule here too, not
+> just to articles**: bucket 1 (facts about THIS business — years, licence numbers, named
+> equipment) stays gathered-only as above; bucket 3 (prices, permits, regulated numbers) stays
+> forbidden as above; but **bucket 2 — trade craft, general knowledge of how the work is actually
+> done, safe to state plainly — is not invention, and a light-content page needs it just as much
+> as an article does.** Every sub-service on the page gets 2-4 sentences of genuine trade-craft
+> prose under its heading (how the job is typically approached, what a homeowner should watch for,
+> why it matters, how it's different from a related job) — not a caption restating the gathered
+> line, an actual paragraph a reader learns something from. This is exactly the substance a blog
+> article on the same service already contains; a page this thin next to a 700-950 word article on
+> the identical topic is the tell that the card grid, not the content, was the shortcut.
+
 Cross-link both ways: `/services` section → the page, and the page → the related article. Two pages
 about the same job that ignore each other read as generated.
 
