@@ -427,6 +427,24 @@ function secondaryHueDeg(kind) {
   }
 }
 const secDeg = secondaryHueDeg(harmony);
+
+/*
+ * GROUND/SECONDARY HUE SEPARATION — added 2026-08-16, operator feedback on a live build:
+ * "color theory seems a bit off but it's not brown so that's good" (the-woodlands-plumbing-and-air:
+ * ground-hue 210 chosen by the fallback rule, split harmony put the secondary at ~166deg off a red
+ * accent — only ~44deg apart, both in the same desaturated blue-green family). The two are derived
+ * by completely independent logic (ground: fallback rule / sampled site / logo; secondary: harmony
+ * rotation off the ACCENT hue) that has never known about the other, so nothing stops them landing
+ * close enough to read as one muddy neutral-ish family instead of a deliberate ground + a distinct
+ * second brand colour. This does NOT auto-correct either hue — nudging one would need its own
+ * contrast/CVD re-verification, and the harmony-relative-to-accent contract is deliberate — it only
+ * makes the collision visible, the same way the semantic-collision check already does for
+ * accent/error, so a human (or the build skill) can pick a different --harmony or --ground-hue
+ * before shipping rather than discovering it by eye after deploy.
+ */
+const groundSecHueDist = secDeg == null ? null : circDist(rad2deg(groundHue), (((secDeg % 360) + 360) % 360));
+const groundSecTooClose = groundSecHueDist != null && groundSecHueDist < 60;
+
 let secondaryRoles = {};
 if (secDeg != null) {
   const hs = deg2rad(((secDeg % 360) + 360) % 360);
@@ -592,7 +610,12 @@ const report = pairs.map(([name, fg, vs, bg, need]) => {
 if (asJson) {
   console.log(JSON.stringify({
     input: { accent: rgbToHex(accent), oklch: { L: +lch.L.toFixed(4), C: +brandC.toFixed(4), h: +hDeg.toFixed(1) }, light: lightSurfaces, dark: darkSurfaces },
-    harmony: { type: harmony, secondaryHue: secDeg == null ? null : +((((secDeg % 360) + 360) % 360).toFixed(1)) },
+    harmony: {
+      type: harmony,
+      secondaryHue: secDeg == null ? null : +((((secDeg % 360) + 360) % 360).toFixed(1)),
+      groundSecondaryHueDistDeg: groundSecHueDist == null ? null : +groundSecHueDist.toFixed(1),
+      groundSecondaryTooClose: groundSecTooClose,
+    },
     ground: {
       family: groundFamilyArg,
       hueDeg: +rad2deg(groundHue).toFixed(1),
@@ -610,6 +633,13 @@ if (asJson) {
   console.log(`Harmony: ${harmony}${secDeg != null ? ` -> secondary hue ${(((secDeg % 360) + 360) % 360).toFixed(0)}deg` : ""}` +
     `${collisions.length ? `   SEMANTIC COLLISION: ${collisions.join(", ")} shares the brand hue — form rule applies (see skill)` : ""}`);
   console.log(`Neutrals: ${lightOverride || darkOverride ? "operator-overridden surfaces" : `ground=${groundFamilyArg}, tint hue ${rad2deg(groundHue).toFixed(1)}deg (${groundHueArg == null ? "= accent, default" : "explicit --ground-hue"})`}`);
+  if (groundSecTooClose) {
+    console.log(`⚠️  GROUND/SECONDARY TOO CLOSE: ground hue ${rad2deg(groundHue).toFixed(0)}deg and secondary hue ` +
+      `${(((secDeg % 360) + 360) % 360).toFixed(0)}deg are only ${groundSecHueDist.toFixed(0)}deg apart — the ` +
+      `neutral ladder and the second brand colour will read as one muddy family instead of two deliberate ` +
+      `colours. Consider a different --harmony (changes secondary hue) or --ground-hue (changes the ladder) ` +
+      `before shipping.`);
+  }
   console.log(`Accent/secondary hue is preserved exactly. Ground rungs move on their own hue + family; only lightness moves within a rung's role.\n`);
   console.log(":root {  /* paste into globals.css; mirror into tailwind.config.ts */");
   for (const [k, v] of Object.entries(roles)) {

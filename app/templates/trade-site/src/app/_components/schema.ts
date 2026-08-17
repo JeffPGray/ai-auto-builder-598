@@ -2,7 +2,7 @@
  * schema.ts — structured-data graph. SHIPS IN THE TEMPLATE. Do not author this per client.
  *
  * WHY THIS IS A TEMPLATE FILE (2026-08-16). Measured on a real build: the pipeline spent 47.8 of
- * 55.8 minutes generating tokens, and this file is 122 lines carrying ZERO design surface — no JSX,
+ * 55.8 minutes generating tokens, and this file carries ZERO design surface — no JSX,
  * no styling, no markup of any kind. It was being retyped from scratch on every build, at high
  * effort, plus the thinking to re-derive schema.org invariants the build skill already spells out.
  * Authoring it once means the AEO gates get one chance to be right instead of one fresh chance to
@@ -162,5 +162,52 @@ export function faqSchema() {
       name: item.q,
       acceptedAnswer: { "@type": "Answer", text: item.a },
     })),
+  };
+}
+
+/* ── Blog ── added 2026-08-16 alongside blog/page.tsx and blog/[slug]/page.tsx becoming template
+ * files (see those files' headers for why). Only the fields JSON-LD actually needs — the full
+ * article content type (Post/Block) stays in blog-data.ts, this file doesn't need to know its shape.
+ */
+export type BlogPostMeta = {
+  slug: string;
+  title: string;
+  description: string;
+  image: string; // site-root-relative, e.g. "/images/gmaps4.webp"
+  published: string; // ISO date, e.g. "2026-08-16"
+  wordCount: number; // computed from the article's blocks, never typed by hand — see blog-data.ts
+};
+
+export function blogPostingSchema(post: BlogPostMeta) {
+  const url = `${SITE_URL}/blog/${post.slug}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "@id": `${url}/#article`,
+    headline: post.title,
+    description: post.description,
+    url,
+    image: `${SITE_URL}${post.image}`,
+    datePublished: post.published,
+    dateModified: post.published,
+    mainEntityOfPage: { "@id": `${url}/#webpage` },
+    isPartOf: { "@id": `${SITE_URL}/blog/#blog` },
+    wordCount: post.wordCount,
+    // The business publishes it — never invent a human byline (build/SKILL.md § AEO wiring).
+    author: { "@id": BUSINESS_ID },
+    publisher: { "@id": BUSINESS_ID },
+  };
+}
+
+/** ONE call, on /blog only — passing every post's @id. Defining this per-article instead gives
+ * you N duplicate Blog nodes; see build/SKILL.md § AEO wiring. */
+export function blogIndexSchema(posts: { slug: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    "@id": `${SITE_URL}/blog/#blog`,
+    url: `${SITE_URL}/blog`,
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+    blogPost: posts.map((p) => ({ "@id": `${SITE_URL}/blog/${p.slug}/#article` })),
   };
 }

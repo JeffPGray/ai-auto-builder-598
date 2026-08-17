@@ -14,6 +14,18 @@ allowed-tools: Bash(npx *), Bash(npm *), Bash(node *), Bash(python3 *), Bash(cd 
 
 Create a bespoke Next.js site using ONLY the content in `clients/$ARGUMENTS/data/gathered-content.md`. Read `prompts/lessons/build.md` before starting.
 
+### After a compaction: re-read narrow, never re-read whole
+
+Measured 2026-08-16 (Fable token-cost review): a real build re-read `page.tsx` 5x and
+`site-data.ts` 7x across its own auto-compactions — tens of thousands of redundant characters,
+each one re-charged at fresh-read cost. **Never re-read a whole file you already authored this
+session.** If you need to check something after a compaction: (a) re-read only the specific
+section you're about to edit, with `offset`/`limit`, not the whole file; (b) never re-read a
+file immediately after `Write`ing or `Edit`ing it — the tool already told you it succeeded, and
+the content is what you just wrote; (c) if you genuinely lost track of overall state after a
+compaction, `status.md` and the file list (`find clients/$ARGUMENTS/site/src -type f`) are
+cheaper ways to reorient than re-reading generated code.
+
 ## Pre-build checks (MANDATORY - do these before writing any code)
 
 ### 0. Retrofit guard (CMS / booking system)
@@ -243,8 +255,35 @@ A per-service page must carry: what the job actually involves, what the customer
 CTA. It must NOT invent prices, permit rules, timelines or regulated numbers — the same bar as the
 blog. If it needs invention to reach 120 words, it does not qualify.
 
+> 🚨 **A card grid quoting the gathered bullet verbatim is NOT a page — caught live 2026-08-16
+> ("on AC it just ends up with 4 blocks and no text").** The-woodlands-plumbing-and-air's four
+> dedicated service pages each shipped a hero + a 3-card grid where every card's body was the
+> ~20-word gathered-content.md line, restated, and nothing else — real routes, real cross-links,
+> but no actual page underneath the cards. **Apply § Blog's three-bucket truth rule here too, not
+> just to articles**: bucket 1 (facts about THIS business — years, licence numbers, named
+> equipment) stays gathered-only as above; bucket 3 (prices, permits, regulated numbers) stays
+> forbidden as above; but **bucket 2 — trade craft, general knowledge of how the work is actually
+> done, safe to state plainly — is not invention, and a light-content page needs it just as much
+> as an article does.** Every sub-service on the page gets 2-4 sentences of genuine trade-craft
+> prose under its heading (how the job is typically approached, what a homeowner should watch for,
+> why it matters, how it's different from a related job) — not a caption restating the gathered
+> line, an actual paragraph a reader learns something from. This is exactly the substance a blog
+> article on the same service already contains; a page this thin next to a 700-950 word article on
+> the identical topic is the tell that the card grid, not the content, was the shortcut.
+
 Cross-link both ways: `/services` section → the page, and the page → the related article. Two pages
 about the same job that ignore each other read as generated.
+
+> 🚨 **This exact contradiction recurred the very next build after the paragraph above was
+> written (the-woodlands-plumbing-and-air, same night, 2026-08-16) — now caught mechanically by
+> `richness-check.mjs`, not just written down: a status.md with a real blog article and
+> `/services/slug: no` on the SAME service is an automatic FAIL.** Do not count words twice with
+> two different answers. If you are writing a genuine blog article for a service, that substance
+> making it into 500+ words of article prose IS proof it clears 120 words — go write the service
+> page from the same research, do not separately re-tally a shorter "combined" figure for the
+> `/services` section and let that smaller number decide the page question. The two decisions are
+> ONE decision, made once, from the deepest content you gathered for that service — never twice,
+> against two different word counts.
 
 **Record the per-service decision and counts in `status.md`** alongside the route decision, so QA
 can check the judgement rather than re-derive it.
@@ -287,6 +326,7 @@ The template also ships three components you do NOT write yourself — `Motion.t
 **Hard rules:**
 
 - **Nav links are real hrefs, not anchors.** `<Link href="/services">`, not `<a href="#services">`. In-page anchors are fine *within* a page (e.g. `/#contact` from the hero), but the primary nav must navigate. Use `next/link`, not bare `<a>`, for internal routes.
+- **When ≥3 dedicated `/services/<slug>` pages ship (previous section), the nav's Services entry becomes a dropdown, not a flat link.** Caught live 2026-08-16 (the-woodlands-plumbing-and-air, 4 dedicated pages): shipping the pages without exposing them in the nav makes the site feel like it "collapsed to one page" even though the routes are real — a visitor has no way to discover them except clicking through `/services` first. Desktop: the `Services` `<Link>` gets a chevron and an `onMouseEnter`/`onMouseLeave` (or `onFocus` for keyboard) panel listing each dedicated page by name + one-line description, plus a "View all services" link to `/services` itself. Mobile: an expandable inline group (button + chevron toggling `max-h-0`/`max-h-[Npx]`, not a second-level route) listing the same links. Keep the category list itself in `site-data.ts` (e.g. `SERVICE_CATEGORIES`) so `SiteNav`, the `/services` overview cross-links, and each dedicated page draw from one array rather than three hand-maintained lists. With 1-2 dedicated pages a flat `Services` link to the overview is still correct — the dropdown earns its complexity only once there's a real submenu's worth of destinations.
 - **Every page exports its own `metadata`** — a distinct `title` and `description` naming that page's subject plus the town. Four pages sharing one title is the same SEO failure as one page.
 - **Exactly one `<h1>` per page**, specific to that page ("Landscaping services in Frisco", not the business name repeated).
 - **Every page is a real page.** No route may be a thin stub or a redirect to a homepage anchor. A route that exists must clear its threshold above; if it cannot, fold the content into a sibling page and **do not create the route at all** — a 404 is more honest than a 60-word placeholder. Record the drop and the counts in `status.md`. **Working floor: any marketing page under ~120 rendered words is a stub** — QA hard-fails on that number, so treat it as the line, not a guideline.
@@ -296,92 +336,15 @@ The template also ships three components you do NOT write yourself — `Motion.t
 
 Route additions from other skills (`/book` from the booking facade, `/admin` from `/cms`) sit alongside the marketing routes and are never counted toward the threshold.
 
-## Legal pages (MANDATORY — `/privacy` and `/terms` on every build)
+## Legal pages (MANDATORY — `/privacy` and `/terms` on every build; full spec: `reference/legal-pages.md`)
 
-**Jeff, 2026-08-16: "on every single build we need to port over our terms and conditions and privacy policy to be in the footer or sub footer, built for each site."** Both routes ship every time. The old conditional ("only if the contact form collects data") is what produced inconsistent coverage — one site with a privacy page, one with neither, and no site with terms at all.
+**Jeff, 2026-08-16: "on every single build we need to port over our terms and conditions and privacy policy to be in the footer or sub footer, built for each site."** Both routes ship every time, no exceptions, no threshold.
 
-**Then read the constraint that governs every word on them.** These pages make legal representations on behalf of a business that has not hired us, has not read them, and does not know they exist. So there are two failure modes and the second is the dangerous one:
+**Read `reference/legal-pages.md` in full before writing either page** — it has the disclosure inventory (what to grep for and what each finding means for the copy), the chat-widget disclosure template, the per-page content spec, and the wiring checklist (canonical URLs, footer links, sitemap/llms.txt entries). This is not a section to skip or paraphrase from memory: these pages make legal representations on behalf of a business that never reviewed them, and a fabricated clause is a liability we manufactured for them.
 
-- **Absent** — a site with a contact form and a chat widget and no policy reads unfinished, and it is the page an owner checks when they are deciding whether we did real work.
-- **Boilerplate** — a generic policy reciting cookies, analytics, advertising partners, data retention periods and international transfers for a static site that does none of it. Every sentence of that is a false statement published under the business's name. It is worse than no page, because it is a liability we manufactured for them.
+**Kept here verbatim as a floor, never skip even under time pressure — the full never-write list, with reasoning, is in the reference file:** company registration number, VAT/EIN/tax number, a named data-protection officer, a statutory-rights recital (GDPR/CCPA), data retention periods, international transfer clauses, "we may share your data with trusted partners", a cookie table for cookies the site doesn't set, children's-privacy clauses, arbitration/venue/jurisdiction beyond the business's own state, indemnities, a money liability cap, prices/deposits/refund terms, guarantees or SLAs, licence/accreditation claims not in `gathered-content.md`, "your continued use constitutes acceptance", and any promise about what the business does with an enquiry after it reaches them. **The rule that covers the whole class: if you cannot point at the fact in `gathered-content.md`, `site-data.ts`, or code you just read, it does not go on the page.**
 
-The rule that resolves both: **describe only what this specific site actually does, and omit anything you cannot source.** An omission is a gap the owner fills at conversion. A fabricated clause is theirs to defend.
-
-### Step 1 — inventory what THIS build actually does (run the checks, don't recall them)
-
-Run these against `clients/$ARGUMENTS/site/src` before writing a line. The answers differ per build, which is the whole point.
-
-| Thing | Check | Disclose, if present | If absent |
-|---|---|---|---|
-| `mailto:` contact form | `grep -rn 'mailto:' src/app` | the form opens the visitor's own email program, and the message goes from there to the business's inbox — the website itself never receives or stores it | — |
-| No-email stub form | `grep -rn 'preventDefault' src/app --exclude=SiteChat.tsx` | the form shows a confirmation but does not transmit or store anything yet | — |
-| Chat assistant | `grep -n '<SiteChat' src/app/layout.tsx` | see § The chat widget below — it is the largest real disclosure on the site and the easiest to miss | say nothing about chat |
-| Google Maps embed | `grep -rn 'output=embed' src/app` | the map is loaded from Google, so opening that page tells Google someone viewed it | say nothing about maps |
-| Photos served by Google | `grep -rn 'lh3.googleusercontent' src/app` | fold into the same sentence as the map — some photos load from Google's servers | — |
-| Booking facade | `grep -rn 'data-booking\|/book' src/app` | the booking steps run entirely in the visitor's browser and nothing is sent anywhere (build § Booking facade: zero network requests) | — |
-| Analytics / pixels | `grep -rniE 'gtag\|googletagmanager\|fbq\|hotjar\|clarity\|plausible\|posthog' src/app` | **expect zero hits.** Zero means the honest line is that the site runs no analytics and no advertising trackers. A hit means your build added one — disclose it by name, or remove it | — |
-| Cookies / storage | `grep -rn 'document.cookie\|localStorage\|sessionStorage' src/app` | **expect zero hits.** Zero means the site sets no cookies of its own; only the Google map iframe, if present, sets any | — |
-
-**Fonts are not a third-party disclosure.** `next/font/google` self-hosts the woff2 into the build (§ Font), so no visitor request ever reaches Google Fonts. Writing that fonts are loaded from Google would be a false statement about this site.
-
-### The chat widget — the disclosure nobody writes and every build needs
-
-`SiteChat` ships on every site, and it is the only part of a static export that moves a visitor's words off the page. Verified 2026-08-16 by reading `services/site-chat/src` and `templates/trade-site/src/app/_components/SiteChat.tsx`:
-
-- What the visitor types is POSTed to the shared chat service (`klaudius-site-chat.vercel.app`), with the last 12 messages of the conversation.
-- The service writes the reply with a third-party AI model. **Name the provider only if you have confirmed it on this install** (`grep -n 'MODEL\|Anthropic' services/site-chat/src/app/api/chat/route.ts`); otherwise write "an AI service" and leave it there.
-- **If the visitor gives a name plus a phone number or email in the chat, the assistant captures it as an enquiry and passes it on so someone can get back to them** (`capture_lead` in the same file). This is the one a visitor would actually want to know, and no boilerplate policy contains it.
-- The visitor's IP address is used to rate-limit the endpoint. Conversations are not published, and there is no conversation database — but do not claim messages are "deleted immediately" either; you cannot source that.
-
-Write it in three or four plain sentences under a heading a person would recognise ("The chat on this site"). Do not turn it into a sub-processor table.
-
-### Step 2 — what goes on each page
-
-Both pages: the business named rather than "we", real facts from `gathered-content.md` and `site-data.ts` only, and a closing block with the business name, phone and email. **That closing block is functional, not decorative** — `scripts/aeo-check.mjs` fails the whole build if the business name or phone is missing from the rendered text of *any* route, and these two routes are no exception.
-
-Legal prose names the business far more often than marketing copy does, so **watch the sentence-final `{biz.name}.`** when the name itself ends in `Co.`, `Ltd.`, `Inc.` or `LLC.` — it renders "Marchetti & Sons Tile Co.." Caught on the scratch build in both a `<p>` and a `metadata.description`. End those sentences on another word.
-
-`/privacy` — what the site does with a visitor's information, drawn entirely from the Step 1 inventory. Nothing else. Typically 250–450 words.
-
-`/terms` — only what can be sourced:
-
-- who runs the site: the trading or legal name from `gathered-content.md`, their town, and how to reach them;
-- that the site is information about the business's services, and not a quote, a price or a contract;
-- that an enquiry, a call or a chat is a request to be contacted — nothing is booked or agreed until the business confirms it;
-- that hours, services and the area covered are as published at the time of writing and can change;
-- **whose words and pictures these are, accurately.** The reviews are quoted verbatim from the business's public listing and belong to the people who wrote them; some photos are served from the business's Google listing. A blanket "all content on this site is the property of X" is false on a site built this way — do not write it;
-  > **Each clause is conditional on what this build actually renders.** A site with no reviews section gets no reviews clause; a site whose photos are all hotlinked from Google does not claim the photographs. Caught on the 2026-08-16 scratch build: the first draft asserted "the reviews on this site are quoted word for word" on a page that displayed no reviews. That is the same manufactured-liability failure as a cookie clause on a cookieless site, just harder to spot — it reads correct because it is the sort of thing that is usually true.
-- links to other sites are outside the business's control;
-- a plain accuracy line: the business keeps the site accurate but does not promise it is free of errors;
-- governing law **from their own address** — the state or country in `site-data.ts`, nothing more. Not Texas, not England, not the operator's jurisdiction. Never name a court or a venue.
-
-Typically 300–500 words. `Last updated <build date>` on both.
-
-### Never write these (each one is a fabricated legal fact)
-
-Company registration number · VAT / EIN / tax number · a named data protection officer or privacy contact who is not the business's own published contact · a statutory rights recital (GDPR / UK-GDPR / CCPA article-by-article) · data retention periods · international transfer clauses · "we may share your data with trusted partners" · a cookie table or consent-banner language for cookies the site does not set · children's-privacy clauses · arbitration, class-action waiver, venue or jurisdiction beyond the business's own state · indemnities · a liability cap in money · prices, deposits, payment terms, refunds or cancellation windows · guarantees, warranties, response times or any service-level promise · insurance, licence or accreditation claims not in `gathered-content.md` · "your continued use constitutes acceptance".
-
-**And one that reads harmless and is not:** never make a promise about what the business does with an enquiry *after* it reaches them ("we never sell your details", "we delete enquiries after 12 months"). You can describe the website's behaviour because you built it. You know nothing about theirs.
-
-One line covers the whole class: **if you cannot point at the fact in `gathered-content.md`, in `site-data.ts`, or in code you have just read, it does not go on the page.**
-
-### The review line
-
-Both pages carry one plain sentence saying the page was written from the business's published details and inviting a correction. It reads as ordinary site copy, not an apology or a disclaimer box:
-
-> This page was written from the details PowerWash-ington publishes about itself. If anything here needs changing, email trevinopowered@gmail.com and it will be updated.
-
-Put it at the end, above the contact block. No "please note", no "we apologise", no italics-and-a-warning-triangle.
-
-### Wiring (same invariants as every other route)
-
-- `src/app/privacy/page.tsx` and `src/app/terms/page.tsx`, one `<h1>` each ("Privacy" / "Terms"), own `metadata` with a distinct `title` and `description`, and **`alternates: { canonical: "/privacy" }` / `"/terms"`** — their own path, never the root's.
-- Shared chrome: `<SiteNav />` and `<SiteFooter />`, exactly like every other page.
-- Per-page `WebPage` node with the route's own `@id`, plus `BreadcrumbList` (§ AEO baseline). `noindex` is inherited from `layout.tsx` on spec builds — do not add or remove it here.
-- **Footer links, both of them**, in the sub-footer row alongside the copyright. Never in `SiteNav`. The row already carries `data-chat-gutter`; keep it.
-- **Add both routes to `src/app/sitemap.ts` and to the key-pages list in `llms.txt`** — `aeo-check` fails on a built route missing from the sitemap and warns on one missing from `llms.txt`.
-- Register: `anti-ai-slop` applies to the human-readable prose. Legal text has its own register — plain, direct, short sentences — so do not make it chatty, and equally do not pad it. Every sentence says something the reader did not already know.
-
+---
 ## Blog (MANDATORY — `/blog` plus five articles, on every build)
 
 **Render article dates with a GUARDED anchor:**
@@ -475,16 +438,26 @@ here is the business's phone number and the free consultation.
 - A closing block that names the business, the licence or years if gathered, and the phone.
 - A "more articles" list at the foot linking two siblings, plus a link back to `/blog`.
 
-### Files
+### Files — the TYPES and PAGE TEMPLATES ship in the template (2026-08-16); you write `POSTS`
 
-| File | What it holds |
-|---|---|
-| `src/app/_components/blog-data.ts` | `POSTS: Post[]` — slug, title, description, dek, published, readMinutes, image, and `blocks` (`p` / `h2` / `list`). The single source of truth for article text, schema, sitemap and `llms.txt`. |
-| `src/app/blog/page.tsx` | The index. Cards from `POSTS`. |
-| `src/app/blog/[slug]/page.tsx` | The article. `generateStaticParams()` from `POSTS`, `generateMetadata()` per post. |
+**`blog-data.ts`'s `Post`/`Block` types, `blog/page.tsx`, and `blog/[slug]/page.tsx` are now
+template files — copy them from `templates/trade-site/src/app/blog/` and
+`templates/trade-site/src/app/_components/blog-data.ts` rather than authoring them fresh.** Added
+after a real build hand-authored the types, exported `Block` inconsistently between files, and
+shipped 5 articles with a broken build **and zero JSON-LD** — 26 AEO failures, caught by QA, that
+a template removes the possibility of. `schema.ts` (already a template file) gained two new
+exports for this: `blogPostingSchema()` and `blogIndexSchema()` — read them before touching the
+article schema block.
+
+| File | What it holds | Yours to write? |
+|---|---|---|
+| `src/app/_components/blog-data.ts` | `Post`/`Block` types + helpers ship in the template. **You fill in `export const POSTS: Post[] = [...]`** — slug, title, description, dek, published, image, `blocks` (`p` / `h2` / `list`). The single source of truth for article text; `wordCountOf()`/`readMinutesOf()` are computed, never typed by hand. | Content only |
+| `src/app/blog/page.tsx` | Ships in the template — the index, cards from `POSTS`, full JSON-LD wiring. Restyle to match this client's design system; do not touch the schema/metadata block. | Restyle only |
+| `src/app/blog/[slug]/page.tsx` | Ships in the template — the article, `generateStaticParams()`, `generateMetadata()`, full JSON-LD wiring. Restyle typography/spacing; do not touch `generateStaticParams`, `generateMetadata`, or the schema block. | Restyle only |
 
 `generateStaticParams()` is load-bearing: under `output: 'export'` a dynamic segment without it
-emits **no article HTML at all**, and `npx next build` still exits 0.
+emits **no article HTML at all**, and `npx next build` still exits 0. The template ships it
+correctly; do not remove it while restyling.
 
 **Blog goes in the main nav.** Add `{ href: "/blog", label: "Blog" }` to `NAV_LINKS` and a footer
 link. A blog nobody can reach from the nav is filler, and the breadcrumb `name` must match the
@@ -573,6 +546,20 @@ lost 5 minutes is not a reason to ship prose you have not vouched for.
 
 ## Font
 Do NOT use Inter, Geist, or system-ui (the Next.js defaults) - they scream "template". Remove any Inter/Geist imports from layout.tsx. **Read "How to LOAD the fonts" below before you write a single line of `globals.css`** — the loading mechanism is where this step silently fails. NEVER use `style={{ fontFamily: "system-ui, sans-serif" }}` or any inline fontFamily override - let globals.css cascade to all elements.
+
+> 🚨 **`font-800` / `font-900` / `font-700` are NOT real Tailwind v3 classes — caught live on a real
+> build, 52 occurrences across every page, every heading silently rendering at the browser default
+> weight instead of the designed one.** This section and § Trade personality both describe heading
+> weight numerically ("weight >=800") because that's how typography specs work — but numeric weight
+> **in a Tailwind `className`** needs the NAMED utility, not the number as a class suffix:
+> `font-thin`(100) `font-extralight`(200) `font-light`(300) `font-normal`(400) `font-medium`(500)
+> `font-semibold`(600) `font-bold`(700) `font-extrabold`(800) `font-black`(900). So "weight >=800"
+> means `font-extrabold` or `font-black` in a className — never `font-800`/`font-900`. This is a
+> DIFFERENT axis from `next/font/google`'s own `weight: ["400","700","900"]` array (that one
+> correctly takes numeric strings — it's a font-loading argument, not a Tailwind class, and is not
+> what broke). Verify after any heading-weight change: `grep -c 'font-[0-9]00"' src/app -r` must be
+> `0`, and `grep -c '\.font-[0-9]00{' out/_next/static/chunks/*.css` (the compiled artefact) must
+> also be `0` — a source grep alone can look clean while the compiled CSS still has no rule for it.
 
 ### The font test: "Would a business owner think a human designer picked this?"
 Before committing to any pairing, ask: would anyone guess AI picked this? If maybe, pick again.
@@ -716,102 +703,24 @@ Bitter, Fraunces, Literata, Bodoni Moda, Zilla Slab, Vollkorn, Crimson Pro, Corm
 - **Reviews displayed as social proof MUST carry a verified OVERALL star rating of 4 or 5 stars.** If a gathered review doesn't explicitly record the overall stars (e.g. it only shows a per-category sub-score from Restaurant Guru/TripAdvisor like "Food: 5/5", or the stars were never captured), do NOT include it. Mis-rating a 2-star review as 5-star social proof burns the lead the moment the owner sees it.
 - Only include social media links (Instagram, Facebook, TikTok) if the business ACTUALLY has that profile. Never show an icon linking to a platform they're not on.
 
-## ⚠️ `env(safe-area-inset-*)` IS ZERO IN PORTRAIT SAFARI — read this before using it
+## iOS safe-area, one-line requirements (full story: `reference/ios-safe-area.md`)
 
-This single fact caused three separate bugs on one build, and each one looked like something else:
+Three requirements, all mandatory, all independently required — missing any one reproduces a
+real shipped bug (a white/light strip above a dark fixed nav on a real iPhone, invisible in any
+desktop browser or 1440x900 screenshot). Read `reference/ios-safe-area.md` before touching any of
+this code; the condensed form below is not enough context to debug it if something looks wrong.
 
-1. **Navbar** — `padding-top: env(safe-area-inset-top)` on a fixed nav was a NO-OP, so the strip
-   above it showed page content. Two attempts were spent on `theme-color` instead.
-2. **Chat panel** — an `inset-0` full-screen mobile sheet padded with the same env() put its 66px
-   header BEHIND the status bar. On a real iPhone the panel opened to blank space with no header and
-   no greeting, while the identical markup rendered perfectly at 375x812 in a desktop browser.
-3. Any future full-bleed mobile overlay will do the same.
+1. **Never a bare `env()` for clearance — always floor it**: `padding-top: max(env(safe-area-inset-top, 0px), 48px);`
+2. **`html` background paints the strip, not `theme-color`**: `html { background-color: <the nav's surface colour>; }` in `globals.css`, PLUS the fixed nav needs a `before:` pseudo-element projecting its own fill upward (see reference file for the exact class string) so the strip revealed mid-scroll-collapse is nav colour, not page background.
+3. **`theme-color` still required in every `layout.tsx`, but it does NOT fix #2 alone**:
+   ```tsx
+   export const viewport = { viewportFit: "cover", themeColor: "#<nav's surface colour, LITERAL hex — a CSS var resolves to nothing here>" };
+   ```
+   and the fixed nav pads itself: `style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}`.
 
-The insets are only non-zero in **landscape, standalone/PWA, and fullscreen**. In normal portrait
-browsing Safari's chrome occupies that region and the layout viewport starts below it —
-`viewport-fit=cover` does not change this.
+Use the **NAV's** surface colour for both `html` background and `theme-color`, never the page's.
 
-**So never use a bare `env()` for clearance. Always floor it:**
-
-```css
-padding-top: max(env(safe-area-inset-top, 0px), 48px);
-```
-
-And remember a desktop browser at 375x812 **cannot reproduce any of this** — it has no browser
-chrome overlaying the viewport. These are device-only bugs; verify on a handset or not at all.
-
-## The iPhone "hollow notch" — `html` background, NOT theme-color (settled 2026-08-16)
-
-⚠️ **`env(safe-area-inset-top)` is ZERO in portrait Safari.** The safe-area insets are only non-zero
-in landscape, in standalone/PWA mode, and in fullscreen. In normal portrait browsing Safari's own
-chrome occupies that region and the layout viewport starts BELOW it — `viewport-fit=cover` does not
-change this. So padding a fixed nav with `env(safe-area-inset-top)` is a **no-op on the exact device
-showing the bug**, which is why two earlier attempts at this failed.
-
-**What actually paints that strip is the ROOT element's background.** With no `html` background it
-falls through to `body`, which on these sites is cream — hence a light band above a dark navbar, and
-page content visibly bleeding through during the URL-bar collapse animation.
-
-**Both parts are required:**
-
-```css
-/* globals.css — the load-bearing half */
-html { background-color: <the nav's surface colour>; }   /* body stays light */
-```
-
-```tsx
-/* the fixed nav projects upward, so the strip revealed mid-collapse is nav, not content */
-className="fixed top-0 left-0 right-0 z-50 bg-surface-dark
-           before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full
-           before:h-[100px] before:bg-surface-dark before:content-['']"
-```
-
-`body` keeps its light background — only the canvas outside the body box goes dark, which also makes
-both rubber-band overscroll zones match (top = nav, bottom = footer, since footers here are dark).
-
-**`theme-color` does NOT fix this and never did.** On iOS it tints Safari's own chrome surfaces in
-some states; the moment the user scrolls, that bar becomes a translucent blur over live page pixels
-and no meta tag reaches the strip. Keep it (it darkens the expanded chrome) but never treat it as
-the fix. Its real power is standalone PWA mode, which these sites are not.
-
-## `theme-color` in every `layout.tsx` (keep it, but see above)
-
-```tsx
-export const viewport = {
-  viewportFit: "cover",    // REQUIRED — see below
-  themeColor: "#261f1a",   // the NAV's surface colour, as a literal hex
-};
-```
-
-And the fixed nav must pad itself into the inset:
-
-```tsx
-<nav style={{ paddingTop: "env(safe-area-inset-top, 0px)" }} className="fixed top-0 ...">
-```
-
-⚠️ **`theme-color` ALONE DOES NOT FIX THE WHITE BAND, and this cost two attempts.** Without
-`viewport-fit=cover` the page never extends under the status bar, `env(safe-area-inset-top)` stays
-**0**, and a `fixed top-0` nav therefore starts BELOW the inset — iOS fills that strip itself. The
-meta can be present and correct (verified in the served HTML) while the handset still shows white.
-You need all three: `viewportFit: "cover"`, `themeColor`, and safe-area padding on the nav.
-
-iOS paints the area around its own browser chrome — the strip above a `fixed` navbar, plus the
-overscroll gutters — from `theme-color`, **not** from the page background. With no `theme-color`
-Safari uses a light default, so a site with a dark navbar shows a **white band above the nav on an
-iPhone** while looking perfect in every desktop browser and in every screenshot taken at 1440x900.
-
-Reported from a real handset 2026-08-16 ("above navbar isnt color still either, need to fix that
-window on iphones"), and the live page had **no theme-color meta at all** — nor did the skill, nor
-the template. It had never been set on any build.
-
-Two rules that matter:
-- Use the **NAV's** surface colour, not the page's. The nav is what abuts the chrome.
-- It must be a **literal hex**. This is emitted into `<head>` at build time, so `var(--surface-dark)`
-  resolves to nothing and silently does nothing.
-
-If the nav is transparent over the hero and only gains its fill on scroll, still use the scrolled
-fill — the chrome strip is opaque from the first pixel of scroll, which is when the mismatch shows.
-
+---
 ## Colour: choose CHARACTER first, harmony second
 
 ⚠️ **Corrected 2026-08-16 against the `color-expert` skill** (meodai's 171-file colour-science
@@ -1272,6 +1181,142 @@ still seeded per business, so fleet variety and reproducibility are preserved.
 5. **Stagger the grids.** `data-reveal-group` on every multi-item wrapper (service cards, photo
    grids, review cards, FAQ lists). Whole-section fades read as a slideshow; stagger reads as craft.
 
+## 🧪 EXPERIMENT BRANCH ONLY — HyperUI reference set (`experiment/hyperui-components`)
+
+**469 real HyperUI examples vendored 2026-08-16** at `.claude/skills/build/reference/hyperui/` —
+295 application-tier UI primitives (accordions, badges, breadcrumbs, dropdowns, modals, tables,
+tabs, toasts, and 26 more) plus 174 marketing-tier sections (heroes, CTAs, pricing, testimonials,
+footers, and 17 more). Both tiers are available on this branch — an earlier version of this section
+said marketing was excluded; it is not, per the operator's explicit override on 2026-08-16.
+
+### 🚨 MANDATORY, not optional: this branch exists to test HyperUI-as-reference, not to make it available
+
+**The first real test on this branch failed to test anything.** The reference set was vendored,
+indexed, and available — the build read `INDEX.md` once, never opened a single one of the 469
+actual files, and shipped entirely custom components. `status.md` said, truthfully: *"None
+directly copied... informed the FAQ section's approach, but no file was used as a structural
+template."* That is what "available but not required" produces: a build that behaves exactly like
+a non-experiment build, because nothing forced it to behave differently. **Do not repeat this.**
+
+The floor, enforced by `scripts/hyperui-usage-check.mjs` in QA and treated as a hard-FAIL line the
+same way `PHOTO_CHECK` is:
+
+- **At least 6 distinct application-tier components**, from **at least 4 distinct categories**,
+  each genuinely used as the structural starting point for a real element on the site — not
+  merely "referenced" or "informed by". Concretely, pick real candidates for this client's actual
+  needs from categories like: `accordions` (FAQ), `stats` (review/trust numbers), `badges`
+  (licences/certifications/guarantees), `tabs` (service categories), `timelines` (process steps),
+  `modals` (photo lightbox / contact), `dropdown` / `select` (any filter or menu), `tables` /
+  `details-list` (pricing-adjacent comparison content that stays off the SERVICES/PRICING
+  hard-blocker), `progress-bars`, `steps`, `toggles`, `checkboxes` (any interactive form element),
+  `empty-states`, `breadcrumbs`. 34 application categories exist — 6 is still a small fraction,
+  not exhaustive use. If the client genuinely has no plausible use for 4+ categories, that itself
+  is worth a line in `status.md` — but check the full list (`hyperui-lookup.mjs --list-categories
+  --tier application`) for a real fit before concluding that.
+- Marketing-tier citations count toward their OWN separate floor (below) — they never substitute
+  for application-tier citations, and vice versa. Hitting one floor does not excuse skipping the
+  other.
+
+**🚨 Default to a HyperUI structural starting point for every eligible section — added 2026-08-16,
+operator directive: "used... on every component possible", after floors this exact size were met
+by an earlier build that still "has the same feel."** The floors above and below are an AUDITED
+MINIMUM, not a target — they exist so a QA gate can catch a build that used nothing, not so a
+build can stop the moment it clears them. Before writing any section — hero excepted, and any
+section whose content genuinely has no structural analogue in the library — check whether a
+vendored file (either tier) fits the job first, and use it as the structural starting point unless
+there's a real reason not to (a genuinely bespoke layout the content specifically calls for is a
+real reason; "I already wrote something" is not). This is a discipline change, not a new floor
+number: the floors stay the enforced minimum because they're what a script can verify, but the
+target for actual usage is "most sections," not "the fewest that clear the gate."
+
+### Targeted lookup, not a blind full-index read (cache-locality — do this ONCE, early)
+
+**Do not re-read `INDEX.md` (591 lines, 469 files) to find what you need.** Before writing any
+`page.tsx` — right after the design-system and palette decisions are made, in the same pass —
+decide which categories this client's site plausibly needs (aim for the 4-6 that fit a trade
+site: accordions, stats, badges, tabs or timelines, maybe modals), then query exactly those:
+
+```bash
+node scripts/hyperui-lookup.mjs accordions --tier application
+node scripts/hyperui-lookup.mjs stats --tier application
+node scripts/hyperui-lookup.mjs badges --tier application
+```
+
+This returns only the matching category's entries (path, `[LOREM]` flag, word count, generic
+colour classes) — a deterministic $0 filter over `index.json`, not a model call and not a full-file
+read. **Read the specific candidate files you're going to use in this same early batch**, not
+scattered across the build as you happen to reach each section. Loading reference material once,
+early, in a stable position lets Claude's own prompt cache actually apply to it; reading it ad hoc
+throughout generation fights the cache instead of using it, and is a real, separate contributor to
+this branch's inflated token cost (see `HYPERUI-01` in the ledger for the measurement).
+
+**Every file you actually use, without exception:**
+1. **Replace every colour class with the derived palette token playing the same role**
+   (`gray-900`→`--ink`, `purple-100`→`--accent`/`--secondary`, `emerald-600`→`--accent-fill`,
+   etc.) — never ship a raw Tailwind colour name. `hyperui-usage-check.mjs` greps the shipped
+   source for a leaked literal class from a cited file and warns (not blocks) if it finds one —
+   treat that warning as a real defect to fix, not noise.
+2. **Replace every word flagged `[LOREM]`** with real content from `gathered-content.md`. A lorem
+   ipsum string reaching the shipped site is a `ship-scan.mjs` FAIL regardless of source, and the
+   hard-blocker contract's SERVICES/PRICING check fails on a stock price figure the same way.
+3. **The accordion pattern (native `<details>`/`<summary>` + `group-open:` variant) needs no new
+   dependency** — prefer it over inventing your own toggle state for FAQ-shaped content.
+
+**Marketing-tier files carry the higher risk and need the harder look.** This category was
+evaluated and INITIALLY rejected before this branch existed: the sibling `gr-no-website-builds`
+project's own 2,347-section library is 61% stock HyperUI/Flowbite marketing content and scored
+3-4/10 on the operator's own calibration — assembly of stock marketing copy is not design. It is
+vendored on this branch anyway, on the operator's explicit, informed override. That makes rules 1-2
+above load-bearing, not optional, for every marketing-tier file you touch — a marketing section
+with its lorem ipsum and stock colours intact is exactly the proven-negative outcome this whole
+experiment exists to test against.
+
+> 🚨 **MANDATORY, not just available — added 2026-08-16 after a real operator read of build 2:**
+> "it still doesn't feel like that hyper UI is completely embedded... I don't see a lot of that
+> sections library there." He was right, and the mechanism was exactly this: the 4-component floor
+> only counted APPLICATION-tier atomic widgets (accordions, badges, stats blocks, timelines) —
+> real, but grafted onto an otherwise 100%-custom page. The bones of the page — the hero layout,
+> the feature grid, the CTA band — never drew on the library at all, which is why 4 real components
+> still read as "the same feel". **At least 4 distinct marketing-tier SECTIONS, from at least 3
+> distinct categories** (raised again 2026-08-16, same operator directive as the application-tier
+> floor above — from `feature-grids`, `sections`, `stats`, `ctas`, `team-sections`, `logo-clouds`,
+> `announcements`, `faqs`, `pricing`, `newsletter-signup`, `polls`, `product-cards`,
+> `product-collections`, `blog-cards`, or similar page-composition categories — not
+> `footers`/`headers`, which the site already has a fixed pattern for) must inform the STRUCTURE of
+> a real page section: the grid/flex composition, the card arrangement, the spacing rhythm, the
+> visual hierarchy. Four citations from ONE repeated category (e.g. four stat bands) does not
+> satisfy this — `hyperui-usage-check.mjs` requires category spread, not just count, because one
+> idea reused four times is not broad structural reach. This is a structural transplant, not a
+> content one — rules 1-2 above are even MORE load-bearing here than on the application tier,
+> because marketing-tier files carry more prose per file to strip. Use `hyperui-lookup.mjs
+> <category> --tier marketing` to find candidates the same way as application-tier ones. Counted
+> toward its own floor in `hyperui-usage-check.mjs`, separate from the application-tier floor —
+> hitting one does not excuse skipping the other.
+
+### Record usage as a checkable claim, not prose
+
+Write a section in `status.md` titled **exactly** `## HyperUI components used` (not "references
+used" — that heading is what the failed first test used, and `hyperui-usage-check.mjs` treats it
+as absent). One line per component, citing the exact vendored path in backticks:
+
+```
+## HyperUI components used
+
+- `accordions/2.html` -> FAQ section (details/summary + group-open:, palette-mapped)
+- `stats/1-dark.html` -> reviews stat block (4.7 stars / 475 reviews)
+- `badges/3.html` -> TACLA/licence badges in trust strip
+- `tabs/1.html` -> services category switcher
+- `marketing-feature-grids/2.html` -> services overview section structure (card composition,
+  grid rhythm; every word and colour replaced with real content)
+- `marketing-stats/1-dark.html` -> home page trust-strip section layout (structure only)
+```
+
+This is what makes the eventual comparison against a non-HyperUI build honest — a specific,
+falsifiable claim instead of "informed by", which is exactly the sentence that let the first test
+ship with zero verifiable usage. `hyperui-usage-check.mjs` validates every cited path is real and
+enforces the floor above; QA reports `HYPERUI_USAGE_CHECK=PASS/FAIL` the same way it reports
+`PHOTO_CHECK`.
+
 ## Photo art direction (mandatory) — the real ceiling on "premium"
 
 **Scraped Google Maps/Facebook photos are inconsistent raw material — customer-uploaded, uneven
@@ -1489,6 +1534,17 @@ border — and that pattern is barred from any brand/marketing use, so the shape
 disambiguates. (Colour is never the only indicator anyway, WCAG 1.4.1; on a collision that
 rule is the answer, not belt-and-braces.)
 
+**Ground/secondary separation.** `derive-palette.mjs` also prints `⚠️ GROUND/SECONDARY TOO CLOSE`
+when the ground-hue (§ Ground above) and the harmony-derived secondary land within 60° of each
+other — added 2026-08-16 after a real build (ground-hue 210, split-harmony secondary at 178,
+only 32° apart) drew the operator verdict "color theory seems a bit off". Both are correct in
+isolation — the ground-hue fallback rule and the harmony rotation off the accent have never known
+about each other — but a ground and a secondary that close read as one muddy neutral family
+instead of a deliberate two-hue scheme, even though nothing is technically wrong. If you see this
+warning, change the harmony type (moves the secondary) or the `--ground-hue` (moves the ladder)
+and re-run before treating the palette as final; the script does not auto-correct this because
+either change needs its own contrast/CVD re-check.
+
 Pairs never mix: `--on-accent-bright` on `--accent-fill` is unchecked and not allowed (same for
 the secondary pair). Set
 `--chat-accent: var(--accent-fill); --chat-on-accent: var(--on-accent-fill);` so the chat widget
@@ -1636,6 +1692,16 @@ The scaffold provides these; you wire them up. They are three of the things the
 ${PRICING_MONTHLY} recurring fee is sold on, so a site missing them is a site that
 cannot be sold at the advertised price.
 
+> 🚨 **Scrolled-state nav background must be on the full-width `<header>`, never the inner
+> `max-w-7xl` content div — caught live 2026-08-16 ("navbar on scroll isnt edge to edge").** A
+> fixed nav is commonly built as `<header className="fixed inset-x-0 ..."><nav className="mx-auto
+> max-w-7xl ...">`, and it's tempting to put the scrolled `bg-surface-dark` conditional on the
+> INNER `<nav>` since that's where the visible content lives — but that div is width-constrained
+> and centred, so the solid background only fills the centre column, leaving visible gaps at both
+> edges on any viewport wider than the content max-width. Put the conditional background class on
+> the OUTER `<header>` (genuinely full-width, `left-0 right-0`); the inner `<nav>` stays a plain
+> layout container with no background of its own.
+
 ### 1. `<Motion />` — Lenis smooth scroll + GSAP ScrollTrigger
 
 Mount it once, first thing inside `<body>` in `layout.tsx`:
@@ -1710,12 +1776,25 @@ Then mark elements. These four attributes are the entire API:
 > add sections purely to have something to animate. Coverage is a floor on craft, not a target to
 > game.
 | `data-reveal-group` | a card/photo grid wrapper | staggers its direct children instead of itself |
+| `data-hero-reveal` | the hero's TEXT/CTA content wrapper | settles into place on load (transform/scale ONLY, never opacity) — the LCP-safe entrance the hero is otherwise excluded from |
 | `data-hero` | the hero `<section>` | the parallax measures against it |
 | `data-nav` | the fixed `<header>` | gains `data-scrolled="true"` past 80px, so you can style a solid state |
 
 **Never put `data-reveal` on the hero section.** An element at `opacity: 0` is
 excluded from being an LCP candidate, so revealing the hero silently pushes LCP to
 some much later text block. The hero is visible from the first paint, always.
+
+> 🚨 **That rule got over-applied into "the hero gets no motion at all," and a real operator
+> caught it (2026-08-16): "no hero motion" on an otherwise-improved build. The hero's own
+> background media already proves an LCP-safe pattern works — `data-hero-media`'s parallax
+> scales/translates without ever touching opacity — so the fix is `data-hero-reveal` on the
+> hero's text/CTA wrapper: same never-touch-opacity discipline, applied to the copy instead of
+> just the media. It fires on mount, not on scroll (the hero is already in view), tweening only
+> `y`/`scale`, so the element is `opacity: 1` from first paint through the whole animation and
+> never loses LCP eligibility. Put it on the wrapper div immediately inside the hero's content
+> column (the one holding the eyebrow, `<h1>`, dek and CTA row) — its direct children stagger the
+> same way `data-reveal-group`'s do. Confirmed present in `Motion.tsx`; every hero must use it —
+> a static hero next to a page that moves everywhere else reads as unfinished, not restrained.**
 
 `Motion.tsx` carries the failure handling and you should not weaken it: the hidden
 state is applied from JS only after the libraries load, the reveals are **rebuilt on
@@ -1847,8 +1926,8 @@ it, and doubling up turns the photography to mud.
 A bespoke site shouldn't wear a generic icon, and if the business has a real logo it should appear in the **nav/header, footer, favicon, and og:image** -- not just the browser tab. The scaffold's placeholder `favicon.ico` is identical on every build and is a visible "AI template" tell (it's the tab icon and the link-preview thumbnail in WhatsApp/iMessage/SMS).
 
 **If gathered-content.md has a `## Brand` block with a `Logo:` line** (captured + graded by the gather "Social harvest" step):
-- The build setup copies `data/images/logo.png` into `site/public/images/` like any photo. Use it in the **nav/header** and **footer** (`<img src="/images/logo.png" className="h-10 w-10 object-contain">`) and for **og:image**; use it as the **favicon** (`app/icon.png`) only when its `shape` is roundel/square (a horizontal-wordmark/stacked logo letterboxes into an unreadable square -- keep the monogram `app/icon.svg` favicon for those, while still using the logo in the nav).
-- **Size the container to the `shape` field**: roundel/square -> fixed square box (`h-10 w-10`); horizontal-wordmark/stacked -> `h-8 w-auto` with a sensible `max-w`. Always `object-contain`, never stretch.
+- The build setup copies `data/images/logo.png` into `site/public/images/` like any photo. Use it in the **nav/header** and **footer** (`<img src="/images/logo.png" className="h-11 w-auto max-w-[220px] object-contain">`) and for **og:image**; use it as the **favicon** (`app/icon.png`) only when its `shape` is roundel/square (a horizontal-wordmark/stacked logo letterboxes into an unreadable square -- keep the monogram `app/icon.svg` favicon for those, while still using the logo in the nav).
+- **Size the container to the `shape` field, nav height minimum `h-11` (44px)**: roundel/square -> fixed square box (`h-11 w-11`); horizontal-wordmark/stacked -> `h-11 w-auto` with a `max-w` sensible for the wordmark's aspect ratio (e.g. `max-w-[220px]`). Always `object-contain`, never stretch. **Caught live 2026-08-16**: an earlier default of `h-8` (32px) shipped and read as "tiny" against a full-height nav bar — `h-11` is the floor, go larger if the nav itself is taller.
 - **Respect the `background` field for contrast**: a transparent or light logo sits fine on a dark nav; a dark-on-transparent logo on a dark nav needs a small light chip behind it (and vice-versa). A text wordmark beside a roundel is fine but optional.
 
 **Otherwise (no `Logo:` line, or `grade: rejected`)**: make a simple **monogram** -- the business's initial on a colour from the design-system palette, as a static `app/icon.svg` that App Router wires up automatically. This is the guaranteed fallback; a clean monogram always beats a wonky real logo.
@@ -1858,27 +1937,9 @@ Either way, replace the scaffold's default `favicon.ico` (overwrite it, or add `
 ## Book Now button (if applicable)
 If the business is on a booking platform (Booksy, Fresha, Treatwell, Vagaro), add a prominent "Book Online" button linking to their booking page. Check gathered-content.md for booking URLs. **Exception:** booking-mode leads (`extra.mode` = `booking`) get the built-in booking facade below as the PRIMARY booking UI. `golden_check` leads ALSO get a visibly secondary "or book on {Platform}" link to their claimed platform page — it keeps real bookings working from the preview (the facade delivers none) and shows coexistence. The facade stays the hero; the platform link is never the CTA. `no_website` AND `dead_platform` leads get the facade only — never link a platform that doesn't exist or has shut down.
 
-## Booking facade (booking-mode leads only)
+## Booking facade (booking-mode leads only; full spec: `reference/booking-facade.md`)
 
-When this client's `extra.mode` is `booking` (status.md or Supabase), the site includes a **client-side booking facade** — a fully working booking flow with zero back-end. It demonstrates "your own booking system" on the preview; the real system arrives at conversion (see below). Five steps, one page or route (`/book` or a `#book` section, linked from nav + hero + sticky CTA):
-
-1. **Service** — the real captured menu from gathered-content.md, exact names/prices/durations, grouped by category if the platform grouped them. Never invent, merge, or reprice services. **Price-free menus are valid**: when the business doesn't publish prices (or durations), list services without them — an unpublished price is silence, never a number you make up.
-2. **Staff** (only if staff names were published) — otherwise skip this step entirely.
-3. **Date & time** — a slot picker honouring the REAL opening hours: closed days disabled, slots only within published hours, sensible slot length from the service's duration.
-4. **Details** — name / phone / email with validation.
-5. **Confirmation** — a booking reference like `{3-LETTER-PREFIX}-XXXX` (derived from the business name, random digits), a "we'll confirm by text/email" line, and the service/time summary.
-
-**Hard rules (each one is a QA fail):**
-- **Zero network requests** in the whole flow — state lives in React memory only. No fetch, no form POST, no third-party widgets.
-- **No "demo", "preview", "sample", or "not live" labels anywhere.** The site must read as the business's own finished site. The demo-mode conversation happens in outreach replies, never on the page.
-- **Facade builds ship `noindex`**: set `robots: { index: false, follow: false }` in the layout metadata. A fake booking flow must not get indexed. (`/seo`'s Step 0 refuses to run while the facade is live, and removes the noindex once the real system or platform links are in.)
-- **The facade never ships to a live client domain.** At conversion, BEFORE any custom domain is attached, either run `/booking {business-name}` (Vercel — replaces the facade with the real system: confirmations, dashboard, reminders) or, if the client prefers keeping their current platform, rewire every booking CTA to link out to it (their platform stays unless THEY choose otherwise) and write `clients/{business-name}/data/booking-rewired.md` (one line: date + CTA target) so `/seo`'s facade gate knows the demo is gone. **Non-Vercel installs** (`/booking` is Vercel-only): `golden_check` leads rewire to their platform; `no_website` leads convert the booking CTAs to the contact pattern from "Contact form" below — or move the site to Vercel first if the client wants real online booking.
-- **Credential ceiling by silence** (booking verticals are often regulated-adjacent — aesthetics, massage, lash/brow): publish ONLY credentials the business itself published, verbatim. And never write compliance meta-commentary on the page ("qualifications not listed", "details available on request") — if they didn't publish it, the site is simply silent.
-- **Home-based businesses get area-only treatment**: if gathered-content.md recorded area-only disclosure, the site shows town/area only — NO street address, NO postcode, NO map embed. The Google Maps CID rule elsewhere in this skill does not override this.
-- **Per-platform review counts stay separate** — "212 reviews on Fresha" and Google's count are different facts; never conflate, never sum. Menu copy may have typos tidied (note each fix in status.md); reviews stay verbatim to the character as everywhere else.
-
-**Fallback:** if gather couldn't capture a real service menu (rare — the platform page is public), do NOT fake one. Build the standard site with a "Book Online" button linking to their platform page instead, and note the downgrade in status.md — outreach must then drop the "its own booking page" line.
-
+**Only relevant when this client's `extra.mode` is `booking` (status.md or Supabase) — if it isn't, skip this entire section, do not read the reference file.** When it is: read `reference/booking-facade.md` in full before building the flow. It specifies the 5-step client-side facade (service/staff/date-time/details/confirmation), and the hard rules that are each their own QA fail: zero network requests, no "demo"/"preview" labels anywhere, `noindex` while the facade is live, never ships to a live client domain unmodified, credential ceiling by silence for regulated-adjacent verticals, home-based businesses get area-only treatment, and per-platform review counts never get conflated with Google's.
 ## Contact form (always include)
 Every site MUST have a contact section.
 - **If email is known (default)**: Wire the contact section as a `mailto:` — simplest reliable implementation, no third-party service, submissions land directly in the client's inbox. Either a clear "Email us" button (`<a href="mailto:EMAIL">`) alongside the email address, or a form whose submit handler constructs a `mailto:?subject=...&body=...` URL from the form fields and opens the visitor's mail client. Pick whichever fits the design language better — both are valid.

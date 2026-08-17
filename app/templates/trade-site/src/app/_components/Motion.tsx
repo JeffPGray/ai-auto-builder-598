@@ -9,8 +9,25 @@ import { usePathname } from "next/navigation";
  * Drop `<Motion />` once in the root layout. Then mark elements:
  *   data-reveal        section or block that fades and rises into place on scroll
  *   data-reveal-group  stagger the element's direct children instead of itself
+ *   data-hero-reveal   hero TEXT/CTA content wrapper — settles into place on load,
+ *                      transform/scale ONLY, opacity untouched (see note below)
  *   data-hero-media    hero image/video wrapper that parallaxes as the hero leaves
  *   data-nav           fixed nav that gains a solid background once scrolled
+ *
+ * ── WHY `data-hero-reveal` IS A SEPARATE HOOK FROM `data-reveal`, NOT A RELAXATION OF THE
+ * "never opacity:0 the hero" RULE ──
+ * An element at `opacity: 0` is excluded from LCP candidacy, so a hero H1 that starts hidden
+ * silently pushes LCP to some later element — that is why `data-reveal` (which tweens FROM
+ * `opacity: 0`) must never touch the hero, full stop. But "no opacity animation" got built as
+ * "no motion at all" instead, and a real operator looking at a finished build read that as a
+ * flat, static hero next to a page that moves everywhere else (2026-08-16). The hero's own
+ * background media already proves the LCP-safe pattern works: `data-hero-media`'s parallax
+ * scales and translates the video/image without ever setting opacity, and nobody has flagged an
+ * LCP regression from it. `data-hero-reveal` applies that exact same never-touch-opacity
+ * discipline to the hero's TEXT content: it tweens `y`/`scale` only, so the element is
+ * `opacity: 1` from first paint through the entire animation, and stays a valid LCP candidate
+ * throughout. It fires on mount (once GSAP is ready), not on scroll — the hero is already in
+ * view, so a scroll-triggered start would either fire instantly anyway or never fire at all.
  *
  * ── THE THREE THINGS THIS FILE IS BUILT AROUND ─────────────────────────────────
  *
@@ -126,7 +143,9 @@ export default function Motion({ seed = "site" }: MotionProps) {
   const revealAll = () => {
     document.documentElement.setAttribute(HIDE_ATTR, "off");
     document
-      .querySelectorAll<HTMLElement>("[data-reveal], [data-reveal-group] > *")
+      .querySelectorAll<HTMLElement>(
+        "[data-reveal], [data-reveal-group] > *, [data-hero-reveal]",
+      )
       .forEach((el) => {
         el.style.opacity = "";
         el.style.transform = "";
@@ -355,6 +374,25 @@ export default function Motion({ seed = "site" }: MotionProps) {
             duration: dur,
             ease: "power2.out",
             scrollTrigger: { trigger: el, start: "top 88%", once: true },
+          },
+        );
+      });
+
+      // Hero text/CTA entrance. Fires on mount, not on scroll (the hero is already in view),
+      // and NEVER touches opacity — see the file-header note on why that is load-bearing for LCP.
+      // Direct children stagger the same way data-reveal-group does; opacity is untouched here too.
+      gsap.utils.toArray<HTMLElement>("[data-hero-reveal]").forEach((el) => {
+        const kids = Array.from(el.children) as HTMLElement[];
+        const targets = kids.length ? kids : [el];
+        gsap.fromTo(
+          targets,
+          { y: Math.round(rise * 0.7), scale: scaleFrom },
+          {
+            y: 0,
+            scale: 1,
+            duration: dur,
+            ease: "power2.out",
+            stagger: kids.length ? stagger : 0,
           },
         );
       });
