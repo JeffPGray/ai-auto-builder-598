@@ -29,6 +29,7 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '.claude', 'skills', 'build', 'reference', 'hyperui');
 
@@ -73,11 +74,19 @@ try {
   descriptors = JSON.parse(readFileSync(join(ROOT, 'descriptors.json'), 'utf8'));
 } catch { /* sidecar absent — output stays mechanical-stats-only */ }
 
-matches.sort((a, b) => (a.variant === b.variant ? a.file.localeCompare(b.file) : a.variant.localeCompare(b.variant)));
+// 2026-08-18: appended hash is a proof-of-consultation token, not a content fingerprint for its
+// own sake. hyperui-transplant-check.mjs recomputes it from the vendored file's actual bytes and
+// hard-fails a status.md citation whose hash is missing or wrong. The only way to produce the
+// correct hash is to have this script (or the equivalent recompute) actually touch the real file
+// — a path copied from memory, from build/SKILL.md's own (now placeholder) example block, or
+// guessed from a plausible-sounding name cannot carry a correct hash. Root-caused a real defect:
+// a build (aot-mechanical) cited `badges/3.html` (a tiny removable filter-chip pattern) as the
+// source for a full heading+paragraph content card — the path was real, the file was never read.
 for (const e of matches) {
   const flags = e.hasLoremIpsum ? ' [LOREM]' : '';
   const colours = e.genericColorClasses.length ? ` colours=${e.genericColorClasses.slice(0, 4).join(',')}` : '';
-  console.log(`${e.path}${flags} words=${e.wordCount}${colours}`);
+  const hash = createHash('sha256').update(readFileSync(join(ROOT, e.path))).digest('hex').slice(0, 6);
+  console.log(`${e.path} [${hash}]${flags} words=${e.wordCount}${colours}`);
   const darkSibling = e.variant === 'dark' ? e.path.replace(/-dark\.html$/, '.html') : null;
   if (descriptors[e.path]) console.log(`  ↳ ${descriptors[e.path]}`);
   else if (darkSibling && descriptors[darkSibling]) console.log(`  ↳ dark-scheme variant of ${darkSibling} — same layout`);

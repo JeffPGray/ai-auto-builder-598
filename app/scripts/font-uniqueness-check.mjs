@@ -49,6 +49,7 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { withFileLock } from './lib/file-lock.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FINGERPRINT_LEDGER = join(REPO_ROOT, 'data', 'design-fingerprints.json');
@@ -237,10 +238,25 @@ console.log(
 );
 
 // ── Write the EXTRACTED (verified) values back onto this slug's own record, PASS only ──
+// 2026-08-18 (Fable): locked, and re-reads fresh inside the lock rather than trusting the
+// module-level `ledger`/`own` (loaded early, at line ~163) — a concurrent script could have
+// written in between. Same race class as design-ledger.mjs's record mode.
 if (own) {
-  own.headingFont = extractedHeading ?? own.headingFont;
-  own.bodyFont = extractedBody ?? own.bodyFont;
-  writeFileSync(FINGERPRINT_LEDGER, JSON.stringify(ledger, null, 2));
+  await withFileLock(FINGERPRINT_LEDGER, () => {
+    let fresh = [];
+    if (existsSync(FINGERPRINT_LEDGER)) {
+      try {
+        const parsed = JSON.parse(readFileSync(FINGERPRINT_LEDGER, 'utf8'));
+        if (Array.isArray(parsed)) fresh = parsed;
+      } catch { /* unreadable — fall through with fresh=[] , same fail-open posture as above */ }
+    }
+    const freshOwn = fresh.find((r) => r.slug === slug);
+    if (freshOwn) {
+      freshOwn.headingFont = extractedHeading ?? freshOwn.headingFont;
+      freshOwn.bodyFont = extractedBody ?? freshOwn.bodyFont;
+      writeFileSync(FINGERPRINT_LEDGER, JSON.stringify(fresh, null, 2));
+    }
+  });
   console.log(`FONT_UNIQUENESS_NOTE — verified font values written back onto ${slug}'s record in ${FINGERPRINT_LEDGER}`);
 } else {
   console.log(

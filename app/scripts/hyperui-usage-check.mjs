@@ -49,6 +49,7 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { withFileLock } from './lib/file-lock.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const REF_ROOT = join(REPO_ROOT, '.claude', 'skills', 'build', 'reference', 'hyperui');
@@ -259,10 +260,24 @@ if (ledger.length || existsSync(FINGERPRINT_LEDGER)) {
   // (at QA time) always lands after it and survives. If no record exists — design-ledger was
   // skipped — say so rather than fabricating a stub, because a stub with null palette axes
   // could false-match another stub in design-ledger's own twin scoring.
+  // 2026-08-18 (Fable): locked, and re-reads fresh inside the lock — same race class as the
+  // sibling scripts, see design-ledger.mjs's record mode for the full reasoning.
   const own = ledger.find((r) => r.slug === slug);
   if (own) {
-    own.hyperuiMarketingCitations = citationSet;
-    writeFileSync(FINGERPRINT_LEDGER, JSON.stringify(ledger, null, 2));
+    await withFileLock(FINGERPRINT_LEDGER, () => {
+      let fresh = [];
+      if (existsSync(FINGERPRINT_LEDGER)) {
+        try {
+          const parsed = JSON.parse(readFileSync(FINGERPRINT_LEDGER, 'utf8'));
+          if (Array.isArray(parsed)) fresh = parsed;
+        } catch { /* unreadable — fall through with fresh=[], same fail-open posture as above */ }
+      }
+      const freshOwn = fresh.find((r) => r.slug === slug);
+      if (freshOwn) {
+        freshOwn.hyperuiMarketingCitations = citationSet;
+        writeFileSync(FINGERPRINT_LEDGER, JSON.stringify(fresh, null, 2));
+      }
+    });
   } else {
     console.log(`HYPERUI_FINGERPRINT_NOTE — no design-fingerprints.json record for ${slug} (design-ledger.mjs record not run?); citations not persisted this run`);
   }
@@ -590,10 +605,24 @@ if (!existsSync(layoutOutDir)) {
     // Same persistence pattern as the citation fingerprint above: append onto the client's existing
     // record rather than invent a second ledger, and say so plainly rather than fabricate a stub if
     // design-ledger.mjs never ran for this client.
+    // 2026-08-18 (Fable): locked, and re-reads fresh inside the lock — same reasoning as the
+    // citation-fingerprint write above.
     const layoutOwn = ledger.find((r) => r.slug === slug);
     if (layoutOwn) {
-      layoutOwn.layoutSignatures = layoutSignatures;
-      writeFileSync(FINGERPRINT_LEDGER, JSON.stringify(ledger, null, 2));
+      await withFileLock(FINGERPRINT_LEDGER, () => {
+        let fresh = [];
+        if (existsSync(FINGERPRINT_LEDGER)) {
+          try {
+            const parsed = JSON.parse(readFileSync(FINGERPRINT_LEDGER, 'utf8'));
+            if (Array.isArray(parsed)) fresh = parsed;
+          } catch { /* unreadable — fall through with fresh=[], same fail-open posture as above */ }
+        }
+        const freshLayoutOwn = fresh.find((r) => r.slug === slug);
+        if (freshLayoutOwn) {
+          freshLayoutOwn.layoutSignatures = layoutSignatures;
+          writeFileSync(FINGERPRINT_LEDGER, JSON.stringify(fresh, null, 2));
+        }
+      });
     } else {
       console.log(`LAYOUT_FINGERPRINT_NOTE — no design-fingerprints.json record for ${slug} (design-ledger.mjs record not run?); layout signature not persisted this run`);
     }

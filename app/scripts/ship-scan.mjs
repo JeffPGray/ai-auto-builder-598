@@ -71,7 +71,9 @@ const INTERNAL = [
   [/\/home\/[a-z0-9._-]+\//gi, 'absolute operator filesystem path'],
   [/https?:\/\/localhost(:\d+)?/gi, 'localhost URL'],
   [/https?:\/\/127\.0\.0\.1(:\d+)?/g, 'loopback URL'],
-  [/\bklaudius\b/gi, 'vendor/tooling name "klaudius"'],
+  /* "klaudius" moved to a visible-text-only check in scanText — the assetPrefix
+   * /klaudius/<slug>/ is architecturally required for the shared previews lane and
+   * appears in every <link>/<script> tag, but is never visible to the visitor. */
   [/jeff\.slim\.gray@|jeffgray@|@grayreserve\.com/gi, 'operator email address'],
 ];
 
@@ -234,6 +236,12 @@ function scanText(label, text, { isHtml = false } = {}) {
   for (const [re, what] of INTERNAL) {
     const m = text.match(re);
     if (m) fail(`[internal] ${label}: ${what} — "${m[0].slice(0, 48)}"`);
+  }
+  /* "klaudius" in visible page copy is a vendor-name leak. In URL path attributes
+   * (/klaudius/<slug>/_next/...) it is the architecturally required assetPrefix for
+   * the shared previews lane — not a leak. Check visible text only for HTML. */
+  if (isHtml && /\bklaudius\b/i.test(visibleText(text))) {
+    fail(`[internal] ${label}: vendor/tooling name "klaudius" in visible copy`);
   }
   /* HTML ONLY, and only the VISIBLE text. `NaN` and `[object Object]` are ordinary strings inside
    * minified library code — scanning JS chunks for them fails every build on vendor bundles, which

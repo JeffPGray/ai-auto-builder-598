@@ -129,9 +129,14 @@ if (gradients === 0) {
     'stacked slabs. Add at least a hero scrim wash and one section-to-section transition, built ' +
     'from the derived tokens rather than hand-picked hexes.');
 } else if (gradients < 4) {
-  warnings.push(
+  // Promoted WARN -> FAIL 2026-08-18: Jeff hand-inspected a real, already-deployed build
+  // (aot-mechanical) that passed this WARN and found it genuinely flat live ("sections with
+  // backgrounds are also plain, no textures, gradients, photo overlays... something is off").
+  // A WARN a build can ship under is not a floor. See hyperui-transplant-check.mjs's header
+  // for the same promotion and the same reasoning.
+  failures.push(
     `[depth] only ${gradients} gradient DECLARATION(s) in CSS — and declarations overstate reality: ` +
-    'a build with 9 declared painted just 2. Aim for a hero scrim, a section transition, and at ' +
+    'a build with 9 declared painted just 2. Add a hero scrim, a section transition, and at ' +
     'least one card or panel wash, all `in oklch`. QA verifies the RENDERED count in a browser.');
 }
 
@@ -546,8 +551,10 @@ if (home) {
   const photoGrounds = (h.match(/<section[^>]*>[\s\S]{0,400}?<img[^>]*absolute[^>]*inset-0/g) || []).length;
   facts.photoGroundedSections = photoGrounds;
   if (photoGrounds < 2) {
-    warnings.push(
-      `[depth] ${photoGrounds} photo-grounded section(s) — aim for 2+. A gathered work photo behind ` +
+    // Promoted WARN -> FAIL 2026-08-18, same trigger and reasoning as the gradient-count
+    // promotion above: hand-validated against a real deployed build that shipped with 1.
+    failures.push(
+      `[depth] ${photoGrounds} photo-grounded section(s) — need 2+. A gathered work photo behind ` +
       'an 80-88% wash plus grain is what gives a page atmosphere; flat fills alone read flat.');
   }
 }

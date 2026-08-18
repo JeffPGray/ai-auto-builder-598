@@ -148,9 +148,32 @@ cp -r templates/trade-site clients/$ARGUMENTS/site
 mkdir -p clients/$ARGUMENTS/site/public/images
 cp clients/$ARGUMENTS/data/images/* clients/$ARGUMENTS/site/public/images/ 2>/dev/null || true
 cd clients/$ARGUMENTS/site
-rm -rf node_modules
-npm install
+# Cache, not fresh install (2026-08-18, Fable's caching review): every prior build ran
+# `rm -rf node_modules; npm install` from scratch — identical dependency set every time unless
+# the template's own package-lock.json changed, at ~463MB and real install wall-clock PER CLIENT.
+# node-modules-cache.sh builds the real node_modules ONCE per lockfile hash (via `npm ci`, which
+# refuses a drifted lockfile rather than silently resolving around it) into a shared cache, then
+# clones it via APFS copy-on-write — measured 2026-08-18: ~70s one-time build, ~5s per client
+# after that (vs. a full fresh install every time). Falls back to a plain copy on a non-APFS
+# filesystem — slower, but still skips re-running npm install.
+../../../scripts/node-modules-cache.sh .
+
+# Hero video render moved HERE 2026-08-18 (Fable, after a real build shipped with a static hero
+# despite having 4 usable photos on disk). Depends only on the copied photos, nothing on TSX — so
+# running it now, before a single page is written, means the render (and its OK/FAIL record) is
+# LOCKED IN before any watchdog kill, compaction, or time pressure could cause it to be skipped.
+# The old placement (as a discrete step deep in § Motion, chat and hero video) put it AFTER the
+# work most likely to survive a truncated run and made it the easiest thing to silently drop.
+cd ../../..
+node services/hero-video/render.mjs --slug $ARGUMENTS
+cd clients/$ARGUMENTS/site
 ```
+Record the exact `HERO_VIDEO=OK …` or `HERO_VIDEO=FAIL …` line the render script prints into
+`status.md` NOW, before writing any TSX — this is what `verify-hero-video.mjs` and the build
+Verify gate check for, and doing it here means a kill at any later point cannot erase the fact that
+the attempt happened. A `FAIL` (fewer than three usable photos) is a legitimate, recorded
+degradation — carry on with the poster-only `<HeroVideo>` form, § Motion, chat and hero video below.
+
 This removes any stale site directory, copies the template fresh, then copies gathered photos from `data/images/` into the site. The `data/images/` directory is the source of truth for photos — never download directly to `site/public/images/` as the template copy would overwrite them. You then write `globals.css`, `layout.tsx`, the shared chrome, and one `page.tsx` per route in § Site structure below.
 
 ### 🚫 Four files SHIP IN THE TEMPLATE — do not author them (added 2026-08-16)
@@ -326,7 +349,12 @@ The template also ships three components you do NOT write yourself — `Motion.t
 **Hard rules:**
 
 - **Nav links are real hrefs, not anchors.** `<Link href="/services">`, not `<a href="#services">`. In-page anchors are fine *within* a page (e.g. `/#contact` from the hero), but the primary nav must navigate. Use `next/link`, not bare `<a>`, for internal routes.
-- **When ≥3 dedicated `/services/<slug>` pages ship (previous section), the nav's Services entry becomes a dropdown, not a flat link.** Caught live 2026-08-16 (the-woodlands-plumbing-and-air, 4 dedicated pages): shipping the pages without exposing them in the nav makes the site feel like it "collapsed to one page" even though the routes are real — a visitor has no way to discover them except clicking through `/services` first. Desktop: the `Services` `<Link>` gets a chevron and an `onMouseEnter`/`onMouseLeave` (or `onFocus` for keyboard) panel listing each dedicated page by name + one-line description, plus a "View all services" link to `/services` itself. Mobile: an expandable inline group (button + chevron toggling `max-h-0`/`max-h-[Npx]`, not a second-level route) listing the same links. Keep the category list itself in `site-data.ts` (e.g. `SERVICE_CATEGORIES`) so `SiteNav`, the `/services` overview cross-links, and each dedicated page draw from one array rather than three hand-maintained lists. With 1-2 dedicated pages a flat `Services` link to the overview is still correct — the dropdown earns its complexity only once there's a real submenu's worth of destinations.
+- **When ≥3 dedicated `/services/<slug>` pages ship (previous section), the nav's Services entry becomes a dropdown, not a flat link.** Caught live 2026-08-16 (the-woodlands-plumbing-and-air, 4 dedicated pages): shipping the pages without exposing them in the nav makes the site feel like it "collapsed to one page" even though the routes are real — a visitor has no way to discover them except clicking through `/services` first. With 1-2 dedicated pages a flat `Services` link to the overview is still correct — the dropdown earns its complexity only once there's a real submenu's worth of destinations.
+  - **Never build the dropdown as a same-sized icon-card grid.** Four independent design-review passes (2026-08-18: ui-ux-pro-max, frontend-design, impeccable, taste-skill) converged on banning exactly that pattern — `impeccable`'s absolute-bans list names "identical card grids — same-sized cards with icon + heading + text, repeated endlessly" and `taste-skill` separately bans "3-column card layouts... the generic 3-equal-cards-horizontally feature row." It is the single most obvious AI-generated-dropdown tell, and it is also the first thing most people build.
+  - **Branch on whether the services have distinct, real per-service photography** (check `SERVICE_CATEGORIES`/`services` entries in `site-data.ts` for an `image` field pointing at genuinely different files — not the same photo reused across every entry).
+    - **Distinct imagery exists**: asymmetric two-panel split. Left: services as a plain vertical text list (name + one-line description, no icon-in-a-box). Right: a single image area that cross-fades to the hovered service's real photo (150-300ms, transform/opacity only). Directional hover feedback (thin underline sliding in from the side the cursor entered) instead of any per-item icon.
+    - **No distinct imagery** (the common case — most clients reuse one hero photo across every service page): typographic list, numbered (`01`/`02`/`03`…) in a muted accent tint, generous row padding, no card/box background, a thin accent-colored underline that scales in on hover (`scale-x-0` → `scale-x-100`, `origin-left`), and a staggered fade-in on open (`transitionDelay: i * 30-40ms`).
+  - Either way: desktop gets a chevron and `onMouseEnter`/`onMouseLeave` (or `onFocus` for keyboard) panel; mobile gets an expandable inline group (button + chevron toggling `max-h-0`/`max-h-[Npx]`, not a second-level route) listing the same links, no photo panel on mobile (screen too narrow for the split). Keep the category list itself in `site-data.ts` (e.g. `SERVICE_CATEGORIES`) so `SiteNav`, the `/services` overview cross-links, and each dedicated page draw from one array rather than three hand-maintained lists. Never gradient text on the service name, never a side-stripe accent border on the active row, never glassmorphism on the panel — all separately banned by `impeccable`.
 - **Every page exports its own `metadata`** — a distinct `title` and `description` naming that page's subject plus the town. Four pages sharing one title is the same SEO failure as one page.
 - **Exactly one `<h1>` per page**, specific to that page ("Landscaping services in Frisco", not the business name repeated).
 - **Every page is a real page.** No route may be a thin stub or a redirect to a homepage anchor. A route that exists must clear its threshold above; if it cannot, fold the content into a sibling page and **do not create the route at all** — a 404 is more honest than a 60-word placeholder. Record the drop and the counts in `status.md`. **Working floor: any marketing page under ~120 rendered words is a stub** — QA hard-fails on that number, so treat it as the line, not a guideline.
@@ -917,6 +945,48 @@ node scripts/design-ledger.mjs record $ARGUMENTS \
   --heading-font "<Family Name>" --body-font "<Family Name>" --town "<city>"
 ```
 
+### 🚨 Design manifest (mandatory, immediately after convergence, still before ANY TSX)
+
+Added 2026-08-18 after a real build (aot-mechanical) shipped flat and generic despite the ground/
+typography/harmony/character decisions above all being made correctly — the failure wasn't a bad
+decision, it was that richness, motion and real HyperUI usage were never planned as concrete
+commitments before writing started, so under any time pressure (a watchdog kill, a long session)
+they were the first things silently dropped. A decision that exists only as intent in a long
+session's context is exactly what compaction (§ top of this file) discards first; a decision
+written to `status.md` survives a kill, a resume, or a compacted re-read.
+
+Before writing `globals.css` or any `page.tsx`, write a `## Design manifest` section to `status.md`
+answering these five questions concretely — this costs a few hundred output tokens, not a
+meaningful fraction of the build:
+
+```
+## Design manifest
+
+- Photo-grounded sections (need 2+, richness-check hard-fails under 2): which TWO+ sections,
+  using which specific photo from data/images/, at what wash opacity.
+- Gradient plan (need 4+ declarations, richness-check hard-fails under 4): hero scrim + which
+  section transition(s) + which card/panel wash(es), all `in oklch`.
+- Section treatments (need 4 distinct — light, alt-light, dark, image/gradient-backed): which
+  section gets which.
+- HyperUI citations planned: which real components for which sections (hero stats, FAQ, CTA
+  bands, service cards, etc). Run `node scripts/hyperui-lookup.mjs <category>` for each and note
+  the exact path + its printed `[hex6]` hash HERE, now — this is the citation you'll paste into
+  "## HyperUI components used" later, already proven you looked at the real file instead of a
+  plausible-sounding name (hyperui-transplant-check.mjs hard-fails a missing/wrong hash).
+- Hero video: read back the `HERO_VIDEO=` line § Setup already wrote — confirm here which
+  `<HeroVideo>` form this build uses.
+
+Grain target: <opacity, per § Visual richness's ladder>.
+```
+
+This is a plan, not a promise — if a section's real content genuinely can't support a photo ground
+or a planned citation turns out wrong once you're looking at the actual page, deviate and say so in
+the same status.md section (deviation is allowed, silence is not, same rule as everywhere else in
+this file). The point is that richness and real HyperUI usage are DECIDED before the first
+`<section>` is typed, not discovered as a gap by QA forty minutes later — the HARD-BLOCKER CONTRACT
+below is what QA grades the finished site against; this manifest is what makes clearing it the
+default outcome of writing the site once, not a second pass.
+
 ## Trade personality — the design must LOOK like the trade
 
 An independent design audit of a live build, 2026-08-16, returned this verdict and it is the most
@@ -962,10 +1032,57 @@ change the column count or crop the set. More than one empty cell reads as a bug
 found exactly that: a 4-column grid with 6 items leaving a dead field.
 
 **RULE — call-first businesses show the phone at display scale** (>= H2) at least once per page. The
-number IS the CTA for a trade audience.
+number IS the CTA for a trade audience. **This means ONE CTA object, not a pair** — a display-scale
+phone link plus a plain text secondary link (e.g. "or send a message ↓"). A solid accent button next
+to a `border-2` ghost-outline button is the single most common AI-landing-page tell there is; if the
+phone is the CTA, nothing should be visually competing with it for primacy. Caught live 2026-08-18
+(Fable design-lift sweep): the identical solid-pill + ghost-outline two-button pair appeared in
+every hero and every closing band across every shipped client, silently contradicting this rule the
+whole time it existed — a rule with no gate checking for the pattern it forbids doesn't stop it.
 
 **RULE — banned CTA headlines**: "Ready to get started?", "Get in touch today", "Let's work
 together". Reference the trade or the owner instead — "Got something that needs to come down?"
+
+**RULE — no single section-opener formula repeated across the page.** Caught live 2026-08-18
+(Fable design-lift sweep): every section on every shipped client opened with the identical anatomy
+— uppercase `text-sm font-semibold tracking-widest` eyebrow, then `<h2>`, then a muted paragraph —
+18 instances on one build, 11 on another. Two prospects comparing sites see identical section
+skeletons wearing different words; it is as fleet-wide a tell as the CTA-pair one above. Rotate
+across at least 3 of these per page, chosen by section content rather than applied in fixed order:
+(a) the eyebrow+h2+paragraph formula, used sparingly, not as the default; (b) an oversized section
+numeral (`01`, `02`…) beside the heading instead of an eyebrow; (c) a side-rail label — a short
+vertical or inline tag running along the section's edge rather than centered above the heading; (d)
+an inline-accent headline where the emphasized word carries the accent color directly, no separate
+eyebrow line; (e) for a photo-grounded section, a caption-style opener sitting over or beside the
+image rather than a stacked eyebrow/heading block. Record which openers were used per section in
+`status.md` so a future build can check against it, the same way font/palette uniqueness is tracked.
+
+**RULE — services are not a uniform icon-chip grid; ground them in real photography when it
+exists.** Caught live 2026-08-18 (Fable design-lift sweep): both shipped clients rendered every
+service as an identically-sized card — small generic SVG icon, name, one-to-two sentence blurb —
+while real gathered photos for those same services never reached the section. Uniform icon cards
+with no imagery is as recognizable an AI-landing-page tell as the icon-grid nav dropdown banned
+above, and for the same reason: it is the first thing anyone builds without thinking about it.
+Check each service entry in `site-data.ts` for a distinct `image` field (not the hero photo or
+another service's photo reused). If distinct photos exist for at least half the services: build
+photo-grounded tiles (gathered image + the heavy colour-wash treatment from § Section treatments
+below) sized so at least one tile visibly breaks the grid (spans two columns, or sits taller) rather
+than every tile matching. If no distinct photography exists: do not fall back to icon chips either —
+use the typographic numbered-list treatment (see the nav-dropdown "no distinct imagery" case above)
+adapted to full-width rows instead of a dropdown panel, one row per service, no icon, no card
+background.
+
+**RULE — the footer is not the generic three-column template.** Caught live 2026-08-18 (Fable
+design-lift sweep): despite `SiteFooter` being marked "deliberately NOT templated" (§ above), both
+shipped clients independently converged on the same default anyway — logo+blurb column, a "Quick
+Links"/"Pages" link column, a contact/hours column, plus a © + Privacy/Terms sub-bar. That
+convergence without a template means the model's own unprompted default IS this pattern, so it has
+to be named and forbidden explicitly, not left to "don't templatize it" alone. Build a
+contact-dominant footer instead: the phone number at display scale (matching § call-first businesses
+above), the service area written as a short prose line rather than a bulleted list, and a single
+link row (not a labeled column) for the handful of real nav destinations. Generic column headers
+("Quick Links", "Pages", "Resources") are themselves a tell — if a link row is needed, it needs no
+header at all.
 
 **RULE — link labels are verbs + object, <=3 words.** Not "View selective interior demolition
 details". And icons must be literal for the trade: a pool outline for pool removal, not a generic
@@ -1048,6 +1165,16 @@ FALSE, not merely to look good to yourself.
 5. **COLOR** — TRUE if the most-saturated accent hue does more than 3 distinct jobs (functionally
    monochrome), OR if there is no genuine second tone doing real structural work and the page never
    shifts temperature while scrolling.
+6. **RICHNESS/HYPERUI** (added 2026-08-18, verbatim-shared with `richness-check.mjs` and
+   `hyperui-transplant-check.mjs`'s own hard-FAIL thresholds — the promotion those two gates
+   underwent the same day this line was added) — TRUE if any of: fewer than 4 gradient
+   declarations shipped; fewer than 2 photo-grounded sections (a gathered photo behind an 80-88%
+   wash); any `data-hyperui` citation is a path you did not actually Read this session (no
+   `[hex6]` proof-of-read hash, or a hash that doesn't match the real vendored file); grain
+   opacity below the visible threshold (~0.10 light / ~0.14 dark). This is the item a build clears
+   by following the § Design manifest checkpoint BEFORE writing TSX, not by patching it in after —
+   catching it here costs nothing, catching it in QA costs a full re-review because a richness fix
+   touches `globals.css`/`_components/`, which are escalation triggers.
 
 **Why prose rules alone don't work here, and why this is a contract rather than more guidance:**
 measured directly tonight — the design-consult tool (`ui-ux-pro-max`) recommended Playfair Display +
@@ -1211,8 +1338,10 @@ still seeded per business, so fleet variety and reproducibility are preserved.
    second hue. Deploy it on eyebrows, stat figures, icon strokes, dividers, link hovers, or one
    section wash. Never on body text — it is derived for contrast in *accent* roles, and
    `contrast-check.mjs` still governs anything textual.
-2. **Two gradients minimum**, built from tokens rather than hand-picked hex: a hero scrim, and at
-   least one section transition or card wash. A page of flat fills reads as stacked slabs.
+2. **Four gradient declarations minimum** (promoted 2026-08-18 to match `richness-check.mjs`'s hard
+   FAIL threshold — a build that follows a "two" floor now fails QA on instructions it obeyed),
+   built from tokens rather than hand-picked hex: a hero scrim, at least one section transition,
+   and at least one card or panel wash. A page of flat fills reads as stacked slabs.
 3. **Grain must be visible**: ~0.10-0.14 on light surfaces, ~0.14-0.20 on dark. Shipping an
    invisible texture costs the same to render and buys nothing, while *looking* finished.
 4. **Four distinct section treatments** across a long page — light, alt-light, dark, and one
@@ -1339,19 +1468,34 @@ experiment exists to test against.
 
 Write a section in `status.md` titled **exactly** `## HyperUI components used` (not "references
 used" — that heading is what the failed first test used, and `hyperui-usage-check.mjs` treats it
-as absent). One line per component, citing the exact vendored path in backticks:
+as absent). One line per component, citing the exact vendored path in backticks, **immediately
+followed by the `[hex6]` hash `hyperui-lookup.mjs` printed next to that path** — copy it verbatim
+from the lookup output, never invent or reuse one from a different citation.
+`hyperui-transplant-check.mjs` recomputes the hash from the real vendored file and hard-fails a
+missing or mismatched one — the only way to produce the correct hash is to have actually run the
+lookup (or an equivalent recompute) against the real file, which is the whole point: a path
+invented from memory or copied from an example cannot carry a correct hash.
 
 ```
 ## HyperUI components used
 
-- `accordions/2.html` -> FAQ section (details/summary + group-open:, palette-mapped)
-- `stats/1-dark.html` -> reviews stat block (4.7 stars / 475 reviews)
-- `badges/3.html` -> TACLA/licence badges in trust strip
-- `tabs/1.html` -> services category switcher
-- `marketing-feature-grids/2.html` -> services overview section structure (card composition,
-  grid rhythm; every word and colour replaced with real content)
-- `marketing-stats/1-dark.html` -> home page trust-strip section layout (structure only)
+- `<category>/<n>.html` [hex6] -> what it became on this build (be specific: which section, what changed)
+- `<category>/<n>-dark.html` [hex6] -> what it became on this build
 ```
+
+⚠️ **These two lines are deliberately placeholders, not real vendored paths — copying them
+verbatim trips `hyperui-transplant-check.mjs`'s invalid-path hard FAIL immediately.** That is on
+purpose. A real, working example block sat here until 2026-08-18: it listed genuine paths
+(`accordions/2.html`, `stats/1-dark.html`, `badges/3.html`, `marketing-feature-grids/2.html`,
+`marketing-stats/1-dark.html`...), and a real build (aot-mechanical) was later found citing four
+of those SIX EXACT paths — including two, `badges/3.html` and `stats/1-dark.html`, that shared
+almost nothing structurally with what actually shipped (a tiny removable filter-chip pattern cited
+on a full heading+paragraph content card; a bordered-stat-card pattern cited on plain
+`<div className="text-center">`). The example was being read as a menu to pick from, not an
+illustration of the *shape* of a citation line — this codebase's own standing lesson, "rules lose
+to examples," playing out exactly as documented. Never cite a path you have not personally Read
+this session at `.claude/skills/build/reference/hyperui/<path>` — a plausible-sounding name is not
+evidence you looked at it, and the gate now hard-fails builds that didn't.
 
 This is what makes the eventual comparison against a non-HyperUI build honest — a specific,
 falsifiable claim instead of "informed by", which is exactly the sentence that let the first test
@@ -1976,22 +2120,16 @@ Rules for the KB, and they are the same rules as the rest of the site:
 
 ### 3. `<HeroVideo />` — motion in the hero, from the photos already gathered
 
-Render the clip after the photos are in place, from the repo root:
-
-```bash
-node services/hero-video/render.mjs --slug $ARGUMENTS
-```
-
-It prints `HERO_VIDEO=OK …` and writes `public/hero.mp4` (~942 KB) plus
-`public/hero-poster.jpg`. It prints `HERO_VIDEO=FAIL …` and exits 2 when the client
-has fewer than three usable photos.
-
-**A failure here is not a build failure.** Use the poster-only form and carry on:
+**MANDATORY ATTEMPT — already done, in § Setup, before you reach this point.** Moved there
+2026-08-18 so the render (and its recorded OK/FAIL result) is locked in before any TSX exists,
+rather than being a late, easy-to-drop step. Do NOT run `node services/hero-video/render.mjs`
+again here — check `status.md` for the `HERO_VIDEO=` line Setup already wrote and use its result:
 
 ```tsx
-// with a clip
+// HERO_VIDEO=OK in status.md — public/hero.mp4 and public/hero-poster.jpg exist
 <HeroVideo poster="/hero-poster.jpg" src="/hero.mp4" alt="…" />
-// no clip: identical layout, static image, no video request
+// HERO_VIDEO=FAIL in status.md — legitimate degradation, poster-only,
+// identical layout, no video request
 <HeroVideo poster="/images/hero-photo.webp" alt="…" />
 ```
 
@@ -2023,8 +2161,39 @@ If the business is on a booking platform (Booksy, Fresha, Treatwell, Vagaro), ad
 **Only relevant when this client's `extra.mode` is `booking` (status.md or Supabase) — if it isn't, skip this entire section, do not read the reference file.** When it is: read `reference/booking-facade.md` in full before building the flow. It specifies the 5-step client-side facade (service/staff/date-time/details/confirmation), and the hard rules that are each their own QA fail: zero network requests, no "demo"/"preview" labels anywhere, `noindex` while the facade is live, never ships to a live client domain unmodified, credential ceiling by silence for regulated-adjacent verticals, home-based businesses get area-only treatment, and per-platform review counts never get conflated with Google's.
 ## Contact form (always include)
 Every site MUST have a contact section.
-- **If email is known (default)**: Wire the contact section as a `mailto:` — simplest reliable implementation, no third-party service, submissions land directly in the client's inbox. Either a clear "Email us" button (`<a href="mailto:EMAIL">`) alongside the email address, or a form whose submit handler constructs a `mailto:?subject=...&body=...` URL from the form fields and opens the visitor's mail client. Pick whichever fits the design language better — both are valid.
-- **If no email**: Build a form that shows a success message on submit ("Thanks for your message! We'll get back to you soon.") but doesn't actually send anywhere. Use `e.preventDefault()` and toggle a success state. The operator will replace this with a real `mailto:` once the client confirms an inbox to deliver to (typically once a lead converts).
+
+**Default pattern (2026-08-18) — POST to the shared previews-app endpoint, never `mailto:`.**
+`mailto:` (either an `<a href="mailto:">` or a form building a `mailto:?subject=...` URL) fails
+silently for any visitor without a configured native mail client — common on mobile browsers,
+Chromebooks, and work devices locked to webmail. The click either does nothing or opens an
+app-picker the visitor didn't expect, and the lead is lost with no error shown to anyone. Every
+Klaudius tenant is served through `gr-no-website-builds`'s shared previews app
+(`{slug}.grayreserve.agency`), which already runs a production-grade, same-origin contact endpoint
+at `apps/previews/src/pages/api/preview/[slug]/contact.ts` — CSRF/honeypot/rate-limiting, Slack
+alert, an operator queue, AND an orphan-lead queue for tenants with no email on file yet. It already
+resolves a Klaudius tenant's email from `site.json`'s `business.email` (`loadKlaudiusManifest`,
+added 2026-08-18) — no per-client wiring, no API key, no third-party service to stand up.
+
+Build `_components/ContactForm.tsx` as a client component (`"use client"`) whose submit handler:
+1. Reads the tenant slug from `window.location.hostname.split(".")[0]` — matches the deployed
+   subdomain, never hardcode it.
+2. POSTs JSON to `` `/api/preview/${slug}/contact` `` with `Content-Type: application/json` and
+   `Accept: application/json`.
+3. Sends `name` (required) + either `phone` (7+ digits, Schema A) or `email` + `message` (Schema B)
+   — see the endpoint's own docstring for the exact two accepted schemas; extra/unknown field names
+   400. Map any locally-named field (e.g. a "Subject" input) onto the endpoint's real names
+   (`service`, not `subject`) before sending.
+4. Includes a hidden honeypot field named `_gr_hp_kx` (visually + tab-order hidden, must stay empty)
+   — required by the endpoint, a filled value silently drops the submission.
+5. Shows a `sending` → `sent`/`error` state from the real JSON response (`{ok:true}` /
+   `{ok:false, error}`), not an optimistic instant success. A `warning` field on a 200 response
+   means the tenant has no email on file yet (orphan queue) — still show success to the visitor
+   (the lead reached Slack + the operator queue, it isn't lost), no different UI needed.
+
+This is a same-origin fetch (the Klaudius tenant IS served by the previews app), so no CORS
+configuration is needed. The old two-branch spec (real `mailto:` if email known, fake
+`preventDefault()`+success if not) is retired — the endpoint's own orphan-queue path already covers
+the no-email case correctly, with the lead actually preserved instead of silently discarded.
 
 ## Photo selection (hero image matters most)
 Not all photos work in all positions. Choose the hero/lead image carefully:
@@ -2229,6 +2398,20 @@ test "$(ls out/blog/*.html 2>/dev/null | wc -l | tr -d ' ')" = "5" \
 ```
 
 Every route § Site structure said should ship must print `OK`. A `MISSING` line for a route you deliberately dropped is fine **only if the drop and its counts are written in `status.md`** — otherwise the site is a one-pager by accident and you go back and write the page before QA. Do not proceed on a green `next build` alone.
+
+**Then assert the hero video was actually attempted, not silently skipped** (§ Motion, chat and hero video → `<HeroVideo />`). This is a build-quality regression gate, not a route-existence check — a build with real usable photos and no hero video attempt is exactly the defect that shipped once already:
+
+```bash
+grep -qE '^HERO_VIDEO=(OK|FAIL)' clients/$ARGUMENTS/data/status.md \
+  && echo "OK   hero video step recorded" \
+  || echo "MISSING hero video step never attempted or never recorded in status.md"
+
+test -f "clients/$ARGUMENTS/site/public/hero.mp4" -a -f "clients/$ARGUMENTS/site/public/hero-poster.jpg" \
+  && echo "OK   hero.mp4 + hero-poster.jpg present" \
+  || echo "NOTE  no hero clip on disk — acceptable ONLY if status.md records HERO_VIDEO=FAIL (fewer than 3 usable photos)"
+```
+
+A `MISSING` on the first check means `node services/hero-video/render.mjs --slug $ARGUMENTS` was never even run — go back and run it before QA. A `NOTE` on the second is fine exactly when the first check's status.md line reads `HERO_VIDEO=FAIL`; if it reads `HERO_VIDEO=OK` but the files aren't on disk, something silently dropped the output and needs investigating, not shrugging off.
 
 > **`out/services.html` is the right artefact to check, not `out/services/`.** A static export also emits a `services/` directory holding only RSC payload `.txt` files. `python3 -m http.server` sees that directory and 301-redirects `/services` to `/services/`, which has no `index.html` — a purely local artefact of a server with no clean-URL handling. `npx serve out` and Vercel's filesystem handler both serve `/services` from `services.html` and return 200. Verify the extensionless paths on the LIVE deploy (the deploy skill does this), never conclude a 404 from `python3 -m http.server` alone.
 

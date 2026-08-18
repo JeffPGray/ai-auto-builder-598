@@ -24,13 +24,43 @@
 #
 # On stall it kills the child and prints WHERE it stopped, so the completed work can be salvaged —
 # which is what happened here: the source was finished and only needed a build + deploy.
+#
+# ⚠️ 2026-08-18 REDESIGN (Fable consult, requested by Jeff after this exact watchdog false-triggered
+# twice in one session on a real client — aot-mechanical). The flaw: file-write activity answers "is
+# it alive" AND "is it hung" with the same signal, but a --effort high generation turn can compose a
+# large page.tsx for 10+ minutes with zero writes while burning real CPU the whole time — that read
+# as a stall and got killed at minute 13 even though gather had fully completed and the build was
+# healthy. Separately, the blind MAX_MIN ceiling fired mid-/deploy on the SECOND dispatch, the most
+# side-effect-heavy moment (GHL contact/tag writes) — required a manual GHL query to confirm nothing
+# had actually been created before it was safe to redispatch. Widening the numbers again doesn't fix
+# either failure; both are the same category error twice.
+#
+# Fix: track file writes AND process-tree CPU as two separate liveness signals, so "silent because
+# thinking" (CPU active, no writes) is distinguished from "silent because dead" (the documented 0%
+# CPU / 56MB RSS incident this watchdog was originally built to catch). Three states:
+#   ACTIVE     writes happening                       -> healthy, reset everything
+#   COMPOSING  no writes, but CPU accruing             -> healthy, tolerate up to QUIET_MAX_MIN
+#   DEAD       no writes AND ~0 CPU AND static tree    -> the real hang, kill at STALL_MIN
+# The ceiling stops being a blind kill too: past MAX_MIN it only fires in a genuine quiet gap: an
+# actively-writing run gets extended in logged 10-minute steps up to a HARD_MAX_MIN backstop. Under
+# Klaudius's cost model (Claude subscription, not per-token API spend) extra wall-clock is ~$0; a
+# kill mid-deploy costs a manual GHL audit, which is strictly more expensive. If lane-slot pressure
+# at 3-4 concurrent builds ever matters more than that tradeoff, tighten HARD_MAX_MIN, not MAX_MIN.
 
 set -uo pipefail
 
-PROMPT_FILE="${1:?usage: dispatch-build.sh <prompt-file> <log-file> [stall-min] [max-min]}"
+PROMPT_FILE="${1:?usage: dispatch-build.sh <prompt-file> <log-file> [stall-min] [max-min] [watch-dir]}"
 LOG="${2:?need a log path}"
-STALL_MIN="${3:-8}"      # no file activity for this long => hung
-MAX_MIN="${4:-90}"       # absolute ceiling regardless of activity
+STALL_MIN="${3:-8}"        # DEAD-quiet (no writes, ~no CPU, static tree) => hung
+MAX_MIN="${4:-90}"         # soft ceiling: past this, kill only at a quiet moment
+WATCH_DIR="${5:-clients}"  # 2026-08-18 (Fable): scope liveness to ONE client dir for parallel dispatch —
+                            # watching all of clients/ means lane B's writes reset lane A's stall timer, so
+                            # a hang in one lane is invisible while any other lane is active. Pass
+                            # clients/<slug> per lane once dispatch goes concurrent; single-lane default
+                            # (clients) is unchanged from before.
+QUIET_MAX_MIN="${QUIET_MAX_MIN:-30}"                 # CPU-active but zero writes this long => runaway
+HARD_MAX_MIN="${HARD_MAX_MIN:-$(( MAX_MIN + 60 ))}"  # unconditional backstop, however lively
+CPU_ACTIVE_CS="${CPU_ACTIVE_CS:-50}"                 # centiseconds of tree CPU per 30s sample counted as alive (0.5s ~= 1.7%)
 
 [ -f "$PROMPT_FILE" ] || { echo "prompt file not found: $PROMPT_FILE"; exit 1; }
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
@@ -76,48 +106,108 @@ env -u CLAUDECODE -u CLAUDE_CODE CLAUDE_WORKER_CHILD=1 \
   claude -p --permission-mode dontAsk --model opus --effort high --strict-mcp-config \
   "$(cat "$PROMPT_FILE")" > "$LOG" 2>&1 &
 CHILD=$!
-echo "dispatched pid=$CHILD  stall-watchdog=${STALL_MIN}m  ceiling=${MAX_MIN}m"
+echo "dispatched pid=$CHILD  dead-quiet=${STALL_MIN}m  writeless-cap=${QUIET_MAX_MIN}m  soft-ceiling=${MAX_MIN}m  hard-cap=${HARD_MAX_MIN}m"
+
+# All live pids in the tree rooted at $1. macOS pgrep -P takes a comma-separated ppid list.
+tree_pids() {
+  local frontier="$1" all="$1" kids
+  while :; do
+    kids=$(pgrep -P "$(echo "$frontier" | tr ' ' ',')" 2>/dev/null | tr '\n' ' ')
+    kids=$(echo $kids)                 # normalise whitespace; empty when no children
+    [ -z "$kids" ] && break
+    all="$all $kids"; frontier="$kids"
+  done
+  echo "$all"
+}
+
+# Total cputime of the given pids, integer centiseconds. Handles mm:ss.cc and hh:mm:ss.cc.
+tree_cpu_cs() {
+  ps -o cputime= -p "$(echo "$1" | tr ' ' ',')" 2>/dev/null | awk -F'[:.]' '
+    { if (NF==4) cs += (($1*3600)+($2*60)+$3)*100+$4
+      else       cs += (($1*60)+$2)*100+$3 }
+    END { printf "%d\n", cs+0 }'
+}
+
+# Kill the WHOLE tree (killing $CHILD alone leaves orphans — see the exa-child incident above),
+# and print the evidence a human would want, so the next incident explains itself.
+die() {
+  local rc=$1; shift
+  echo "$*"
+  echo "--- process tree at kill time (CPU/RSS are the hang discriminators) ---"
+  ps -o pid,ppid,%cpu,rss,state,etime,command -p "$(echo "$pids" | tr ' ' ',')" 2>/dev/null
+  echo "--- client files written in the last 30m ---"
+  find "$WATCH_DIR" -type f -mmin -30 2>/dev/null | head -20
+  echo "  Salvage before re-dispatching: grep -c secondary clients/<slug>/site/src -r ; ls clients/<slug>/site/out"
+  if [ "$rc" -eq 4 ]; then
+    echo "  ⚠️ CEILING kill: if the run had reached /deploy or later, VERIFY external side"
+    echo "  effects (GHL contact/tags, Vercel alias) before re-dispatching — do not assume clean."
+  fi
+  kill $pids 2>/dev/null; sleep 2; kill -9 $pids 2>/dev/null
+  exit "$rc"
+}
 
 started=$(date +%s)
-last_change=$started
+last_write=$started        # last clients/ file write
+last_liveness=$started     # last write OR CPU accrual OR tree-shape change
+ceiling=$MAX_MIN
+pids="$CHILD"; pids_prev=""; cpu_prev=0
+
+# 2026-08-18 (Fable): an OPERATOR kill of this wrapper (Ctrl-C, `kill <wrapper-pid>`) had no trap,
+# so unlike every kill path above it neither reaped the child tree nor printed salvage evidence —
+# exactly the orphan class the whole-tree kill in die() exists to prevent, just reached from the
+# other direction. This makes a deliberate kill (e.g. "kill it" mid-dispatch) a first-class,
+# recoverable event: the tree gets reaped and the same salvage summary prints, instead of leaving
+# an orphaned claude -p tree and an operator manually hunting pids.
+trap 'pids=$(tree_pids "$CHILD"); die 130 "OPERATOR KILL: dispatch-build.sh wrapper received INT/TERM."' INT TERM
 
 while kill -0 "$CHILD" 2>/dev/null; do
   sleep 30
   now=$(date +%s)
 
-  # Signature of all recent client-directory writes. Cheap, and it changes whenever the pipeline
-  # does anything at all — including inside a long `next build`, which touches .next constantly.
-  #
-  # ⛔ USE -mmin, NEVER -newermt WITH A RELATIVE STRING. BSD find (macOS) does not parse
-  # "90 seconds ago"; it returns ZERO MATCHES AND EXIT 0 — a silent fail-open. Measured
-  # 2026-08-16: ten consecutive `find … -newermt '5 minutes ago'` returned 0 while
-  # `find … -mmin -5` returned 630 on the same tree at the same instant.
-  #
-  # That made this watchdog worse than useless: sig was permanently "0", so last_change never
-  # advanced, and it would have KILLED EVERY HEALTHY BUILD at the ${STALL_MIN}-minute mark while
-  # reporting a stall that never happened. The one thing a watchdog must never do is manufacture
-  # the failure it exists to catch. -mmin takes whole minutes only, so 90s becomes 2.
-  sig=$(find clients -type f -mmin -2 2>/dev/null | wc -l | tr -d ' ')
-  # Any write at all in the window means alive. The previous form was
-  #   if [ "$sig" != "0" ] || [ "$sig" != "$last_sig" ]
-  # whose second clause can never change the outcome — the body only acts when sig != 0 — so it
-  # read as if a CHANGING count mattered. It doesn't, and pretending it does hid the -newermt bug.
-  [ "$sig" != "0" ] && last_change=$now
+  # Signal 1: file writes. Unchanged — and keep -mmin, NEVER -newermt (see note above).
+  sig=$(find "$WATCH_DIR" -type f -mmin -2 2>/dev/null | wc -l | tr -d ' ')
+  if [ "$sig" != "0" ]; then last_write=$now; last_liveness=$now; fi
 
-  idle=$(( (now - last_change) / 60 ))
-  total=$(( (now - started) / 60 ))
-
-  if [ "$idle" -ge "$STALL_MIN" ]; then
-    echo "STALLED: no client-file activity for ${idle}m (total ${total}m). Killing pid=$CHILD."
-    echo "  Salvage before re-dispatching — the source work is usually complete and only needs"
-    echo "  a build + deploy. Check: grep -c secondary clients/<slug>/site/src -r ; ls clients/<slug>/site/out"
-    kill "$CHILD" 2>/dev/null; sleep 2; kill -9 "$CHILD" 2>/dev/null
-    exit 3
+  # Signal 2: process-tree CPU. A model composing one huge tool call writes no files for
+  # 10+ minutes but the CLI streams tokens the whole time and accrues real CPU. The
+  # documented true hang sat at 0% CPU / 56MB RSS — CPU separates the two cases the
+  # filesystem cannot. A negative delta means a busy child (e.g. next build) exited: an
+  # event, not silence. A changed pid set likewise counts as life.
+  pids=$(tree_pids "$CHILD")
+  cpu_now=$(tree_cpu_cs "$pids")
+  cpu_delta=$(( cpu_now - cpu_prev ))
+  if [ "$pids" != "$pids_prev" ] || [ "$cpu_delta" -ge "$CPU_ACTIVE_CS" ] || [ "$cpu_delta" -lt 0 ]; then
+    last_liveness=$now
   fi
-  if [ "$total" -ge "$MAX_MIN" ]; then
-    echo "CEILING: ${total}m elapsed. Killing pid=$CHILD."
-    kill "$CHILD" 2>/dev/null; sleep 2; kill -9 "$CHILD" 2>/dev/null
-    exit 4
+  cpu_prev=$cpu_now; pids_prev=$pids
+
+  idle=$((  (now - last_liveness) / 60 ))   # dead-quiet: no writes AND no CPU AND static tree
+  quiet=$(( (now - last_write)    / 60 ))   # writeless (CPU may still be active = composing)
+  total=$(( (now - started)       / 60 ))
+
+  # DEAD: nothing moving anywhere. This is the only state the old stall timer should ever
+  # have killed. 16 consecutive silent samples — one quiet moment cannot trip it.
+  [ "$idle" -ge "$STALL_MIN" ] && \
+    die 3 "HUNG: no file writes and ~0 CPU across the tree for ${idle}m (total ${total}m). Killing."
+
+  # COMPOSING-forever: CPU burning but nothing ever lands. Catches livelock/retry loops
+  # that the CPU signal would otherwise wave through indefinitely.
+  [ "$quiet" -ge "$QUIET_MAX_MIN" ] && \
+    die 5 "SILENT RUNAWAY: CPU active but zero client-file writes for ${quiet}m (total ${total}m). Killing."
+
+  # Backstop: nothing extends past this, however lively.
+  [ "$total" -ge "$HARD_MAX_MIN" ] && \
+    die 4 "HARD CAP: ${total}m elapsed (cap ${HARD_MAX_MIN}m). Killing."
+
+  # Soft ceiling: never guillotine a run that is demonstrably mid-write — that is how a kill
+  # lands mid-/deploy with GHL half-touched. Fire only in a quiet gap; extend otherwise.
+  if [ "$total" -ge "$ceiling" ]; then
+    if [ "$quiet" -ge 3 ]; then
+      die 4 "CEILING: ${total}m elapsed and quiet ${quiet}m. Killing."
+    else
+      ceiling=$(( total + 10 ))
+      echo "ceiling: ${total}m elapsed but actively writing (last write ${quiet}m ago) — extending to ${ceiling}m (hard cap ${HARD_MAX_MIN}m)"
+    fi
   fi
 done
 

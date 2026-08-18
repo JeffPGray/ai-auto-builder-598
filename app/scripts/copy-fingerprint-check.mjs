@@ -111,6 +111,7 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { withFileLock } from './lib/file-lock.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FINGERPRINT_LEDGER = join(REPO_ROOT, 'data', 'design-fingerprints.json');
@@ -600,10 +601,24 @@ if (!priorsWithSketch.length) {
 // never blocks a deploy and every real build's sketch belongs in history for the NEXT comparison.
 // Never fabricate a stub record for a slug that doesn't have one (design-ledger.mjs `record` mode
 // not run for this client) — same posture every sibling script in this file takes. ──
+// 2026-08-18 (Fable): locked, and re-reads fresh inside the lock — same race class as the sibling
+// scripts in this file, see design-ledger.mjs's record mode for the full reasoning.
 const own = ledger.find((r) => r.slug === slug);
 if (own) {
-  own.copySketch = sketch;
-  writeFileSync(FINGERPRINT_LEDGER, JSON.stringify(ledger, null, 2));
+  await withFileLock(FINGERPRINT_LEDGER, () => {
+    let fresh = [];
+    if (existsSync(FINGERPRINT_LEDGER)) {
+      try {
+        const parsed = JSON.parse(readFileSync(FINGERPRINT_LEDGER, 'utf8'));
+        if (Array.isArray(parsed)) fresh = parsed;
+      } catch { /* unreadable — fall through with fresh=[], same fail-open posture as above */ }
+    }
+    const freshOwn = fresh.find((r) => r.slug === slug);
+    if (freshOwn) {
+      freshOwn.copySketch = sketch;
+      writeFileSync(FINGERPRINT_LEDGER, JSON.stringify(fresh, null, 2));
+    }
+  });
 } else {
   console.log(`COPY_FINGERPRINT_NOTE — no design-fingerprints.json record for ${slug} (design-ledger.mjs record not run?); copy sketch not persisted this run`);
 }

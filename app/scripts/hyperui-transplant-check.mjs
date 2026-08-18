@@ -42,18 +42,18 @@
  *        - a citation whose path doesn't exist in the vendored index at all (an invalid path — the
  *          exact check `hyperui-usage-check.mjs` already runs for its own citations, mirrored here)
  *
- * GATE SEVERITY IS SPLIT ON PURPOSE:
- *   HARD FAIL — an invalid path or an uncited stamp. Both are unambiguous bookkeeping lies: a path
- *   either exists in the vendored set or it doesn't, and a `data-hyperui` value either appears in
- *   status.md's citation list or it doesn't. No scoring judgement involved.
- *   WARN ONLY, FOR NOW — UNSTAMPED citations and DECORATIVE scores. Both are real signals but
- *   UNCALIBRATED: this is a brand-new stamping convention as of the same change that added this
- *   script, so no real client has ever produced stamped markup, and the LCS/Jaccard weighting has
- *   only been checked against hand-built fixtures (see the fixture harness this shipped with), not
- *   a real build's actual output. Per the same operator directive `hyperui-usage-check.mjs`'s own
- *   header follows for its citation/layout fingerprints: after ~5 real builds run through this, the
- *   operator should hand-inspect every DECORATIVE verdict against the actual rendered section, and
- *   if the scoring holds up under that inspection, promote UNSTAMPED/DECORATIVE to hard FAIL.
+ * GATE SEVERITY:
+ *   HARD FAIL — an invalid path, an uncited stamp, OR an UNSTAMPED/DECORATIVE verdict. All four are
+ *   now hard failures. UNSTAMPED/DECORATIVE started WARN-only pending calibration (see git history
+ *   for the original reasoning) — that calibration trigger has now fired for real: 2026-08-18, Jeff
+ *   hand-inspected a DECORATIVE-flagged real build (aot-mechanical, live, already emailed to a real
+ *   business) against its actual rendered output and confirmed the scoring holds — the site read as
+ *   visibly flat/generic despite passing HyperUI citations. Per this script's own pre-written
+ *   escalation plan, that is the exact trigger to promote to hard FAIL, and it has been promoted.
+ *   Explicit operator context for why this stays a hard floor, not a future WARN regression: "the
+ *   reason we bought this [Klaudius] is 6 months of failures with our [old] engine, we aren't doing
+ *   that again." A WARN a build can pass under is not a floor, it's a suggestion — this gate now
+ *   blocks a deploy rather than merely noting the defect.
  *
  * HONESTY LIMIT ON THE SCORER ITSELF: this is a regex/tag-depth tokenizer over raw HTML strings,
  * not a real DOM parse or a semantic diff — it can be fooled by unusual markup, and the 0.6/0.35
@@ -65,11 +65,14 @@
  * `.claude/skills/build/reference/hyperui/` directory at all, so this must never block a normal
  * build. It only activates when the vendored set is present on disk.
  *
- * Prints HYPERUI_TRANSPLANT_CHECK=PASS|WARN|FAIL|SKIP plus a per-citation table.
+ * Prints HYPERUI_TRANSPLANT_CHECK=PASS|FAIL|SKIP plus a per-citation table. (WARN is unreachable
+ * since the 2026-08-18 promotion above — every branch that used to print WARN now exits FAIL.)
  */
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+import { withFileLock } from './lib/file-lock.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const REF_ROOT = join(REPO_ROOT, '.claude', 'skills', 'build', 'reference', 'hyperui');
@@ -128,6 +131,30 @@ function parseCitedPaths(statusText) {
   if (!sectionLines) return null;
   const body = sectionLines.join('\n');
   return [...new Set([...body.matchAll(/`([a-z0-9-]+\/[a-z0-9-]+\.html)`/gi)].map((m) => m[1]))];
+}
+
+// 2026-08-18: proof-of-read hash, paired with the same [hex6] token hyperui-lookup.mjs prints
+// next to every path it returns — `[hash]` sha256(vendored file bytes).slice(0,6). Parsed
+// separately from parseCitedPaths (which stays the source of truth for WHICH paths are cited) so
+// a missing/wrong hash is its own failure mode, not entangled with path validity. The point is
+// narrow and deliberate: the only way to produce the correct hash is to have run the sanctioned
+// lookup (or recomputed identically) against the REAL file — a path invented from memory, or
+// copied from build/SKILL.md's own (now placeholder) example block, cannot carry a correct one.
+function parseCitedHashes(statusText) {
+  const lines = statusText.split('\n');
+  let capturing = false;
+  const out = new Map();
+  for (const line of lines) {
+    if (/^##\s+/.test(line)) {
+      if (capturing) break;
+      if (/^##\s+HyperUI components used\b/i.test(line.trim())) capturing = true;
+      continue;
+    }
+    if (!capturing) continue;
+    const m = line.match(/`([a-z0-9-]+\/[a-z0-9-]+\.html)`\s*\[([0-9a-f]{6})\]/i);
+    if (m) out.set(m[1], m[2].toLowerCase());
+  }
+  return out;
 }
 
 const uniqueCited = parseCitedPaths(status);
@@ -349,6 +376,18 @@ const fileContents = new Map(htmlFiles.map((f) => [f, readFileSync(f, 'utf8')]))
 // ── Bookkeeping checks (unambiguous, no scoring) ──
 const invalidCitations = uniqueCited.filter((p) => !byPath.has(p));
 
+// Proof-of-read hash check — only meaningful for citations whose path is otherwise valid; an
+// invalid path already fails for its own reason above and isn't double-counted here.
+const citedHashes = parseCitedHashes(status);
+const hashFailures = [];
+for (const p of uniqueCited) {
+  if (!byPath.has(p)) continue;
+  const real = createHash('sha256').update(readFileSync(join(REF_ROOT, p))).digest('hex').slice(0, 6);
+  const claimed = citedHashes.get(p);
+  if (!claimed) hashFailures.push(`${p} has no [hash] token (run \`node scripts/hyperui-lookup.mjs <category>\` and copy its printed [hex6] verbatim — a bare path with no hash is unproven)`);
+  else if (claimed !== real) hashFailures.push(`${p} hash [${claimed}] does not match the vendored file's actual hash [${real}] (the file changed since the hash was recorded, or the hash was copied from a different citation — re-run the lookup and use its current output)`);
+}
+
 const allStampedValues = new Set();
 for (const html of fileContents.values()) {
   for (const m of html.matchAll(/data-hyperui="([^"]*)"/g)) allStampedValues.add(m[1]);
@@ -392,6 +431,8 @@ for (const citPath of uniqueCited) {
 }
 
 // ── Verdict ──
+const warnItems = results.filter((r) => r.verdict === 'UNSTAMPED' || r.verdict === 'DECORATIVE');
+
 const hardFailures = [];
 if (invalidCitations.length) {
   hardFailures.push(`${invalidCitations.length} cited path(s) do not exist in the vendored set: ${invalidCitations.join(', ')}`);
@@ -399,8 +440,13 @@ if (invalidCitations.length) {
 if (uncitedStamps.length) {
   hardFailures.push(`${uncitedStamps.length} data-hyperui value(s) stamped in the shipped output but NOT cited in status.md: ${uncitedStamps.join(', ')}`);
 }
-
-const warnItems = results.filter((r) => r.verdict === 'UNSTAMPED' || r.verdict === 'DECORATIVE');
+if (warnItems.length) {
+  const summary = warnItems.map((r) => `${r.path} (${r.verdict}${r.score === null ? '' : `, ${r.score.toFixed(2)}`})`).join(', ');
+  hardFailures.push(`${warnItems.length} citation(s) UNSTAMPED or DECORATIVE (promoted to hard FAIL 2026-08-18, see header): ${summary}. Fix: either genuinely transplant the cited component's real structure, or cite a different component that the shipped markup actually resembles.`);
+}
+if (hashFailures.length) {
+  hardFailures.push(`${hashFailures.length} citation(s) failed the proof-of-read hash check: ${hashFailures.join('; ')}`);
+}
 
 console.log('\nHyperUI transplant fidelity — per citation:');
 console.log('  path'.padEnd(42) + 'verdict'.padEnd(12) + 'score'.padEnd(8) + 'instances');
@@ -425,29 +471,30 @@ if (hardFailures.length) {
 const FINGERPRINT_LEDGER = join(REPO_ROOT, 'data', 'design-fingerprints.json');
 const scored = results.filter((r) => r.score !== null);
 if (scored.length) {
-  let ledger = [];
-  if (existsSync(FINGERPRINT_LEDGER)) {
-    try {
-      const parsed = JSON.parse(readFileSync(FINGERPRINT_LEDGER, 'utf8'));
-      if (Array.isArray(parsed)) ledger = parsed;
-    } catch {
-      console.log('HYPERUI_TRANSPLANT_NOTE — design-fingerprints.json unreadable; transplant scores not persisted this run');
+  // 2026-08-18 (Fable): mkdir-based lock — this file is unlocked-read-modify-written by five
+  // separate scripts, and two concurrent QA batteries (once dispatch goes multi-lane, WATCH_DIR
+  // already supports it) can silently drop each other's record without one. See lib/file-lock.mjs.
+  await withFileLock(FINGERPRINT_LEDGER, () => {
+    let ledger = [];
+    if (existsSync(FINGERPRINT_LEDGER)) {
+      try {
+        const parsed = JSON.parse(readFileSync(FINGERPRINT_LEDGER, 'utf8'));
+        if (Array.isArray(parsed)) ledger = parsed;
+      } catch {
+        console.log('HYPERUI_TRANSPLANT_NOTE — design-fingerprints.json unreadable; transplant scores not persisted this run');
+        return;
+      }
     }
-  }
-  const own = ledger.find((r) => r.slug === slug);
-  if (own) {
-    own.transplantScores = Object.fromEntries(scored.map((r) => [r.path, Math.round(r.score * 100) / 100]));
-    writeFileSync(FINGERPRINT_LEDGER, JSON.stringify(ledger, null, 2));
-  } else {
-    console.log(`HYPERUI_TRANSPLANT_NOTE — no design-fingerprints.json record for ${slug} (design-ledger.mjs record not run?); transplant scores not persisted this run`);
-  }
+    const own = ledger.find((r) => r.slug === slug);
+    if (own) {
+      own.transplantScores = Object.fromEntries(scored.map((r) => [r.path, Math.round(r.score * 100) / 100]));
+      writeFileSync(FINGERPRINT_LEDGER, JSON.stringify(ledger, null, 2));
+    } else {
+      console.log(`HYPERUI_TRANSPLANT_NOTE — no design-fingerprints.json record for ${slug} (design-ledger.mjs record not run?); transplant scores not persisted this run`);
+    }
+  });
 }
 
-if (warnItems.length) {
-  const summary = warnItems.map((r) => `${r.path} (${r.verdict}${r.score === null ? '' : `, ${r.score.toFixed(2)}`})`).join(', ');
-  console.log(`HYPERUI_TRANSPLANT_CHECK=WARN — ${warnItems.length} citation(s) uncalibrated-risk: ${summary}. Not a hard FAIL yet (see script header) — hand-inspect DECORATIVE verdicts against the rendered section, and add a real data-hyperui stamp for every UNSTAMPED citation.`);
-  process.exit(0);
-}
-
+// Any UNSTAMPED/DECORATIVE verdict is already folded into hardFailures above and exits before here.
 console.log(`HYPERUI_TRANSPLANT_CHECK=PASS — ${results.length} citation(s) checked, all stamped and structurally faithful or a legitimate adaptation.`);
 process.exit(0);

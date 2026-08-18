@@ -51,6 +51,7 @@
  */
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { withFileLock } from './lib/file-lock.mjs';
 
 const CAP = 40;
 const TWIN_THRESHOLD = 5;
@@ -202,8 +203,15 @@ if (mode === 'check') {
 }
 
 if (mode === 'record') {
-  const next = [fp, ...recent.filter((r) => r.slug !== slug)].slice(0, CAP);
-  mkdirSync(dirname(LEDGER), { recursive: true });
-  writeFileSync(LEDGER, JSON.stringify(next, null, 2));
-  console.log(`recorded ${slug} -> ${LEDGER} (${next.length}/${CAP} entries)`);
+  // 2026-08-18 (Fable): locked, and re-reads the ledger FRESH inside the lock rather than trusting
+  // `recent` (loaded early in the script, at line ~129) — another concurrent dispatch could have
+  // recorded in between. `recent` is still fine for the earlier `check` mode's TWIN comparison
+  // (soft staleness there just means comparing against a slightly-older history, not a lost write).
+  await withFileLock(LEDGER, () => {
+    const fresh = load();
+    const next = [fp, ...fresh.filter((r) => r.slug !== slug)].slice(0, CAP);
+    mkdirSync(dirname(LEDGER), { recursive: true });
+    writeFileSync(LEDGER, JSON.stringify(next, null, 2));
+    console.log(`recorded ${slug} -> ${LEDGER} (${next.length}/${CAP} entries)`);
+  });
 }
