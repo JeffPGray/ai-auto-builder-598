@@ -25,6 +25,24 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '.claude', 'skills', 'build', 'reference', 'hyperui');
 
+// Optional hand-written visual descriptors (reference/hyperui/descriptors.json, keyed by path).
+// Written 2026-08-17 from the rendered components on hyperui.dev — they describe what each file
+// LOOKS like (layout, composition, imagery, controls), which the mechanical stats below cannot.
+// Merged into INDEX.md as an indented "↳" line under each entry so a regeneration of this index
+// never wipes them; dark variants automatically cross-reference their light sibling's descriptor.
+let descriptors = {};
+try {
+  descriptors = JSON.parse(readFileSync(join(ROOT, 'descriptors.json'), 'utf8'));
+} catch { /* sidecar absent — index still builds, just without descriptor lines */ }
+const descriptorFor = (path) => {
+  if (descriptors[path]) return descriptors[path];
+  const m = path.match(/^(.*\/)(\d+)-dark\.html$/);
+  if (m && descriptors[`${m[1]}${m[2]}.html`]) {
+    return `dark-scheme variant of \`${m[1]}${m[2]}.html\` — same layout (see its descriptor)`;
+  }
+  return null;
+};
+
 const APPLICATION_CATEGORIES = new Set([
   'accordions', 'badges', 'breadcrumbs', 'button-groups', 'charts', 'checkboxes', 'details-list',
   'dividers', 'dropdown', 'empty-states', 'file-uploaders', 'filters', 'grids', 'inputs', 'loaders',
@@ -84,6 +102,9 @@ for (const e of entries) {
 
 let md = `# HyperUI reference index\n\n${entries.length} files vendored from github.com/markmead/hyperui on 2026-08-16.\n\n`;
 md += `**Every entry with hasLoremIpsum=true or any genericColorClasses MUST have that content/colour replaced before shipping** — see build/SKILL.md § "EXPERIMENT BRANCH ONLY — HyperUI component reference".\n\n`;
+if (Object.keys(descriptors).length) {
+  md += `> Entries with an indented \`↳\` line carry a visual descriptor (layout, composition, imagery, controls) taken from the rendered component — search these to pick the right structure for a section instead of citing blind. Quoted names are HyperUI's official component titles. Source of truth: \`descriptors.json\` in this directory (merged in by \`scripts/build-hyperui-index.mjs\`; edit the JSON, not this file).\n\n`;
+}
 
 for (const [tierName, cats] of Object.entries(byTier)) {
   md += `## ${tierName === 'application' ? 'Application (UI primitives — structure/technique)' : 'Marketing (sections — content-heavy, rewrite everything)'}\n\n`;
@@ -96,6 +117,8 @@ for (const [tierName, cats] of Object.entries(byTier)) {
       md += `- \`${dirName}/${f.file}\`${flags ? ` [${flags}]` : ''} — ~${f.wordCount}w`;
       if (f.genericColorClasses.length) md += `, colours: ${f.genericColorClasses.slice(0, 4).join(' ')}${f.genericColorClasses.length > 4 ? '…' : ''}`;
       md += '\n';
+      const desc = descriptorFor(`${dirName}/${f.file}`);
+      if (desc) md += `  ↳ ${desc}\n`;
     }
     md += '\n';
   }

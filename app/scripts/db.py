@@ -571,12 +571,111 @@ def set_lapsed(slug: str, note: str = "") -> dict:
 # CLI convenience
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Campaign runs — coverage ledger for "run N lanes chasing X in region Y"
+# ---------------------------------------------------------------------------
+# A campaign_run is a unit of operator intent ("HVAC + plumbing within 10mi
+# of The Woodlands, TX, 30 sites") distinct from the individual `clients`
+# rows it produces. Without this, a repeated or overlapping request has no
+# way to know an area/trade combination was already chased. clients.
+# campaign_run_id links each built site back to the run that produced it.
+#
+# This is a ledger, not a hard gate: /find still does its own per-client
+# duplicate check against `clients` regardless of campaign coverage. Coverage
+# answers "has this territory been worked", not "is this exact business new".
+
+def start_campaign_run(
+    region_label: str,
+    city: str = None,
+    state: str = None,
+    industries: list = None,
+    lane_count: int = 1,
+    target_count: int = None,
+    radius_miles: float = None,
+    country: str = None,
+    notes: str = None,
+) -> dict:
+    """Create a new campaign run and return the row (includes its id).
+    Call this BEFORE dispatching lanes for a "run N lanes chasing X in Y" ask."""
+    data = {
+        "region_label": region_label,
+        "city": city,
+        "state": state,
+        "country": country,
+        "radius_miles": radius_miles,
+        "industries": industries or [],
+        "lane_count": lane_count,
+        "target_count": target_count,
+        "notes": notes,
+    }
+    data = {k: v for k, v in data.items() if v is not None}
+    resp = get_db().table("campaign_runs").insert(data).execute()
+    return resp.data[0]
+
+
+def get_campaign_coverage(city: str = None, state: str = None, industries: list = None) -> list:
+    """Look up prior/ongoing campaign runs matching a region and/or industry set.
+    Call this BEFORE starting a new run so a repeated ask ('run HVAC in The
+    Woodlands again') surfaces what was already chased instead of blindly
+    re-running it. Matches on city/state equality (case-insensitive) and, if
+    industries is given, any overlap with the run's industries array."""
+    q = get_db().table("campaign_runs").select("*")
+    if city:
+        q = q.ilike("city", city)
+    if state:
+        q = q.ilike("state", state)
+    resp = q.order("started_at", desc=True).execute()
+    rows = resp.data
+    if industries:
+        wanted = {i.lower() for i in industries}
+        rows = [
+            r for r in rows
+            if wanted & {i.lower() for i in (r.get("industries") or [])}
+        ]
+    return rows
+
+
+def get_campaign_run(run_id: str) -> Optional[dict]:
+    resp = get_db().table("campaign_runs").select("*").eq("id", run_id).execute()
+    return resp.data[0] if resp.data else None
+
+
+def record_campaign_site_built(run_id: str, slug: str, by: int = 1) -> None:
+    """Atomically bump built_count on a run and stamp the client row with the
+    run it belongs to. Call this once a client reaches 'built' or 'deployed'
+    status during a campaign run."""
+    get_db().rpc("increment_campaign_built", {"p_run_id": run_id, "p_by": by}).execute()
+    update_client(slug, {"campaign_run_id": run_id})
+
+
+def complete_campaign_run(run_id: str, notes: str = None) -> dict:
+    """Mark a campaign run completed. Call when the target_count is reached
+    or the operator explicitly ends the run early."""
+    updates = {"status": "completed", "completed_at": datetime.utcnow().isoformat()}
+    if notes:
+        updates["notes"] = notes
+    resp = get_db().table("campaign_runs").update(updates).eq("id", run_id).execute()
+    if not resp.data:
+        raise ValueError(f"Campaign run not found: {run_id}")
+    return resp.data[0]
+
+
+def pause_campaign_run(run_id: str, notes: str = None) -> dict:
+    updates = {"status": "paused"}
+    if notes:
+        updates["notes"] = notes
+    resp = get_db().table("campaign_runs").update(updates).eq("id", run_id).execute()
+    if not resp.data:
+        raise ValueError(f"Campaign run not found: {run_id}")
+    return resp.data[0]
+
+
 if __name__ == "__main__":
     import json
 
     if len(sys.argv) < 2:
         print("Usage: python3 scripts/db.py <command> [args]")
-        print("Commands: status, incomplete, client <slug>, all-slugs")
+        print("Commands: status, incomplete, client <slug>, all-slugs, coverage <city> <state> [industry...]")
         sys.exit(1)
 
     cmd = sys.argv[1]
@@ -606,6 +705,19 @@ if __name__ == "__main__":
             print(json.dumps(c, indent=2, default=str))
         else:
             print(f"Not found: {sys.argv[2]}")
+
+    elif cmd == "coverage" and len(sys.argv) > 3:
+        city, state = sys.argv[2], sys.argv[3]
+        industries = sys.argv[4:] or None
+        rows = get_campaign_coverage(city=city, state=state, industries=industries)
+        if not rows:
+            print(f"No campaign runs found for {city}, {state}" + (f" / {industries}" if industries else ""))
+        for r in rows:
+            print(
+                f"  [{r['status']}] {r['region_label']} — industries={r.get('industries')} "
+                f"lanes={r.get('lane_count')} built={r.get('built_count')}/{r.get('target_count')} "
+                f"started={r.get('started_at')} completed={r.get('completed_at') or '-'}"
+            )
 
     else:
         print(f"Unknown command: {cmd}")

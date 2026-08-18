@@ -19,6 +19,12 @@
  *   <path> [LOREM] words=<n> colours=<a,b,c>
  * <path> is relative to .claude/skills/build/reference/hyperui/ and directly Read-able from
  * there — e.g. `accordions/1.html` or `marketing-ctas/3-dark.html`.
+ *
+ * When reference/hyperui/descriptors.json has a visual descriptor for a file (added 2026-08-17,
+ * written from the rendered components on hyperui.dev), it is appended as an indented
+ * continuation line so a build can pick the RIGHT structure for a section from the lookup output
+ * alone — without opening candidate files one by one. Dark variants inherit their light sibling's
+ * descriptor by cross-reference.
  */
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -62,9 +68,17 @@ if (!matches.length) {
   process.exit(1);
 }
 
+let descriptors = {};
+try {
+  descriptors = JSON.parse(readFileSync(join(ROOT, 'descriptors.json'), 'utf8'));
+} catch { /* sidecar absent — output stays mechanical-stats-only */ }
+
 matches.sort((a, b) => (a.variant === b.variant ? a.file.localeCompare(b.file) : a.variant.localeCompare(b.variant)));
 for (const e of matches) {
   const flags = e.hasLoremIpsum ? ' [LOREM]' : '';
   const colours = e.genericColorClasses.length ? ` colours=${e.genericColorClasses.slice(0, 4).join(',')}` : '';
   console.log(`${e.path}${flags} words=${e.wordCount}${colours}`);
+  const darkSibling = e.variant === 'dark' ? e.path.replace(/-dark\.html$/, '.html') : null;
+  if (descriptors[e.path]) console.log(`  ↳ ${descriptors[e.path]}`);
+  else if (darkSibling && descriptors[darkSibling]) console.log(`  ↳ dark-scheme variant of ${darkSibling} — same layout`);
 }

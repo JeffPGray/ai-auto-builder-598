@@ -46,7 +46,7 @@
  * Prints HYPERUI_USAGE_CHECK=PASS|FAIL|SKIP. FAIL is used the same way PHOTO_CHECK=FAIL is in
  * qa-reviewer.md: a hard-FAIL line the reviewer must report verbatim and never overrule by eye.
  */
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -64,8 +64,22 @@ const MIN_CATEGORIES = 4;
 // Was 2/2; raised the same way. Still excludes footers/headers (fixed, tested pattern already
 // exists for those — see below) so the floor can't be satisfied by citing the two categories
 // that were never the point.
-const MIN_MARKETING_SECTIONS = 4;
-const MIN_MARKETING_CATEGORIES = 3;
+// RAISED AGAIN 2026-08-18 (4/3 -> 10/7), after the Woodlands Air build cleared the 4/3 floor
+// with 5 citations across 4 of 21 marketing categories (~19% of the section library). The
+// numbers are derived from the library's actual shape, not picked round: of the 19 floor-
+// eligible categories (21 minus excluded footers/headers), ~8 are relevant to essentially EVERY
+// trade-site build — banners (hero), feature-grids (services), sections, stats, ctas, faqs,
+// contact-forms, blog-cards — plus a situational tier (team-sections, logo-clouds,
+// announcements, cards, newsletter-signup, pricing). Requiring 7 categories forces near-complete
+// use of the always-relevant set plus one situational reach, while leaving ~12 categories
+// legitimately unused — the floor must never be high enough to force citing carts/polls/
+// product-cards on a plumber's site, because a coerced citation is exactly the false-compliance
+// failure this gate's header warns about. 10 sections ≈ 2 per route on a 5-route site (every
+// major page composition starts from the library, the operator's stated intent) yet under half
+// the natural section-instance count, so it's clearable without padding. Read cost of the extra
+// citations is noise: ~2-4KB per file vs a build that is 86% output-token time.
+const MIN_MARKETING_SECTIONS = 10;
+const MIN_MARKETING_CATEGORIES = 7;
 // footers/headers excluded from the marketing-tier floor — the site already has a fixed, tested
 // pattern for those (SiteFooter/SiteNav), so citing one wouldn't demonstrate new structural reach.
 const MARKETING_FLOOR_EXCLUDED = new Set(['footers', 'headers']);
@@ -182,4 +196,74 @@ for (const e of validEntries) {
 console.log(`HYPERUI_USAGE_CHECK=PASS — ${applicationEntries.length} application-tier components across ${applicationCategories.size} categories (${[...applicationCategories].join(', ')}); ${marketingEntries.length} marketing-tier section(s) across ${marketingCategories.size} categories (${[...marketingCategories].join(', ') || 'none'})`);
 if (colourLeaks.length) {
   console.log(`HYPERUI_USAGE_CHECK_WARNING — raw HyperUI Tailwind colour classes appear verbatim in shipped source (should be derived palette tokens per build/SKILL.md rule 1): ${[...new Set(colourLeaks)].join(', ')}`);
+}
+
+// ── Cross-build citation fingerprint (WARN-only, added 2026-08-18) ──
+// Citing real paths proves library ADOPTION per build; it says nothing about REPETITION across
+// builds — 1500 sites/month that all start from the same handful of sections converge on the
+// same look even when every one of them passes the floors above. So on PASS (and only on PASS —
+// a failed build never deploys, and recording its citations would pollute the ledger), the
+// current build's marketing-tier citation set is appended to this client's record in
+// data/design-fingerprints.json — the SAME ledger design-ledger.mjs already keeps per build, on
+// purpose: one design memory, not two tracking files. Footers/headers are excluded from the
+// recorded set for the same reason they're excluded from the floor — fixed patterns every build
+// cites, which would inflate every overlap.
+//
+// The check is PAIRWISE against each of the last 8 prior builds individually, not against a
+// pooled union of all 8 — a pooled set from 8 builds is too big to be discriminating, and the
+// failure worth catching is "this looks just like the build from 3 runs ago" even when it
+// doesn't resemble the literal previous one. Overlap is measured against the SMALLER of the two
+// sets (so a prior build whose sections are fully contained in this one still reads 100%).
+// Threshold 50%, per operator: with an auto-builder at volume some overlap is expected and fine
+// — the target is "no two sites the same", not zero reuse. A lower bar (25% was floated) would
+// fire on ordinary chance overlap between unrelated builds and train the operator to swipe the
+// warning away, the alert-fatigue failure CLAUDE.md's notify.sh section already documents.
+// WARN, never FAIL: this signal is new and uncalibrated — it must earn a floor before it gets
+// one, the same road richness-check walked.
+const FINGERPRINT_LEDGER = join(REPO_ROOT, 'data', 'design-fingerprints.json');
+const CITATION_LOOKBACK = 8;
+const CITATION_OVERLAP_THRESHOLD = 0.5;
+const citationSet = marketingEntries.map((e) => e.path).sort();
+
+let ledger = [];
+if (existsSync(FINGERPRINT_LEDGER)) {
+  try {
+    const parsed = JSON.parse(readFileSync(FINGERPRINT_LEDGER, 'utf8'));
+    if (Array.isArray(parsed)) ledger = parsed;
+  } catch {
+    // A corrupt ledger must never fail QA — same fail-open posture as design-ledger.mjs itself.
+    console.log('HYPERUI_FINGERPRINT_NOTE — design-fingerprints.json unreadable; citation fingerprint skipped this run');
+  }
+}
+
+if (ledger.length || existsSync(FINGERPRINT_LEDGER)) {
+  // The ledger is newest-first (design-ledger.mjs record prepends), so "the last 8 prior
+  // builds" are the first 8 entries that aren't this client's own record.
+  const priors = ledger.filter((r) => r.slug !== slug).slice(0, CITATION_LOOKBACK);
+  const overlapping = [];
+  for (const prior of priors) {
+    const priorSet = Array.isArray(prior.hyperuiMarketingCitations) ? prior.hyperuiMarketingCitations : [];
+    if (!priorSet.length || !citationSet.length) continue;
+    const shared = citationSet.filter((p) => priorSet.includes(p));
+    const overlap = shared.length / Math.min(citationSet.length, priorSet.length);
+    if (overlap >= CITATION_OVERLAP_THRESHOLD) {
+      overlapping.push(`${prior.slug} (${Math.round(overlap * 100)}%: ${shared.join(', ')})`);
+    }
+  }
+  if (overlapping.length) {
+    console.log(`HYPERUI_FINGERPRINT_WARNING — this build's marketing-tier citation set overlaps >=${CITATION_OVERLAP_THRESHOLD * 100}% with ${overlapping.length} of the last ${priors.length} builds: ${overlapping.join('; ')}. Not a FAIL (uncalibrated signal), but if the rendered sections read as siblings too, pick different structural starting points before this becomes a pattern.`);
+  }
+
+  // Persist onto the client's existing record. design-ledger.mjs `record` runs at design-choice
+  // time (before build) and REPLACES the record wholesale, so within a build cycle this append
+  // (at QA time) always lands after it and survives. If no record exists — design-ledger was
+  // skipped — say so rather than fabricating a stub, because a stub with null palette axes
+  // could false-match another stub in design-ledger's own twin scoring.
+  const own = ledger.find((r) => r.slug === slug);
+  if (own) {
+    own.hyperuiMarketingCitations = citationSet;
+    writeFileSync(FINGERPRINT_LEDGER, JSON.stringify(ledger, null, 2));
+  } else {
+    console.log(`HYPERUI_FINGERPRINT_NOTE — no design-fingerprints.json record for ${slug} (design-ledger.mjs record not run?); citations not persisted this run`);
+  }
 }

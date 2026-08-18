@@ -1255,7 +1255,7 @@ target for actual usage is "most sections," not "the fewest that clear the gate.
 
 ### Targeted lookup, not a blind full-index read (cache-locality — do this ONCE, early)
 
-**Do not re-read `INDEX.md` (591 lines, 469 files) to find what you need.** Before writing any
+**Do not re-read `INDEX.md` (1000+ lines, 469 files, every entry carrying a `↳` visual descriptor) to find what you need.** Before writing any
 `page.tsx` — right after the design-system and palette decisions are made, in the same pass —
 decide which categories this client's site plausibly needs (aim for the 4-6 that fit a trade
 site: accordions, stats, badges, tabs or timelines, maybe modals), then query exactly those:
@@ -1301,9 +1301,12 @@ experiment exists to test against.
 > only counted APPLICATION-tier atomic widgets (accordions, badges, stats blocks, timelines) —
 > real, but grafted onto an otherwise 100%-custom page. The bones of the page — the hero layout,
 > the feature grid, the CTA band — never drew on the library at all, which is why 4 real components
-> still read as "the same feel". **At least 4 distinct marketing-tier SECTIONS, from at least 3
-> distinct categories** (raised again 2026-08-16, same operator directive as the application-tier
-> floor above — from `feature-grids`, `sections`, `stats`, `ctas`, `team-sections`, `logo-clouds`,
+> still read as "the same feel". **At least 10 distinct marketing-tier SECTIONS, from at least 7
+> distinct categories** (raised 2026-08-18 from 4/3, after a real build cleared 4/3 while touching
+> ~19% of the section library; 7 of the 19 floor-eligible categories forces near-complete use of
+> the always-relevant set — banners, feature-grids, sections, stats, ctas, faqs, contact-forms,
+> blog-cards — plus one situational reach, and 10 sections is roughly 2 per route on a 5-route
+> site. Candidates: `feature-grids`, `sections`, `stats`, `ctas`, `team-sections`, `logo-clouds`,
 > `announcements`, `faqs`, `pricing`, `newsletter-signup`, `polls`, `product-cards`,
 > `product-collections`, `blog-cards`, or similar page-composition categories — not
 > `footers`/`headers`, which the site already has a fixed pattern for) must inform the STRUCTURE of
@@ -1950,8 +1953,8 @@ it, and doubling up turns the photography to mud.
 A bespoke site shouldn't wear a generic icon, and if the business has a real logo it should appear in the **nav/header, footer, favicon, and og:image** -- not just the browser tab. The scaffold's placeholder `favicon.ico` is identical on every build and is a visible "AI template" tell (it's the tab icon and the link-preview thumbnail in WhatsApp/iMessage/SMS).
 
 **If gathered-content.md has a `## Brand` block with a `Logo:` line** (captured + graded by the gather "Social harvest" step):
-- The build setup copies `data/images/logo.png` into `site/public/images/` like any photo. Use it in the **nav/header** and **footer** (`<img src="/images/logo.png" className="h-11 w-auto max-w-[220px] object-contain">`) and for **og:image**; use it as the **favicon** (`app/icon.png`) only when its `shape` is roundel/square (a horizontal-wordmark/stacked logo letterboxes into an unreadable square -- keep the monogram `app/icon.svg` favicon for those, while still using the logo in the nav).
-- **Size the container to the `shape` field, nav height minimum `h-11` (44px)**: roundel/square -> fixed square box (`h-11 w-11`); horizontal-wordmark/stacked -> `h-11 w-auto` with a `max-w` sensible for the wordmark's aspect ratio (e.g. `max-w-[220px]`). Always `object-contain`, never stretch. **Caught live 2026-08-16**: an earlier default of `h-8` (32px) shipped and read as "tiny" against a full-height nav bar — `h-11` is the floor, go larger if the nav itself is taller.
+- The build setup copies `data/images/logo.png` into `site/public/images/` like any photo. Use it in the **nav/header** (`<img src="/images/logo.png" className="h-16 w-auto max-w-[280px] object-contain">`) and **footer** (`<img src="/images/logo.png" className="mb-4 h-14 w-auto max-w-[260px] object-contain">`) and for **og:image**; use it as the **favicon** (`app/icon.png`) only when its `shape` is roundel/square (a horizontal-wordmark/stacked logo letterboxes into an unreadable square -- keep the monogram `app/icon.svg` favicon for those, while still using the logo in the nav).
+- **Size the container to the `shape` field, nav height minimum `h-16` (64px), footer minimum `h-14` (56px)**: roundel/square -> fixed square box (`h-16 w-16`); horizontal-wordmark/stacked -> `h-16 w-auto` with a `max-w` sensible for the wordmark's aspect ratio (e.g. `max-w-[280px]`). Always `object-contain`, never stretch. **This floor has been raised TWICE off the same live complaint ("tiny"): `h-8` (32px) -> `h-11` (44px) on 2026-08-16 -> `h-16` (64px), same day, same client, after `h-11` was screenshotted live and still called tiny.** Do not undershoot a third time — when in doubt against a full-bleed hero, go bigger, not smaller. `h-16`/`h-14` is the new floor, go larger still if the nav itself is taller or the logo is a wide horizontal wordmark that reads small at this height.
 - **Respect the `background` field for contrast**: a transparent or light logo sits fine on a dark nav; a dark-on-transparent logo on a dark nav needs a small light chip behind it (and vice-versa). A text wordmark beside a roundel is fine but optional.
 
 **Otherwise (no `Logo:` line, or `grade: rejected`)**: make a simple **monogram** -- the business's initial on a colour from the design-system palette, as a static `app/icon.svg` that App Router wires up automatically. This is the guaranteed fallback; a clean monogram always beats a wonky real logo.
