@@ -6,6 +6,9 @@
     "formula": 1,
     "harmony": "split",
     "character": "vivid",
-    "ts": null
+    "ts": null,
+    "headingFont": "Literata",
+    "bodyFont": "Schibsted Grotesk",
+    "town": "the woodlands"
   }
 ]
