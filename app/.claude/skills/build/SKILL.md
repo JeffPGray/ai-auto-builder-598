@@ -1359,6 +1359,34 @@ ship with zero verifiable usage. `hyperui-usage-check.mjs` validates every cited
 enforces the floor above; QA reports `HYPERUI_USAGE_CHECK=PASS/FAIL` the same way it reports
 `PHOTO_CHECK`.
 
+### 🚨 Second obligation for every citation: stamp the shipped element, don't just cite it
+
+Citing a real path proves the path exists and was named — it does not prove which shipped element,
+if any, actually inherited that file's structure, and there is no way for anything downstream to
+infer the mapping from the citation alone. A build could cite `marketing-stats/1.html` and ship
+five different `<dl>` blocks; nothing in `status.md` says which one, if any, is "the one" — or
+whether none of them are. **Every section (or component root) that starts from a vendored HyperUI
+file must carry `data-hyperui="<the exact cited path>"` on its root element**, the same
+"an attribute beats inferring intent from Tailwind class soup" principle `data-photo-treatment`
+already established for photo art direction (see § Photo art direction below):
+
+```tsx
+<section data-hyperui="marketing-stats/1.html" className="grain bg-surface">
+  <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
+    ...
+  </div>
+</section>
+```
+
+The value is the exact `category/file.html` path as it appears in `status.md`'s citation line —
+not a paraphrase, not the category alone. **Every citation now has TWO obligations, not one: cite
+it in `status.md`'s `## HyperUI components used` section, AND stamp the shipped element with the
+matching `data-hyperui`.** A citation with no matching stamp anywhere in the built output, and a
+stamp whose value was never cited, are both bookkeeping lies `hyperui-transplant-check.mjs` treats
+as findings — see that script's own header for the exact severity split (an invalid path or an
+uncited stamp is a hard FAIL; a citation with zero stamps, or a stamp whose shipped structure barely
+resembles the vendored file, is WARN-only for now, pending calibration against real builds).
+
 ## Photo art direction (mandatory) — the real ceiling on "premium"
 
 **Scraped Google Maps/Facebook photos are inconsistent raw material — customer-uploaded, uneven
