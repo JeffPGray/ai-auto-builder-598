@@ -229,7 +229,7 @@ exceptions:**
    - the diff touches `globals.css`, `layout.tsx`, `tailwind.config.ts`, `next.config.mjs`, or
      anything under `_components/` (including `blog-data.ts`, `site-data.ts`)
    - the diff touches any `public/` file referenced from more than one route
-   - any deterministic gate (font/contrast/token/photo/ship-scan/richness/HyperUI-usage) FAILed
+   - any deterministic gate (font/font-uniqueness/contrast/token/photo/ship-scan/richness/HyperUI-usage) FAILed
    - the reviewer tagged any critical SYSTEMIC
    - the real diff touches a route the reviewer's scoped review did NOT cover
 
@@ -253,8 +253,8 @@ If no trigger fired:
   Follow .claude/agents/qa-reviewer.md exactly, with this scope override:
 
   This is round {N}, scoped. qa-fix's real diff touched only: {TOUCHED_ROUTES}.
-  - Run the FULL deterministic battery exactly as normal (font/contrast/token/photo/ship-scan/
-    richness/HyperUI-usage) — these are scripts, ~2-3 minutes, and they cover every page
+  - Run the FULL deterministic battery exactly as normal (font/font-uniqueness/contrast/token/
+    photo/ship-scan/richness/HyperUI-usage) — these are scripts, ~2-3 minutes, and they cover every page
     regardless of scope. Do not skip or narrow them.
   - Screenshot and visually review ONLY: {TOUCHED_ROUTES} plus this rotating canary route:
     {CANARY_ROUTE}. Do not screenshot the rest of the site this round.

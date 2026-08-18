@@ -647,7 +647,7 @@ rendered glyphs instead. Do not declare the build done until it prints `FONT_CHE
 1. Skip the `--design-system` font recommendation — go straight to typography domain search: `python3 .claude/skills/ui-ux-pro-max/scripts/search.py "INDUSTRY KEYWORDS" --domain typography -n 5`
 2. Pick a pairing with serif/slab heading + sans body
 3. Check both fonts against the banned lists below
-4. **Uniqueness rule**: scan 3-4 recent client `globals.css` files. Never reuse the same heading font as another site — and for clients in the SAME town, don't reuse the body font either (neighbouring owners see each other's sites).
+4. **Uniqueness rule**: pass `--heading-font "<Family Name>" --body-font "<Family Name>" --town "<city>"` into the § Convergence check's `design-ledger.mjs check`/`record` calls below (once ground/formula/harmony/character are also decided) — don't invent a second, separate invocation. The ledger checks font-name reuse deterministically across full build history: `FONT_LEDGER=REUSE` on a heading-font match is a hard stop (never reuse the same heading font as another site, no exceptions); a same-town body-font match prints `FONT_LEDGER=WARN` (don't reuse the body font for neighbouring-town clients either, but it isn't a hard stop yet). This replaces the old "scan 3-4 recent client `globals.css` files" ad hoc skim — the ledger already has the full history, so there's nothing left for a manual scan to add.
 
 ### Banned fonts (never use in any position)
 Inter, Geist, Roboto, Arial, system-ui, sans-serif, Barlow, DM Sans, Poppins, Open Sans, Montserrat, Raleway, Nunito, Syne, Plus Jakarta Sans, Familjen Grotesk, Karla, Manrope, Bricolage Grotesque
@@ -874,11 +874,14 @@ readability.
 ### 🚨 Convergence check (mandatory, once all four decisions above are made, before ANY TSX)
 
 Every axis above — ground family, ground hue, typography formula, harmony, character — is now
-decided. Before writing a single `page.tsx`, check the choice against the last builds:
+decided, and so is the font pairing from § How to pick fonts. Before writing a single `page.tsx`,
+check the choice against the last builds — this same call also carries the font-uniqueness check
+(§ How to pick fonts step 4), so don't invent a second, separate invocation:
 
 ```bash
 node scripts/design-ledger.mjs check $ARGUMENTS \
-  --ground <family> --ground-hue <deg> --formula <1-5> --harmony <type> --character <band>
+  --ground <family> --ground-hue <deg> --formula <1-5> --harmony <type> --character <band> \
+  --heading-font "<Family Name>" --body-font "<Family Name>" --town "<city>"
 ```
 
 **`DESIGN_LEDGER=TWIN` means this exact combination reads as the same site as a recent build** —
@@ -887,19 +890,31 @@ typography formula, or a materially different ground hue) and check again. Up to
 if still a twin on the 3rd attempt, proceed anyway and write `TWIN_ACCEPTED: <reason>` in
 `status.md` rather than looping forever — the ledger is a steer, not a hard wall.
 
-**Why this runs HERE and not after the site is built:** a twin caught before any code exists costs
-one more `node` call to re-check. A twin caught after `/build` finishes costs a full rebuild — and
-this pipeline's own measured cost is 86% output-token generation, so anything that risks a rebuild
-directly fights the wall-clock target. Never skip straight to writing TSX "to save time" — that is
-the one sequence that turns a free check into an expensive one.
+**`FONT_LEDGER=REUSE` is a separate, hard stop — no forced-re-pick allowance, no "proceed after 3
+attempts."** It means the heading font collides, name-for-name, with a font already claimed by
+another recent build. Pick a different heading font from the shortlist and check again; this axis
+has no calibration period because the underlying rule is already mandatory prose (never reuse a
+heading font) and the fix is free at this point (zero TSX written yet). `FONT_LEDGER=WARN` (a
+same-town body-font match) is not a hard stop — note it in `status.md` and prefer a different body
+font if practical, same posture as a `TWIN_ACCEPTED` deviation.
 
-`DESIGN_LEDGER=CLEAR` (or accepted after 3 attempts): run the record call once the build is
-genuinely finishing, not before — recording before the site is confirmed to actually use these
-choices would poison the ledger with a decision that was never built:
+**Why this runs HERE and not after the site is built:** a twin (or a font collision) caught before
+any code exists costs one more `node` call to re-check. Caught after `/build` finishes it costs a
+full rebuild — and this pipeline's own measured cost is 86% output-token generation, so anything
+that risks a rebuild directly fights the wall-clock target. Never skip straight to writing TSX "to
+save time" — that is the one sequence that turns a free check into an expensive one.
+`font-uniqueness-check.mjs` (part of the QA battery) re-verifies both the font pairing and this
+uniqueness rule against the shipped artefact after `/build`, so a discrepancy still gets caught —
+but catching it there costs a rebuild, whereas catching it here costs nothing.
+
+`DESIGN_LEDGER=CLEAR` and `FONT_LEDGER=CLEAR` (or accepted after 3 attempts): run the record call
+once the build is genuinely finishing, not before — recording before the site is confirmed to
+actually use these choices would poison the ledger with a decision that was never built:
 
 ```bash
 node scripts/design-ledger.mjs record $ARGUMENTS \
-  --ground <family> --ground-hue <deg> --formula <1-5> --harmony <type> --character <band>
+  --ground <family> --ground-hue <deg> --formula <1-5> --harmony <type> --character <band> \
+  --heading-font "<Family Name>" --body-font "<Family Name>" --town "<city>"
 ```
 
 ## Trade personality — the design must LOOK like the trade
