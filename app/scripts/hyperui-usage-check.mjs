@@ -267,3 +267,335 @@ if (ledger.length || existsSync(FINGERPRINT_LEDGER)) {
     console.log(`HYPERUI_FINGERPRINT_NOTE — no design-fingerprints.json record for ${slug} (design-ledger.mjs record not run?); citations not persisted this run`);
   }
 }
+
+// ── Layout / section-shape fingerprint (Gap 2 of 4, WARN-only, added 2026-08-18) ──
+// The citation fingerprint above answers "did this build start from the same HyperUI files as a
+// recent one" — a component-level question. It says nothing about the question a business owner
+// actually notices: "does this page LOOK laid out the same way as the last one" — hero, then a
+// stat band, then three cards, then a photo CTA, in the same order, regardless of which HyperUI
+// files each section started from or what copy is in them. Two builds can cite zero overlapping
+// components and still read as siblings if they compose the same shapes in the same sequence.
+// This is that check, one level up: a per-route SECTION-SHAPE SEQUENCE computed from the BUILT
+// HTML (what ships, not what status.md claims), compared pairwise against recent builds the same
+// way the citation check above does — same `.slice(0, 8)` lookback window, same
+// `.filter(r => r.slug !== slug)` self-exclusion, same WARN-not-FAIL posture for an uncalibrated
+// signal, same append-onto-the-existing-record persistence via `own`.
+//
+// CLASSIFICATION USES MARKERS ALREADY IN THE SHIPPED MARKUP — no new build-time annotation. Each
+// top-level `<section>` on a route is classified into one shape code, first match wins:
+// HERO (data-hero) > FAQ (<details) > FORM (<form>/<input>/<textarea>) > STATS (<dl> with >=3
+// <dt>) > TIMELINE (<ol> with >=3 <li>, no <dl>) > PHOTOGRID (>=3 <img>, no card-text pattern) >
+// a CARDS/SPLIT wrapper search (>=3 same-shape children under a grid/flex-wrap wrapper -> CARDS<n>,
+// n bucketed 3/4/6; exactly 2 "major" children -> SPLIT) > CTA (<=2 links/buttons, <60 words) >
+// PROSE (fallback). PHOTOBASE- is a PREFIX, not a row in that chain: independently of the above,
+// if any <img> in the section carries both `absolute` and `inset-0` classes (a background photo
+// plate under real content, not a gallery image), the section's otherwise-computed code — but
+// only when that code fell through to CARDS/SPLIT/CTA/PROSE, since HERO/FAQ/FORM/STATS/TIMELINE/
+// PHOTOGRID are already terminal, photo-driven-enough classifications on their own — is prefixed
+// `PHOTOBASE-`. Ground suffix (`-D`/`-L`/`-X`) reads the section's OWN class attribute only (not
+// descendants): `grain-dark` or a literal `bg-surface-dark` or numbered `bg-surface-5`/`-6` -> D;
+// plain `grain`, bare `bg-surface`, or `bg-surface-1`..`-4` -> L; none of those present -> X.
+//
+// HONESTY LIMIT ON THE CLASSIFIER, stated the same way the HyperUI citation check states its own
+// above: this is regex/tag-depth heuristics over raw HTML, not a real DOM parse, so it can be
+// fooled by unusual markup. Two concrete gaps found while calibrating this against real shipped
+// output (clients/the-woodlands-plumbing-and-air/site/out, 2026-08-18) are worth knowing before
+// trusting a STATS/HERO absence as meaningful:
+//   1. The current trade-site template's stat bands (e.g. "15+ years", "475 Google reviews") are
+//      built as a `grid` of plain `<div>`s with a `<p data-count>`, NOT `<dl>`/`<dt>` — so on every
+//      build produced by the present generator, STATS never fires; those sections read as CARDS<n>
+//      instead. A real `<dl>` shows up only on older, pre-surface-ladder builds (verified on
+//      impact-landscapes-frisco, which also predates the `data-hero` attribute entirely and reads
+//      its hero section as whatever its content happens to classify as, not HERO). Neither is a bug
+//      in this script — the markers really aren't in the newer markup — but it means STATS and HERO
+//      are effectively floor-dependent on which build generation produced the site, not universal.
+//   2. The CTA row's `<=2 links/buttons, <60 words` rule fires on ANY short section under that word
+//      count, including a plain paragraph with zero links (e.g. several `/privacy` and `/terms`
+//      subsections read CTA-X rather than PROSE-X) — the spec table doesn't require a link to be
+//      PRESENT, only that the count not exceed 2, and 0 <= 2. Followed the rule as given rather than
+//      tightening it unasked; flagging it here since it's a real, observable quirk of the output.
+//
+// THE WRAPPER SEARCH (CARDS vs SPLIT) walks every `grid`/`flex flex-wrap` element in the section in
+// document order and, for the first one whose IMMEDIATE children (found via a tag-depth walk, not a
+// real DOM tree — good enough to not be fooled by an icon's nested <svg><path>, not proof against
+// every possible markup shape) satisfy either "≥3 children, ≥70% sharing one tag" (CARDS) or
+// "exactly 2 children, at least one carrying an <img>, a heading, or >15 words" (SPLIT — the >15/
+// img/heading test exists specifically so a 2-button CTA row, which is also `flex flex-wrap` with 2
+// children, does not get misread as a text+image SPLIT; verified against the real CTA button row on
+// the-woodlands' home page, which correctly falls through to CTA once neither of its two <a> children
+// clears that bar). A wrapper that qualifies for neither is skipped and the search continues to the
+// next grid/flex-wrap element in the section, rather than stopping on the first candidate found.
+const LAYOUT_SIG_LOOKBACK = 8;
+// Same 0.8 as nowhere else in this file — chosen fresh for this signal, not inherited from the 0.5
+// citation-overlap threshold above. A full-page section-SHAPE sequence match is a much stronger claim
+// than a component-citation overlap (there are only ~10 shape codes total vs hundreds of HyperUI
+// paths, so chance agreement on any ONE symbol is common — the threshold has to sit high enough that
+// only a near-total sequence match trips it). WARN, never FAIL: this is a brand-new signal on two
+// uncalibrated axes at once (the classifier's own accuracy on real markup, proven only against the
+// four builds available on 2026-08-18, and whether 0.8 is the right cut) — same posture as the
+// citation check's own "must earn a floor before it gets one" rule.
+const LAYOUT_SIMILARITY_THRESHOLD = 0.8;
+
+const VOID_TAGS = new Set(['img', 'input', 'br', 'hr', 'meta', 'link', 'source', 'track', 'wbr', 'area', 'base', 'col', 'param', 'embed']);
+
+function countTag(html, tag) {
+  return (html.match(new RegExp(`<${tag}\\b`, 'gi')) || []).length;
+}
+
+function wordCount(html) {
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/&[a-zA-Z#0-9]+;/g, ' ');
+  return (text.match(/\S+/g) || []).length;
+}
+
+// Walks forward from just after a wrapper element's own opening tag, tracking a generic tag-depth
+// counter (every non-void opening tag pushes, every closing tag pops), and returns the wrapper's
+// IMMEDIATE children as {tag, html} — depth transitions 0->1 start a child, 1->0 end it. Stops the
+// moment depth goes negative, i.e. the wrapper's own closing tag. Not a real DOM parse (doesn't
+// validate tag nesting is well-formed, doesn't know about HTML's implicit-close elements like <li>
+// or <p>), but React's static-export output is always well-formed, explicitly-closed markup, so
+// that gap doesn't bite here. Walks via `matchAll` rather than a manual `RegExp#exec` loop so a
+// single tag-matching pass can simply be truncated with `break` once depth goes negative.
+function scanImmediateChildren(html, startIndex) {
+  const tagRe = /<\/?([a-zA-Z][a-zA-Z0-9]*)\b[^>]*?>/g;
+  let depth = 0;
+  const children = [];
+  let currentStart = -1;
+  let currentTag = null;
+  for (const m of html.matchAll(tagRe)) {
+    if (m.index < startIndex) continue;
+    const full = m[0];
+    const tag = m[1].toLowerCase();
+    const isClose = full[1] === '/';
+    if (isClose) {
+      depth -= 1;
+      if (depth === 0 && currentStart !== -1) {
+        children.push({ tag: currentTag, html: html.slice(currentStart, m.index + full.length) });
+        currentStart = -1;
+      }
+      if (depth < 0) break; // reached the wrapper's own closing tag
+      continue;
+    }
+    const isVoidOrSelf = VOID_TAGS.has(tag) || /\/>\s*$/.test(full);
+    if (depth === 0) {
+      currentStart = m.index;
+      currentTag = tag;
+    }
+    if (!isVoidOrSelf) {
+      depth += 1;
+    } else if (depth === 0) {
+      // a bare void/self-closing element straight under the wrapper (rare, but e.g. a lone <img>)
+      children.push({ tag: currentTag, html: html.slice(currentStart, m.index + full.length) });
+      currentStart = -1;
+    }
+  }
+  return children;
+}
+
+// Finds the first `grid` or `flex flex-wrap` element in the section (document order) whose
+// immediate children satisfy CARDS or SPLIT, per the module-header comment above. Returns
+// { type: 'CARDS', count } / { type: 'SPLIT', count: 2 } / null.
+function findWrapperShape(sectionHtml) {
+  const openTagRe = /<([a-zA-Z][a-zA-Z0-9]*)\s+([^>]*?)>/g;
+  for (const m of sectionHtml.matchAll(openTagRe)) {
+    const tag = m[1].toLowerCase();
+    if (VOID_TAGS.has(tag) || tag === 'svg' || tag === 'path') continue;
+    if (/\/\s*>$/.test(m[0])) continue; // self-closing tag, can't be a children-bearing wrapper
+    const classMatch = m[2].match(/class="([^"]*)"/);
+    if (!classMatch) continue;
+    const classes = classMatch[1].split(/\s+/);
+    const isGrid = classes.includes('grid');
+    const isFlexWrap = classes.includes('flex') && classes.includes('flex-wrap');
+    if (!isGrid && !isFlexWrap) continue;
+
+    const children = scanImmediateChildren(sectionHtml, m.index + m[0].length);
+    if (children.length >= 3) {
+      const tagCounts = {};
+      for (const c of children) tagCounts[c.tag] = (tagCounts[c.tag] || 0) + 1;
+      const maxShare = Math.max(...Object.values(tagCounts)) / children.length;
+      if (maxShare >= 0.7) return { type: 'CARDS', count: children.length }; // "≈same-shape", one outlier tolerated
+    } else if (children.length === 2) {
+      const major = children.some((c) => /<img\b/i.test(c.html) || /<h[1-4]\b/i.test(c.html) || wordCount(c.html) > 15);
+      if (major) return { type: 'SPLIT', count: 2 };
+    }
+    // Neither qualifies (e.g. a 2-button CTA row is also `flex flex-wrap`) — keep scanning for the
+    // next grid/flex-wrap wrapper in this section rather than stopping on the first candidate.
+  }
+  return null;
+}
+
+function hasPhotobaseImg(sectionHtml) {
+  const imgTags = sectionHtml.match(/<img\b[^>]*>/gi) || [];
+  return imgTags.some((tag) => {
+    const cm = tag.match(/class="([^"]*)"/);
+    if (!cm) return false;
+    const classes = cm[1].split(/\s+/);
+    return classes.includes('absolute') && classes.includes('inset-0');
+  });
+}
+
+// 5 isn't a named bucket (the table only defines 3/4/6+) — collapses up into the "6+" bucket
+// rather than down into "4", since it reads closer to "many" than to "four exactly".
+function cardsBucket(n) {
+  if (n <= 3) return 3;
+  if (n === 4) return 4;
+  return 6;
+}
+
+function classifyShape(sectionHtml, openTag) {
+  if (/data-hero\b/.test(openTag)) return 'HERO';
+  if (countTag(sectionHtml, 'details') >= 1) return 'FAQ';
+  if (countTag(sectionHtml, 'form') >= 1 || countTag(sectionHtml, 'input') >= 1 || countTag(sectionHtml, 'textarea') >= 1) return 'FORM';
+
+  const dlCount = countTag(sectionHtml, 'dl');
+  const dtCount = countTag(sectionHtml, 'dt');
+  if (dlCount >= 1 && dtCount >= 3) return 'STATS';
+
+  const olCount = countTag(sectionHtml, 'ol');
+  const liCount = countTag(sectionHtml, 'li');
+  if (olCount >= 1 && liCount >= 3 && dlCount === 0) return 'TIMELINE';
+
+  // Computed once, up front, so it can both veto PHOTOGRID (a wall of photo CARDS is not a bare
+  // gallery) and, further down, supply the CARDS/SPLIT base code — see the module-header comment.
+  const wrapper = findWrapperShape(sectionHtml);
+  const imgCount = countTag(sectionHtml, 'img');
+  if (imgCount >= 3 && !(wrapper && wrapper.type === 'CARDS')) return 'PHOTOGRID';
+
+  let base;
+  if (wrapper && wrapper.type === 'CARDS') base = `CARDS${cardsBucket(wrapper.count)}`;
+  else if (wrapper && wrapper.type === 'SPLIT') base = 'SPLIT';
+  else {
+    const linkCount = countTag(sectionHtml, 'a') + countTag(sectionHtml, 'button');
+    base = (linkCount <= 2 && wordCount(sectionHtml) < 60) ? 'CTA' : 'PROSE';
+  }
+  return hasPhotobaseImg(sectionHtml) ? `PHOTOBASE-${base}` : base;
+}
+
+function sectionGround(openTag) {
+  const classMatch = openTag.match(/class="([^"]*)"/);
+  const classes = classMatch ? classMatch[1].split(/\s+/) : [];
+  const isDark = classes.includes('grain-dark') || classes.includes('bg-surface-dark') ||
+    classes.some((c) => /^bg-surface-[56]$/.test(c));
+  if (isDark) return 'D';
+  const isLight = classes.includes('grain') || classes.includes('bg-surface') ||
+    classes.some((c) => /^bg-surface-[1-4]$/.test(c));
+  if (isLight) return 'L';
+  return 'X';
+}
+
+// Recursively lists every `.html` file under a built `out/` dir, skipping `_next` (build assets,
+// never a route). Deliberately separate from the `walk()` helper above this block, which is
+// hardcoded to `.tsx`/`.ts`/`.css` for the colour-leak scan and reused as-is rather than
+// generalised, so this doesn't risk changing that scan's behaviour.
+function listHtmlFiles(dir) {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    if (name === '_next') continue;
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) out.push(...listHtmlFiles(p));
+    else if (name.endsWith('.html')) out.push(p);
+  }
+  return out;
+}
+
+function routeFromFile(outDir, filePath) {
+  let rel = filePath.slice(outDir.length).replace(/\\/g, '/').replace(/^\//, '').replace(/\.html$/, '');
+  if (rel === 'index') return '/';
+  if (rel.endsWith('/index')) rel = rel.slice(0, -'/index'.length);
+  return `/${rel}`;
+}
+
+// { "/": "HERO-D|CARDS6-L|...", "/services": "...", ... } — one pipe-joined code sequence per
+// non-404 route. Route files with zero top-level `<section>` tags (shouldn't happen on this
+// template, but e.g. a redirect stub) are omitted rather than recorded as an empty string, so an
+// empty signature can never false-match another empty one in the comparison below.
+function computeLayoutSignature(outDir) {
+  const files = listHtmlFiles(outDir).filter((f) => !/(?:^|[\\/])(?:404|_not-found)\.html$/.test(f));
+  const signatures = {};
+  for (const file of files) {
+    const html = readFileSync(file, 'utf8');
+    const sections = html.match(/<section\b[^>]*>[\s\S]*?<\/section>/g) || [];
+    if (!sections.length) continue;
+    const codes = sections.map((sectionHtml) => {
+      const openTag = (sectionHtml.match(/^<section[^>]*>/) || [''])[0];
+      return `${classifyShape(sectionHtml, openTag)}-${sectionGround(openTag)}`;
+    });
+    signatures[routeFromFile(outDir, file)] = codes.join('|');
+  }
+  return signatures;
+}
+
+// Standard DP edit distance, over the ATOMIC CODES (one full symbol like `PHOTOBASE-CARDS4-D` per
+// edit unit), never character-by-character — a one-symbol swap must cost 1, not the ~15 characters
+// that symbol happens to be spelled with.
+function levenshteinSymbols(a, b) {
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i += 1) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      cur.push(Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost));
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+function layoutSignatureSimilarity(sigA, sigB) {
+  const a = sigA.split('|');
+  const b = sigB.split('|');
+  const maxLen = Math.max(a.length, b.length);
+  if (maxLen === 0) return 1;
+  return 1 - levenshteinSymbols(a, b) / maxLen;
+}
+
+const layoutOutDir = join(REPO_ROOT, 'clients', slug, 'site', 'out');
+if (!existsSync(layoutOutDir)) {
+  // Same caveat the citation block above doesn't need but this one does: this script can run at a
+  // point in the pipeline before `next build` has produced `site/out` at all. That's not a defect
+  // to report — it's the normal shape of a pre-build QA pass — so this SKIPs quietly rather than
+  // failing, and never blocks anything else in this file that already ran above.
+  console.log(`LAYOUT_FINGERPRINT_NOTE — clients/${slug}/site/out does not exist yet (pre-build run); layout signature skipped this run`);
+} else {
+  const layoutSignatures = computeLayoutSignature(layoutOutDir);
+  if (!Object.keys(layoutSignatures).length) {
+    console.log(`LAYOUT_FINGERPRINT_NOTE — no routable .html files with a top-level <section> found under clients/${slug}/site/out; layout signature skipped this run`);
+  } else {
+    const homeSignature = layoutSignatures['/'];
+    const layoutMatches = [];
+    if (homeSignature && (ledger.length || existsSync(FINGERPRINT_LEDGER))) {
+      const layoutPriors = ledger.filter((r) => r.slug !== slug).slice(0, LAYOUT_SIG_LOOKBACK);
+      for (const prior of layoutPriors) {
+        const priorHome = prior.layoutSignatures && prior.layoutSignatures['/'];
+        if (!priorHome) continue;
+        const exact = priorHome === homeSignature;
+        const similarity = layoutSignatureSimilarity(homeSignature, priorHome);
+        // Belt-and-suspenders: an exact match always warns even if the similarity formula somehow
+        // landed under the threshold (it can't with the current formula, but the two checks are
+        // independent on purpose rather than one being derived from the other).
+        if (exact || similarity >= LAYOUT_SIMILARITY_THRESHOLD) {
+          const priorCodes = priorHome.split('|');
+          const shared = [...new Set(homeSignature.split('|').filter((c) => priorCodes.includes(c)))];
+          layoutMatches.push(`${prior.slug} (${Math.round(similarity * 100)}%${exact ? ', byte-identical' : ''}: shared ${shared.join(', ') || 'none'})`);
+        }
+      }
+    }
+    if (layoutMatches.length) {
+      console.log(`LAYOUT_FINGERPRINT_WARNING — home page signature ${Math.round(LAYOUT_SIMILARITY_THRESHOLD * 100)}%+ similar to ${layoutMatches.length} of the last ${LAYOUT_SIG_LOOKBACK} builds' home pages: ${layoutMatches.join('; ')}. Not a FAIL (uncalibrated signal, see header) — if the rendered pages read as siblings too, vary the section order or composition before this becomes a pattern.`);
+    } else {
+      console.log(`LAYOUT_FINGERPRINT_NOTE — no layout warning: home page section-shape sequence is not ${Math.round(LAYOUT_SIMILARITY_THRESHOLD * 100)}%+ similar (nor byte-identical) to any of the last ${LAYOUT_SIG_LOOKBACK} prior builds' home pages.`);
+    }
+
+    // Same persistence pattern as the citation fingerprint above: append onto the client's existing
+    // record rather than invent a second ledger, and say so plainly rather than fabricate a stub if
+    // design-ledger.mjs never ran for this client.
+    const layoutOwn = ledger.find((r) => r.slug === slug);
+    if (layoutOwn) {
+      layoutOwn.layoutSignatures = layoutSignatures;
+      writeFileSync(FINGERPRINT_LEDGER, JSON.stringify(ledger, null, 2));
+    } else {
+      console.log(`LAYOUT_FINGERPRINT_NOTE — no design-fingerprints.json record for ${slug} (design-ledger.mjs record not run?); layout signature not persisted this run`);
+    }
+  }
+}
