@@ -148,7 +148,7 @@ def session_tokens(path: Path) -> dict:
 
 
 def sessions_since(ts: float, project: str = "") -> list:
-    """Transcripts modified since a unix timestamp, newest first.
+    """Top-level session transcripts modified since a unix timestamp, newest first.
 
     `project` scopes to one project directory. This matters more than it
     looks: without it, a build measured while the operator is also holding a
@@ -158,11 +158,24 @@ def sessions_since(ts: float, project: str = "") -> list:
 
     The project dir name is the cwd with separators replaced by dashes, e.g.
     /Users/x/Github/klaudius/app -> -Users-x-Github-klaudius-app.
+
+    BUG FOUND 2026-08-17 (Fable review, token/compaction audit): a build's
+    subagent transcripts live under `<session-id>/subagents/*.jsonl`, which
+    `rglob` walks into and returned as independent top-level files. Every
+    caller that sums `session_tokens()` over this list (build-end chief
+    among them) already gets a subagent's usage FOR FREE, because
+    `session_tokens()` folds its own subagents directory in (see its
+    docstring). Returning those same subagent files a second time as their
+    own top-level entries double-counted them — measured +19.7% on a real
+    archived build (4,649,776 the old way vs 3,884,252 deduped). Skip
+    anything with a `subagents` path segment; it belongs to its parent.
     """
     out = []
     root = CLAUDE_PROJECTS / project if project else CLAUDE_PROJECTS
     if root.exists():
         for f in root.rglob("*.jsonl"):
+            if "subagents" in f.parts:
+                continue
             try:
                 if f.stat().st_mtime >= ts:
                     out.append(f)
@@ -228,9 +241,20 @@ def stage_breakdown(path: Path) -> list:
     open. Turns before any Skill call go to "orchestration" - the session's
     own reasoning, which is itself worth seeing, because if orchestration is
     large then splitting into per-stage processes pays that cost N times.
+
+    BUG FOUND 2026-08-17 (Fable review, token/compaction audit): this walked
+    every JSONL line and summed its usage block directly, the exact
+    per-line-not-per-message-id bug `_usage_by_message_id` was written to
+    fix elsewhere (see its docstring - one streamed API response repeats its
+    usage object across many lines). Measured ~1.9x inflation here (382
+    usage-bearing lines vs 200 distinct message ids on one build). Fixed the
+    same way: dedupe by message.id, max() each field. A message's lines are
+    always contiguous, so tracking "the currently-open message id" per stage
+    bucket is enough - a message never straddles two stages.
     """
     stages = []
     cur = {"stage": "orchestration", "weighted": 0, "turns": 0}
+    cur_ids: dict = {}  # message.id -> usage dict, scoped to the CURRENT stage bucket
     try:
         lines = path.read_text(errors="replace").splitlines()
     except OSError:
@@ -249,15 +273,28 @@ def stage_breakdown(path: Path) -> list:
                 if cur["turns"]:
                     stages.append(cur)
                 cur = {"stage": name, "weighted": 0, "turns": 0}
+                cur_ids = {}
 
         u = msg.get("usage") or {}
         if u:
-            cur["turns"] += 1
-            cur["weighted"] += (
-                (u.get("input_tokens") or 0)
-                + (u.get("output_tokens") or 0)
-                + (u.get("cache_creation_input_tokens") or 0)
-                + int((u.get("cache_read_input_tokens") or 0) * 0.1)
+            mid = msg.get("id") or f"{path}:{d.get('timestamp', '')}"
+            is_new = mid not in cur_ids
+            slot = cur_ids.setdefault(
+                mid, {"input": 0, "output": 0, "cache_write": 0, "cache_read": 0}
+            )
+            slot["input"] = max(slot["input"], u.get("input_tokens", 0) or 0)
+            slot["output"] = max(slot["output"], u.get("output_tokens", 0) or 0)
+            slot["cache_write"] = max(
+                slot["cache_write"], u.get("cache_creation_input_tokens", 0) or 0
+            )
+            slot["cache_read"] = max(
+                slot["cache_read"], u.get("cache_read_input_tokens", 0) or 0
+            )
+            if is_new:
+                cur["turns"] += 1
+            cur["weighted"] = sum(
+                s["input"] + s["output"] + s["cache_write"] + int(s["cache_read"] * 0.1)
+                for s in cur_ids.values()
             )
     if cur["turns"]:
         stages.append(cur)
