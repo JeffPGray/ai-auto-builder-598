@@ -27,13 +27,26 @@ import { useEffect, useRef, useState } from "react";
  *    so it tracks a bar that changes height) and always clears the iOS home
  *    indicator via `env(safe-area-inset-bottom)`.
  *
- * B. THE OPEN PANEL IS A FULL-SCREEN SHEET ON A PHONE. A 22rem x 32rem floating
- *    card positioned from `bottom` is measured against the LARGE viewport on iOS
- *    Safari, so its top and its send button both end up behind browser chrome and
- *    the visitor has to scroll and pinch to use it. Below 640px it becomes an
- *    inset-0 sheet with safe-area padding. The input is 16px for the same family of
- *    reason: iOS auto-zooms any focused input under 16px, and that zoom is what a
- *    visitor experiences as "I had to zoom to see the box".
+ * B. THE OPEN PANEL IS A BOUNDED FLOATING CARD ON A PHONE TOO, NOT A FULL-SCREEN
+ *    TAKEOVER. An earlier version went full-screen (`inset:0`) below 640px because a
+ *    fixed `height:32rem` card positioned from `bottom` measures against iOS
+ *    Safari's LARGE (chrome-hidden) viewport at layout time, so once the chrome
+ *    reappeared the card's top and its send button ended up behind it — a real
+ *    defect, found on a real iPhone. But the full-screen sheet reads as a page
+ *    navigation, not a chat bubble, and loses the "premium floating widget" feel a
+ *    business owner expects (Jeff, 2026-08-18, comparing against the EuroLuxe
+ *    Detailing site's chat framing, which stays a bounded card on mobile and looks
+ *    right on a phone). The real fix for bug B was never "go full-screen" — it is
+ *    "don't size the panel in a unit that gets the large-viewport measured against
+ *    it": `100svh` (SMALL viewport height — the guaranteed-visible area with browser
+ *    chrome fully SHOWN) caps the panel's height so it can never be taller than the
+ *    worst-case visible area, regardless of which viewport state Safari measured it
+ *    against. The panel stays anchored bottom-right with real margins, a border, a
+ *    shadow and rounded corners — a floating card, exactly like desktop, just
+ *    narrower and height-capped — and the launcher hides while it's open so nothing
+ *    overlaps. The input is 16px for a different iOS reason: it auto-zooms any
+ *    focused input under 16px, and that zoom is what a visitor experiences as "I had
+ *    to zoom to see the box".
  *
  * The mobile rules need media queries and `env()`, which inline styles cannot
  * express, so the widget carries its own scoped stylesheet. It is static,
@@ -61,16 +74,27 @@ color:inherit;line-height:0}
    data-chat-gutter and its content is inset clear of the bubble. */
 [data-chat-gutter]{padding-right:5rem}
 @media (max-width: 640px){
-  .kchat-panel{inset:0;right:0;bottom:0;width:auto;max-width:none;height:auto;
-    max-height:none;border-radius:0;border:none;
-    /* max(), not env() alone. env(safe-area-inset-top) is ZERO in portrait Safari — insets are only
-     non-zero in landscape, standalone/PWA and fullscreen — so an inset-0 full-screen sheet puts its
-     66px header BEHIND the status bar, where it is simply invisible. Reported from a real iPhone
-     2026-08-16: the panel opened and showed blank space above the input, no header and no greeting,
-     while the identical markup rendered correctly at 375x812 in a desktop browser. The floor
-     guarantees clearance whether or not the inset resolves. */
-  padding-top:max(env(safe-area-inset-top, 0px), 48px);
-    padding-bottom:env(safe-area-inset-bottom, 0px)}
+  /* Bounded floating card, not a full-screen takeover (2026-08-18 — matches the
+   framing EuroLuxe Detailing's chat widget uses on mobile, at Jeff's direction).
+   Only width/height/position change here; border, radius, background and shadow
+   are inherited from the base .kchat-panel rule above, so it keeps looking like a
+   card floating over the page instead of a separate screen.
+
+   height/max-height use 100svh (SMALL viewport height — the guaranteed-visible
+   area with iOS Safari's browser chrome fully SHOWN), never 100dvh or a bare rem
+   value. That is what actually fixes the real-iPhone bug the old inset:0 sheet was
+   worked around instead of fixed: a card sized against the LARGE (chrome-hidden)
+   viewport can end up taller than what's visible once the chrome reappears, and a
+   bottom-anchored fixed element does not reflow to compensate. Capping height at
+   the SMALL viewport means the card can never exceed the worst-case visible area,
+   regardless of which viewport state Safari measured it against. */
+  .kchat-panel{
+    right:0.75rem;
+    left:0.75rem;
+    width:auto;
+    max-width:none;
+    height:min(32rem, calc(100svh - 7.5rem));
+    max-height:calc(100svh - 7.5rem)}
   .kchat-close{display:inline-flex}
   .kchat-launcher[data-open="true"]{display:none}
 }`;

@@ -1885,11 +1885,22 @@ A sticky bottom bar's own visibility logic must **show** the bar when there is n
 which is where a call button is most useful.
 
 `SiteChat` handles the rest itself and you should not weaken it: below 640px the
-open panel is a full-screen sheet with `env(safe-area-inset-*)` padding and its own
-close button (a floating card positioned from `bottom` is measured against iOS
-Safari's LARGE viewport, so its top and its send button both end up behind browser
-chrome), and the text input is **16px** because iOS auto-zooms any focused input
-under 16px — that zoom is what a visitor experiences as "I had to zoom in".
+open panel stays a bounded FLOATING CARD (rounded corners, border, shadow, margin
+from the screen edges — the same shape as desktop, just narrower), not a full-screen
+sheet (changed 2026-08-18, Jeff comparing against EuroLuxe Detailing's mobile chat
+framing, which he called out as the bar to match). The real iPhone bug that
+originally motivated going full-screen — a `bottom`-anchored card at a fixed rem
+height gets measured against iOS Safari's LARGE (chrome-hidden) viewport, so its top
+and send button can end up behind the browser chrome once it reappears — is fixed
+properly instead of worked around: the card's height is capped with `100svh` (SMALL
+viewport height, the guaranteed-visible area with chrome fully shown), never `100dvh`
+or a bare rem value, so it can never be taller than the worst-case visible area no
+matter which viewport state it was measured against. The launcher hides while the
+panel is open so nothing overlaps. The text input is **16px** for a separate iOS
+reason: it auto-zooms any focused input under 16px — that zoom is what a visitor
+experiences as "I had to zoom in". If you ever touch this again, verify the panel at
+375x812 with the browser chrome genuinely visible (not just a fixed-size emulated
+viewport, which can't reproduce the chrome-collapse bug) before deciding it's fixed.
 
 Then **write `clients/$ARGUMENTS/site/public/chat-kb.json`**. This is the knowledge
 base. The site is a static export and has no server, so a single shared service
