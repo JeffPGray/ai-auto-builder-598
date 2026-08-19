@@ -1232,6 +1232,22 @@ cost to fit. Record the shortlist and the chosen pair in `status.md` so QA can s
 If a trade returns fewer than 3 credible pairings, widen the query (add tone words: "bold",
 "editorial", "utilitarian", "premium") rather than accepting the single top hit.
 
+## Hero archetype and section transitions — also pick by SEED (2026-08-19 Fable design-elevation
+review, B5)
+
+Same problem as typography, same fix. `trade-identities.csv`'s "Hero Archetype Fit" and "Section
+Transition Style" fields each name 2-3 real options for the trade (e.g. HVAC: full-bleed work-photo
+/ stat-anchored / type-as-hero). Without a deliberate pick, the model defaults to whichever is
+listed or described first — every business in that trade gets the same structural skeleton in
+different colours, which is the fleet-level tell all over again, one level up from fonts.
+
+Pick deterministically from the trade row's own options using the business name (same seed source
+as typography — same business always gets the same archetype on a rebuild, different businesses in
+the same trade get structurally different pages, not just re-hued ones). Record the choice as part
+of DESIGN_IDEA's "Hero archetype:" line (§ Design system step above) — it is not a separate record,
+it is what that line is for. Two real prospects in the same trade comparing sites should see
+different structural skeletons, not the same layout in a different accent colour.
+
 ## ⛔ HARD-BLOCKER CONTRACT (mandatory — the QA gate below grades against this exact text)
 
 **Your output is auto-FAILED by an independent judge if any of these are TRUE.** This is the exact
