@@ -398,23 +398,33 @@ def read_email_messages(client_email, account=None):
     seen = set()
     out = []
 
-    for query in (f'TO "{client_email}"', f'FROM "{client_email}"'):
-        try:
-            results = search_emails(query, max_results=50)
-        except (Exception, SystemExit) as e:
-            # SystemExit is caught deliberately. gmail.get_config() calls
-            # sys.exit(1) when EMAIL_ADDRESS / EMAIL_PASSWORD / the host vars
-            # are unset, and SystemExit is a BaseException — so without this it
-            # sails past main()'s `except Exception` and kills the whole run,
-            # abandoning every WhatsApp and SMS client still queued behind this
-            # one. Converting it to a RuntimeError keeps the failure scoped to
-            # this client. read_twilio_sms_messages guards the same footgun.
-            raise RuntimeError(
-                f"email search failed ({query}) for {client_email}: {e} "
-                "— check EMAIL_ADDRESS / EMAIL_PASSWORD / EMAIL_IMAP_HOST / "
-                "EMAIL_SENT_FOLDER in .env. Skipping cache write so the "
-                "existing thread state survives"
-            )
+    # ONE merged OR query instead of two separate TO/FROM passes (Fable consult, 2026-08-19).
+    # Each pass previously opened its own fresh IMAP connection (gmail.py's search_emails does a
+    # full connect+login per call) and walked both folders — measured as a real contributor to
+    # /follow-up's ~6-7 minute Step 0 cost at ~1000 clients. This does NOT weaken the safety
+    # property the two-query docstring above walks through: that reasoning describes what a
+    # PARTIAL failure could do if the function tried to salvage a half-successful read, but the
+    # code has never done that — any exception here already aborts the whole read and writes
+    # nothing (see the `except` below), identically whether it's one merged query or two separate
+    # ones failing. One query cannot "fail partially" any more than two queries already couldn't.
+    query = f'OR TO "{client_email}" FROM "{client_email}"'
+    try:
+        results = search_emails(query, max_results=100)
+    except (Exception, SystemExit) as e:
+        # SystemExit is caught deliberately. gmail.get_config() calls
+        # sys.exit(1) when EMAIL_ADDRESS / EMAIL_PASSWORD / the host vars
+        # are unset, and SystemExit is a BaseException — so without this it
+        # sails past main()'s `except Exception` and kills the whole run,
+        # abandoning every WhatsApp and SMS client still queued behind this
+        # one. Converting it to a RuntimeError keeps the failure scoped to
+        # this client. read_twilio_sms_messages guards the same footgun.
+        raise RuntimeError(
+            f"email search failed ({query}) for {client_email}: {e} "
+            "— check EMAIL_ADDRESS / EMAIL_PASSWORD / EMAIL_IMAP_HOST / "
+            "EMAIL_SENT_FOLDER in .env. Skipping cache write so the "
+            "existing thread state survives"
+        )
+    if True:  # kept as a block (not re-indenting the loop body) to minimize diff/risk
         for r in results or []:
             mid = r.get("message_id") or ""
             if mid and mid in seen:

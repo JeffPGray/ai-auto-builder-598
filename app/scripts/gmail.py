@@ -702,9 +702,14 @@ def search_emails(query, max_results=20):
     Plain text queries are automatically wrapped in TEXT "..." for convenience."""
     if _use_graph():
         return _graph().search_emails(query, max_results=max_results)
-    # If query doesn't start with an IMAP search key, wrap it as a TEXT search
+    # If query doesn't start with an IMAP search key, wrap it as a TEXT search.
+    # "OR" added 2026-08-19 (Fable consult) so a caller can combine two search keys into one
+    # round trip, e.g. 'OR TO "x" FROM "x"' — valid per RFC 3501 (OR <search-key1> <search-key2>),
+    # each half already being a complete search key. sync_thread_state.py was previously making
+    # two full separate connect+login+search+fetch passes (one TO, one FROM) per client; this
+    # lets it make one.
     imap_keys = ("SUBJECT", "FROM", "TO", "TEXT", "BODY", "CC", "BCC",
-                 "BEFORE", "SINCE", "ON", "ALL", "UNSEEN", "SEEN", "FLAGGED")
+                 "BEFORE", "SINCE", "ON", "ALL", "UNSEEN", "SEEN", "FLAGGED", "OR")
     if not any(query.strip().upper().startswith(k) for k in imap_keys):
         query = f'TEXT "{query}"'
 
