@@ -252,11 +252,18 @@ echo "child exited rc=$rc after $(( ($(date +%s) - started) / 60 ))m"
 # The command line alone (`python3 -m http.server <port> --directory out`) is generic across every
 # client and gives no client-scoped string to pkill -f on, so match by PID's cwd instead (via lsof)
 # — that's what actually distinguishes THIS run's server from another concurrent lane's.
+#
+# TWO server shapes are swept, not one. qa-capture.sh now kills Call 2's `python3 -m http.server`
+# and binds `node scripts/qa-serve.mjs` in its place (http.server 404s every assetPrefixed asset,
+# so the page never hydrates and every browser gate measures a dead page). Both can therefore be
+# alive when a dispatch dies uncleanly, and a sweeper that only knows the old pattern would leave
+# the new one running forever. qa-serve is launched with cwd = clients/<slug>/site, exactly like
+# the server it replaced, so the same cwd test distinguishes this lane's from a concurrent lane's.
 REPO_ROOT_ABS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-for pid in $(pgrep -f "http\.server .* --directory out" 2>/dev/null); do
+for pid in $(pgrep -f "http\.server .* --directory out" 2>/dev/null; pgrep -f "qa-serve\.mjs" 2>/dev/null); do
   cwd=$(lsof -a -d cwd -p "$pid" -Fn 2>/dev/null | sed -n 's/^n//p')
   case "$cwd" in
-    "$REPO_ROOT_ABS/$WATCH_DIR"/*/site) kill "$pid" 2>/dev/null && echo "swept lingering QA http.server pid=$pid cwd=$cwd" ;;
+    "$REPO_ROOT_ABS/$WATCH_DIR"/*/site) kill "$pid" 2>/dev/null && echo "swept lingering QA server pid=$pid cwd=$cwd" ;;
   esac
 done
 

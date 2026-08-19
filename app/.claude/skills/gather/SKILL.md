@@ -2,7 +2,7 @@
 name: gather
 description: Collect content from public sources for a business - reviews, photos, contact info, services
 argument-hint: [business-name]
-allowed-tools: Bash(npx *), Bash(python3 *), Bash(curl *), Bash(mkdir *), Bash(node *), Read, Write, Glob, Grep
+allowed-tools: Bash(npx *), Bash(python3 *), Bash(curl *), Bash(mkdir *), Bash(node *), Bash(head *), Read, Write, Glob, Grep
 ---
 
 # Gather Content for $ARGUMENTS

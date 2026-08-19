@@ -112,41 +112,46 @@ echo "SERVE_SANITY_CHECK=PASS — assets resolve through the QA server (200 on $
 # Only the gate battery, which shares no session with anything, moves.) Waited on once at the very
 # end of this call, after every screenshot phase, not here.
 mkdir -p /tmp/qa-gates-"$SLUG"
-VERIFY_AT=$(grep -oE '^VERIFY_GATES_OK_AT=.*' ../data/status.md 2>/dev/null | tail -1 | cut -d= -f2)
-VERIFY_FRESH=0
-if [ -n "$VERIFY_AT" ]; then
-  # TZ=UTC is LOAD-BEARING. build/SKILL.md writes this marker with `date -u`, i.e. a UTC stamp.
-  # BSD `date -jf` has no timezone in the format, so it parses those digits as LOCAL time. In any
-  # negative-UTC-offset zone (CDT = UTC-5) the marker lands HOURS IN THE FUTURE, nothing is ever
-  # "newer" than it, VERIFY_FRESH stays 1, and the five carried gates below are written as literal
-  # PASS strings WITHOUT BEING RUN: FONT_CHECK, CONTRAST_CHECK, TOKEN_CHECK, REVIEW_CHECK,
-  # NAV_VISIBILITY_CHECK. Measured 2026-08-19: a marker at 18:38:40Z parsed to 18:38:40 CDT, a
-  # 5-hour skew, while out/index.html had been rebuilt 30 minutes AFTER the marker and still read
-  # as fresh. NAV_VISIBILITY_CHECK genuinely FAILs on 3 of 5 clients, so this was burying real
-  # findings, not hypotheticals. GNU date (-d) already handles the trailing Z correctly.
-  VERIFY_EPOCH=$(TZ=UTC date -jf "%Y-%m-%dT%H:%M:%SZ" "$VERIFY_AT" +%s 2>/dev/null || date -d "$VERIFY_AT" +%s 2>/dev/null)
-  if [ -n "$VERIFY_EPOCH" ]; then
-    touch -d "@$VERIFY_EPOCH" "/tmp/.verify-marker-"$SLUG"" 2>/dev/null \
-      || touch -t "$(date -r "$VERIFY_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null)" "/tmp/.verify-marker-"$SLUG"" 2>/dev/null
-  fi
-  if [ -f "/tmp/.verify-marker-"$SLUG"" ] && [ -z "$(find out src/app/globals.css ../data/status.md -newer "/tmp/.verify-marker-"$SLUG"" -type f 2>/dev/null | head -1)" ]; then
-    VERIFY_FRESH=1
-  fi
-  rm -f "/tmp/.verify-marker-"$SLUG""
-fi
-if [ "$VERIFY_FRESH" = "1" ]; then
-  echo "FONT_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-"$SLUG"/font-check.log
-  echo "CONTRAST_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-"$SLUG"/contrast.log
-  echo "TOKEN_CHECK=PASS (carried from Verify, globals.css unchanged since $VERIFY_AT)" > /tmp/qa-gates-"$SLUG"/token.log
-  echo "REVIEW_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-"$SLUG"/reviews.log
-  echo "NAV_VISIBILITY_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-"$SLUG"/nav-visibility.log
-else
-  node ../../../scripts/font-check.mjs . > /tmp/qa-gates-"$SLUG"/font-check.log 2>&1 &
-  node ../../../scripts/contrast-check.mjs out > /tmp/qa-gates-"$SLUG"/contrast.log 2>&1 &
-  node ../../../scripts/contrast-check.mjs --tokens src/app/globals.css > /tmp/qa-gates-"$SLUG"/token.log 2>&1 &
-  ( cd ../../.. && node scripts/verify-reviews.mjs "$SLUG" ) > /tmp/qa-gates-"$SLUG"/reviews.log 2>&1 &
-  node ../../../scripts/verify-nav-visibility.mjs out > /tmp/qa-gates-"$SLUG"/nav-visibility.log 2>&1 &
-fi
+# ---- THE VERIFY-CARRY IS GONE. THESE FIVE GATES NOW ALWAYS RUN FOR REAL. --------------------
+# There was a dedupe here: if status.md carried a VERIFY_GATES_OK_AT marker and out/ was untouched
+# since, this block SYNTHESISED five `X=PASS (carried from Verify)` lines instead of running
+# FONT_CHECK, CONTRAST_CHECK, TOKEN_CHECK, REVIEW_CHECK and NAV_VISIBILITY_CHECK.
+#
+# TWO INDEPENDENT FAULTS WERE MEASURED IN IT ON 2026-08-19, and they point the same way.
+#
+# 1. The marker is SELF-GRADED. build/SKILL.md writes it as a bare
+#    `echo "VERIFY_GATES_OK_AT=$(date -u ...)" >> status.md` under a prose instruction to write it
+#    "only if every one of the six genuinely passed". That is the exact gate shape every other
+#    check in this repo was deliberately converted away from — a model grading its own work — and
+#    the prose itself concedes the consequence: "a stale/wrong marker is worse than no marker,
+#    since QA's freshness check trusts it without re-verifying the claim itself." Nothing verified
+#    the marker before this block believed it.
+# 2. The freshness arithmetic was ALSO wrong, in the direction of trusting more. `date -u` writes
+#    a UTC stamp; BSD `date -jf` has no timezone in that format and parsed the digits as LOCAL
+#    time, so in any negative-offset zone (CDT = UTC-5) the marker landed hours in the FUTURE and
+#    nothing could ever be newer than it. A marker at 18:38:40Z parsed to 18:38:40 CDT while
+#    out/index.html had been rebuilt 30 minutes after it — and still read as fresh.
+#
+# What that combination actually shipped, on this very client: the QA log said
+# `REVIEW_CHECK=PASS (carried from Verify)`. Running the gate for real against the same untouched
+# artifact says:
+#     REVIEW_CHECK=FAIL 1/3 shipped review(s) not found verbatim in gathered-content.md
+#       - "David Christman": "They are not simply parts changers. They do proper diagnostics..."
+# A testimonial attributed to a named human that is not in gathered-content.md is the worst single
+# thing this pipeline can put in front of a business owner, and QA reported it green — not because
+# a gate was missing, but because a claim was believed instead of checked.
+#
+# AND THE DEDUPE BOUGHT NOTHING. Measured on this client: the five gates run concurrently in 23s
+# wall (contrast dominates at 22.9s; token and reviews are 0.1s each), while the screenshot phases
+# they overlap with take 64s+ of playwright time alone. The battery is launched here at the top of
+# the call and reaped at the very bottom, so it is entirely hidden behind work that has to happen
+# regardless. The carry saved zero wall-clock seconds and cost a fabricated PASS. Fixing its
+# timezone parsing would only have narrowed when it lies; running the gates removes the question.
+node ../../../scripts/font-check.mjs . > /tmp/qa-gates-"$SLUG"/font-check.log 2>&1 &
+node ../../../scripts/contrast-check.mjs out > /tmp/qa-gates-"$SLUG"/contrast.log 2>&1 &
+node ../../../scripts/contrast-check.mjs --tokens src/app/globals.css > /tmp/qa-gates-"$SLUG"/token.log 2>&1 &
+( cd ../../.. && node scripts/verify-reviews.mjs "$SLUG" ) > /tmp/qa-gates-"$SLUG"/reviews.log 2>&1 &
+node ../../../scripts/verify-nav-visibility.mjs out > /tmp/qa-gates-"$SLUG"/nav-visibility.log 2>&1 &
 # HyperUI usage/transplant checks REMOVED from the gate battery 2026-08-19 (Jeff's call — the
 # scripts, reference catalog, and lookup tool are deleted entirely). They no longer run at all,
 # carried or fresh.

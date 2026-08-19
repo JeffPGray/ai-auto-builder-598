@@ -100,12 +100,75 @@ chk "saturated no longer 'usually right'" "! grep -q 'usually the right answer f
 chk "reset script clears fingerprints"   "grep -q 'design-fingerprints' scripts/reset-client-design.mjs"
 chk "canonical qa-serve strips prefix"   "grep -q 'klaudius' scripts/qa-serve.mjs"
 
+echo ""; echo "── 7d. gate verdicts are LOAD-BEARING (a failing gate cannot be walked past) ──"
+# Every assertion here maps to a measured 2026-08-19 failure where a gate ran, produced a correct
+# answer, and the build carried on anyway. These are the mechanisms that close each one.
+chk "qa-capture serves via qa-serve"     "grep -q 'qa-serve.mjs' scripts/qa-capture.sh"
+chk "qa-capture no longer uses http.server" "! grep -qE '^\\s*python3 -m http.server' scripts/qa-capture.sh"
+chk "qa-capture kills Call 2's server"   "grep -q 'pkill -f \"http.server \$STALE_PORT' scripts/qa-capture.sh"
+chk "serve-sanity gate exists"           "grep -q 'SERVE_SANITY_CHECK=' scripts/qa-capture.sh"
+chk "serve-sanity aborts on 404 assets"  "grep -A8 'ASSET_CODE\" != \"200\"' scripts/qa-capture.sh | grep -q 'exit 1'"
+# Precise: the CARRY is the `echo "X=PASS (carried from Verify..."` lines that synthesised a verdict
+# without running the gate. The block comment explaining WHY they were removed necessarily quotes
+# that same string, and must not fail this check — same discipline as the Bodoni assertion above.
+chk "verify-carry removed (no fake PASS)" "! grep -qE '^[[:space:]]*echo \"[A-Z_]+=PASS \\(carried' scripts/qa-capture.sh"
+chk "the five carried gates really run"   "[ \$(grep -cE '^(node|\\( cd) .*(font-check|contrast-check|verify-reviews|verify-nav-visibility)' scripts/qa-capture.sh) -ge 5 ]"
+chk "hero-video always emits a verdict"  "grep -q 'uncaughtException' scripts/verify-hero-video.mjs"
+chk "hero-video focuses sr-only control" "grep -q 'btn.focus()' scripts/verify-hero-video.mjs"
+chk "gate registry exists"               "test -f scripts/lib/gates.mjs"
+chk "registry: every gate has a verdict re" "node -e 'import(\"./scripts/lib/gates.mjs\").then(m=>process.exit(m.GATES.every(g=>g.verdict instanceof RegExp)?0:1))'"
+chk "registry: claims map to real gates"  "node -e 'import(\"./scripts/lib/gates.mjs\").then(m=>process.exit(m.GATES.filter(g=>g.claim).length>=5?0:1))'"
+chk "runGate captures to file not pipe"   "grep -q 'stdio:\\s*\\[.ignore., fd, fd\\]' scripts/lib/gates.mjs"
+chk "runGate flags exit/verdict mismatch" "grep -q \"verdict: 'INTEGRITY'\" scripts/lib/gates.mjs"
+chk "runGate flags a missing verdict"     "grep -q \"verdict: 'MISSING'\" scripts/lib/gates.mjs"
+chk "copy-fingerprint no truncating exit" "! grep -qE '^process.exit\\(0\\);' scripts/copy-fingerprint-check.mjs"
+for m in run-gates reconcile-claims verify-fix; do
+  chk "mechanism executes: $m.mjs"       "node --check scripts/$m.mjs"; done
+chk "run-gates prints one GATES= verdict" "grep -q 'GATES=' scripts/run-gates.mjs"
+chk "reconciler fails on contradiction"   "grep -q 'CONTRADICTION' scripts/reconcile-claims.mjs"
+chk "reconciler fails on stale claim"     "grep -q 'STALE-CLAIM' scripts/reconcile-claims.mjs"
+chk "reconciler fails on unverifiable"    "grep -q 'UNVERIFIED' scripts/reconcile-claims.mjs"
+chk "verify-fix detects a non-fix"        "grep -q 'NOT-FIXED' scripts/verify-fix.mjs"
+chk "verify-fix detects a regression"     "grep -q 'REGRESSED' scripts/verify-fix.mjs"
+chk "verify-fix names unadjudicated"      "grep -q 'UNADJUDICATED' scripts/verify-fix.mjs"
+chk "dispatch sweeps qa-serve too"        "grep -q 'qa-serve' scripts/dispatch-build.sh"
+
 echo ""; echo "── 8. no dangling references to deleted sections ──"
 chk "no dead § refs"                     "! grep -rqE '§ (Visual richness|Composition|Colour roles|Ground|Trade personality|Photo art direction|Section treatments|Design manifest|Typography variation)' .claude/skills/*/SKILL.md .claude/agents/*.md CLAUDE.md scripts/*.mjs"
 # Precise: Bodoni must not appear as an IMPORT/code example. Mentioning it in the historical
 # explanation of why it was removed is correct and must not fail this check.
 chk "Bodoni not a code example"          "! grep -qE '^\\s*(import|const).*Bodoni_Moda' .claude/skills/build/SKILL.md"
 chk "consult typography not skipped"     "! grep -q 'Skip the .--design-system. font' .claude/skills/build/SKILL.md"
+
+echo ""; echo "── 9. GENERIC reachability (derived, not enumerated) ──"
+# Everything above this line is an ENUMERATION: 62 assertions naming the specific wires that were
+# found broken by hand on 2026-08-19. That is its strength (it asserts real BEHAVIOUR — it runs
+# derive-palette and greps the output, runs richness-check against a real client and proves the
+# gate fires) and its weakness (a wire added tomorrow is unprotected until somebody remembers to
+# write assertion #63).
+#
+# verify-wiring-generic.mjs closes that gap. It enumerates nothing: it parses every skill and
+# agent, extracts the tools/scripts/flags/sections each body actually instructs, and asserts the
+# frontmatter and the filesystem can satisfy them. A brand-new skill is covered the moment it
+# exists. Its own self-test (scripts/verify-wiring-generic.test.mjs) proves it catches all five
+# 2026-08-19 failure SHAPES when they reappear under names it has never seen.
+if node scripts/verify-wiring-generic.mjs; then
+  ok "generic reachability checks (see output above)"
+else
+  no "generic reachability FAILED — see the itemised output above; each names file:line and the fix"
+fi
+
+echo ""; echo "── 10. Rule-corpus CONSISTENCY (contradictions, not reachability) ──"
+# Sections 1-9 ask "can this instruction execute?". This asks a different question: "do two
+# instructions tell the model opposite things?" — the failure mode where every wire is live, every
+# gate is reachable, and the model still does the wrong thing because the nearest rule won.
+# Reachability checks pass cleanly on a file that names FULL-TINT the default in one section and
+# NEUTRAL-CANVAS the default in another; only this catches that.
+if node scripts/verify-consistency.mjs; then
+  ok "no rule contradictions detected"
+else
+  no "rule CONTRADICTIONS found — see the itemised output above; each names both sides with file:line"
+fi
 
 echo ""; printf "  ═══ %d passed, %d FAILED ═══\n\n" "$P" "$F"
 exit $((F>0))

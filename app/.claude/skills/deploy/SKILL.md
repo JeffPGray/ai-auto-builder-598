@@ -2,7 +2,7 @@
 name: deploy
 description: Deploy a built website to production — Vercel, Cloudflare Pages, Netlify, or your own server (self-host), per DEPLOY_PROVIDER in .env
 argument-hint: [business-name]
-allowed-tools: Bash(npx *), Bash(npm *), Bash(python3 *), Bash(rm *), Bash(cd *), Bash(cat *), Bash(grep *), Bash(test *), Bash(curl *), Bash(rsync *), Read, Write
+allowed-tools: Bash(npx *), Bash(npm *), Bash(node *), Bash(python3 *), Bash(bash *), Bash(git *), Bash(rm *), Bash(cd *), Bash(cat *), Bash(grep *), Bash(test *), Bash(curl *), Bash(rsync *), Bash(find *), Bash(tee *), Bash(mkdir *), Bash(sed *), Bash(awk *), Bash(sleep *), Bash(head *), Bash(cut *), Bash(tr *), Bash(echo *), Bash(for *), Read, Write, Skill
 ---
 
 # Deploy $ARGUMENTS to production

@@ -2,7 +2,7 @@
 name: find
 description: Search Google Maps for businesses without websites (or, in rescue/booking modes, with bad ones or booking-page-only web presences) in a specific region (UK, US, EU — operator-supplied)
 argument-hint: [region and/or industry]
-allowed-tools: Bash(node *), Bash(python3 *), Bash(grep *), Bash(ls *), Bash(curl *), Bash(cat *), Bash(npx *), Bash(*/notify.sh *), Read, Write, Glob, Grep, mcp__supabase__execute_sql
+allowed-tools: Bash(node *), Bash(python3 *), Bash(grep *), Bash(ls *), Bash(curl *), Bash(cat *), Bash(npx *), Bash(*/notify.sh *), Bash(mkdir *), Bash(rm *), Bash(echo *), Read, Write, Glob, Grep, mcp__supabase__execute_sql
 
 > ⚠️ **Terminal events only.** `NOTIFY_CHANNEL` fans out to two channels, so one call is two
 > messages. Alert here ONLY if this failure stops the pipeline or needs a human now. Stage

@@ -623,4 +623,19 @@ if (own) {
   console.log(`COPY_FINGERPRINT_NOTE — no design-fingerprints.json record for ${slug} (design-ledger.mjs record not run?); copy sketch not persisted this run`);
 }
 
-process.exit(0);
+/*
+ * NO `process.exit(0)` HERE — it used to be, and it silently ate this gate's own verdict.
+ *
+ * On a PIPE, process.stdout writes in Node are asynchronous, and process.exit() discards whatever
+ * is still queued. This script's WARN branch prints the shared-phrase evidence (tens of KB) and
+ * THEN the COPY_FINGERPRINT_CHECK= line, so the verdict is exactly what sits at the back of the
+ * queue when exit() fires. Measured 2026-08-19, same slug, same run, two capture methods:
+ *     `... 2>&1 | wc -c`          -> 65,706 bytes, ZERO COPY_FINGERPRINT_CHECK= lines
+ *     `... > file 2>&1; wc -c`    -> 66,590 bytes, verdict present
+ * The missing 884 bytes are the verdict. It only ever worked because qa-capture.sh happens to
+ * redirect to a file (synchronous), so the bug was invisible for as long as nobody wrapped this
+ * gate in anything that pipes — a wrapper, a CI capture, `| tee`, a tool that captures stdout.
+ *
+ * Falling off the end exits 0 anyway, after Node flushes. If a future edit needs a non-zero exit,
+ * set `process.exitCode = N` and return — never process.exit() after printing.
+ */

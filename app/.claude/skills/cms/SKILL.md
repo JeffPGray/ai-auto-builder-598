@@ -3,7 +3,7 @@ name: cms
 description: Retrofit a deployed client site with a self-serve CMS — a password-protected /admin editor where the owner edits their own text, photos and reviews. Vercel only.
 argument-hint: [business-name]
 effort: high
-allowed-tools: Bash(npx *), Bash(npm *), Bash(python3 *), Bash(cd *), Bash(cp *), Bash(mv *), Bash(mkdir *), Bash(rm *), Bash(cat *), Bash(grep *), Bash(test *), Bash(curl *), Bash(diff *), Bash(openssl *), Bash(printf *), Bash(sleep *), Bash(kill *), Bash(pkill *), Bash(bash *), Bash(head *), Bash(cut *), Bash(tr *), Bash(touch *), Read, Write, Edit, Glob, Grep
+allowed-tools: Bash(npx *), Bash(npm *), Bash(python3 *), Bash(cd *), Bash(cp *), Bash(mv *), Bash(mkdir *), Bash(rm *), Bash(cat *), Bash(grep *), Bash(test *), Bash(curl *), Bash(diff *), Bash(openssl *), Bash(printf *), Bash(sleep *), Bash(kill *), Bash(pkill *), Bash(bash *), Bash(head *), Bash(cut *), Bash(tr *), Bash(touch *), Bash(wc *), Bash(find *), Bash(dirname *), Bash(echo *), Read, Write, Edit, Glob, Grep
 ---
 
 # Add a self-serve CMS to $ARGUMENTS
@@ -68,7 +68,7 @@ npm install @vercel/blob browser-image-compression
 
 If the site's `next.config.mjs` had extra keys beyond the scaffold defaults (rare), merge them into the new file instead of overwriting — the non-negotiables are: **no** `output: 'export'`, keep `images: { unoptimized: true }`, add `experimental.serverActions.bodySizeLimit: "4.5mb"`.
 
-**`rm -f vercel.json` is not optional.** The scaffold ships a `vercel.json` containing a single rewrite, `/` → `/index`. It exists only because a **static-export** prebuilt deploy otherwise serves 404 at `/` (Next 16 + Vercel CLI 59 re-home `index.html` onto the serving path `index` and nothing maps `/` onto it). Once this site is a server app there is no `/index` route, so leaving the file in place would rewrite the homepage onto a non-existent route and 404 the very page the retrofit is meant to preserve. If you take the abort path in § Rollback, restore `vercel.json` alongside `next.config.mjs`.
+**`rm -f vercel.json` is not optional.** The scaffold ships a `vercel.json` containing a single rewrite, `/` → `/index`. It exists only because a **static-export** prebuilt deploy otherwise serves 404 at `/` (Next 16 + Vercel CLI 59 re-home `index.html` onto the serving path `index` and nothing maps `/` onto it). Once this site is a server app there is no `/index` route, so leaving the file in place would rewrite the homepage onto a non-existent route and 404 the very page the retrofit is meant to preserve. If you take the abort path in § Maintenance (the site already has a CMS), restore `vercel.json` alongside `next.config.mjs`.
 
 ## Step 3 — Copy the plumbing (verbatim)
 

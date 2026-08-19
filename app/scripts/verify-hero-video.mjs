@@ -72,6 +72,21 @@ const port = readFileSync(portFile, "utf8").trim();
 const SITE = `http://localhost:${port}`;
 mkdirSync(OUT, { recursive: true });
 
+// A GATE MUST ALWAYS EMIT A VERDICT. Measured 2026-08-19: a 30s Playwright timeout below threw
+// past every `if` in this file, so the run ended with a stack trace and no
+// HERO_VIDEO_PLAYBACK_CHECK= line — and the QA agent, which greps for that token, found nothing to
+// gate on. Silence reads as "no news", which is the single most dangerous verdict a check can
+// return. Any crash from here on is a FAIL with a named reason and exit 1.
+const fatal = (e) => {
+  console.log(
+    `HERO_VIDEO_PLAYBACK_CHECK=FAIL — the check itself crashed (${e && e.message ? e.message.split("\n")[0] : e}). ` +
+    "Treat as a hard failure: a gate that cannot complete has not cleared anything.",
+  );
+  process.exit(1);
+};
+process.on("uncaughtException", fatal);
+process.on("unhandledRejection", fatal);
+
 const browser = await chromium.launch();
 const probe = (page) =>
   page.evaluate(() => {
@@ -103,10 +118,20 @@ const t2 = await probe(page);
 await page.screenshot({ path: `${OUT}/hero-video-t2.png`, clip: { x: 0, y: 0, width: 1440, height: 900 } });
 
 // --- WCAG 2.2.2 pause control actually pauses ---
+// The control is CORRECTLY built as `sr-only focus:not-sr-only` — invisible until focused, which
+// is the standard skip-link pattern and exactly what a keyboard user gets. Playwright's
+// actionability check therefore never settles on a plain .click(): the element reports "visible,
+// enabled and stable" but "outside of the viewport" forever, and the call times out after 30s.
+// Measured 2026-08-19: that timeout threw an UNCAUGHT exception, so this gate printed a raw stack
+// trace and NO HERO_VIDEO_PLAYBACK_CHECK= line at all — a gate that emits no verdict cannot fail a
+// build, it just gets scrolled past in a log. Focus first (the real keyboard path, which is what
+// makes the control take layout), then click.
 let paused = null;
 const btn = page.getByRole("button", { name: /background/i });
 if (await btn.count()) {
-  await btn.click();
+  await btn.focus();
+  await page.waitForTimeout(150);
+  await btn.click({ timeout: 5000 }).catch(() => btn.press("Enter").catch(() => {}));
   await page.waitForTimeout(800);
   paused = await probe(page);
 }

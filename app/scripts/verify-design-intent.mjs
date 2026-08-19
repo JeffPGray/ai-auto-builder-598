@@ -27,6 +27,7 @@
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { uniformSiblingGroups, visualSignature, MARKETING_ROUTE } from './lib/design-dom.mjs';
 
 const args = process.argv.slice(2);
 const BRIEF_ONLY = args.includes('--brief-only');
@@ -151,17 +152,91 @@ const sizeRank = (cls) => {
  * be uniform). Firing there would make this gate cry wolf, and this codebase has already learned
  * that a gate which is always red protects nothing. */
 const MARKETING_ONLY = /(^|\/)(index|services|about|contact)\.html$/;
+
+/* ── CHECK D-1 — UNIFORM RUN, CAPPED AT SIX (2026-08-19) ───────────────────────────────────────
+ *
+ * THE DEFECT THIS EXISTS FOR, and why the check below it could not see it. The rejected build's
+ * signature move 3 promised "top 3 featured ... rest as compact two-column index". It shipped 3
+ * featured cards and then a TWELVE-row tail — and the heading check below PASSED it, because that
+ * check excuses any uniform group as long as something ELSE on the page is larger. The three
+ * featured cards were exactly that "something else". So the escape hatch designed to allow a
+ * featured element licensed an unbounded tail: the operator's rule is "max 6 uniform rows, collapse
+ * the tail", and "collapse" had never been given a number.
+ *
+ * Here it is a number. Six. Above six, a featured element elsewhere does not buy amnesty.
+ *
+ * TWO things had to change to make this real, and both are in scripts/lib/design-dom.mjs:
+ *
+ *  1. VISUAL uniformity, not string identity. The old checks keyed on byte-identical class strings,
+ *     so `p-6 hover:bg-x/5 transition-colors` and `p-6 hover:bg-x/10 transition-all` counted as two
+ *     different things and read as one thing. `visualSignature()` strips everything invisible in a
+ *     still frame (interaction states, transitions, z-order, positioning), collapses responsive
+ *     prefixes, and keeps only what decides shape, weight and ground.
+ *  2. Real SIBLINGS. A regex counts a class anywhere on the page; 12 rows in one list and 12 rows
+ *     spread over 6 sections are the same number and completely different pages. Only the first is
+ *     monotony. `uniformSiblingGroups()` groups by actual parent from a parsed tree, and excludes
+ *     nav/header/footer/drawer — repetition there is CORRECT and it is what false-positived the
+ *     first calibration of richness-check § 15 by 36 hits.
+ *
+ * CALIBRATED against both real builds, and the cap lands exactly on the line between them:
+ *   rejected build      -> runs of 12 on BOTH index.html and services.html. Fires twice, correctly.
+ *   accepted floor build -> longest run anywhere is SIX (index 6, services 6, services/electrical 6,
+ *                           blog cards 5, FAQ 5). Fires zero times.
+ * The operator's "max 6" turns out to be precisely the boundary separating the build he rejected
+ * from the build he calls the floor. That is not a threshold I tuned to fit; it is the one he
+ * stated, and it survived measurement.
+ */
+const UNIFORM_RUN_CAP = 6;
+const runFacts = {};
+for (const f of htmlFiles) {
+  const rel = f.replace(outDir + '/', '');
+  if (!MARKETING_ROUTE.test(rel)) continue;
+  const { groups } = uniformSiblingGroups(readFileSync(f, 'utf8'));
+  const over = groups.filter((g) => g.members.length > UNIFORM_RUN_CAP);
+  if (groups[0]) runFacts[rel] = groups[0].members.length;
+  const reported = new Set();
+  for (const g of over) {
+    // One report per container: a 12-row list also repeats its <h3> and <p> 12 times, and three
+    // failures for one defect is noise that trains people to skim the output.
+    if (reported.has(g.parent)) continue;
+    reported.add(g.parent);
+    failures.push(
+      `[rhythm] ${g.members.length} visually-identical <${g.tag}> siblings in one container on ` +
+      `${rel} — the cap is ${UNIFORM_RUN_CAP}. "Collapse the tail" is this number: past six rows a ` +
+      'reader stops reading and starts scrolling, and a featured element elsewhere on the page does ' +
+      'NOT buy the tail amnesty (measured: a build shipped 3 featured cards + a 12-row index and ' +
+      'every rhythm gate passed it). Cut to six and move the rest behind a link, group them under ' +
+      'sub-headers, or change treatment every 3-4 items. ' +
+      `Signature: "${g.sig.slice(0, 90)}${g.sig.length > 90 ? '…' : ''}"`);
+  }
+}
+facts.longestUniformRun = runFacts;
+
 for (const f of htmlFiles) {
   const rel = f.replace(outDir + '/', '');
   if (!MARKETING_ONLY.test(rel)) continue;
   const page = readFileSync(f, 'utf8');
   for (const tag of ['h2', 'h3', 'h4']) {
+    /* Keyed on the VISUAL signature, not the raw class string (2026-08-19). Keyed on the raw
+     * string, two headings differing only by `hover:` state or a transition utility counted as two
+     * separate groups and read to a human as one uniform run — which is how a compact index of
+     * near-identical rows slipped past a check written to catch exactly that. */
     const groups = new Map();
     for (const m of page.matchAll(new RegExp(`<${tag}\\s+class="([^"]+)"`, 'g'))) {
-      groups.set(m[1], (groups.get(m[1]) || 0) + 1);
+      const key = visualSignature(m[1]) || m[1];
+      groups.set(key, (groups.get(key) || 0) + 1);
     }
     for (const [cls, n] of groups) {
-      if (n < 6) continue;
+      /* SIX EVERYWHERE (2026-08-19). This was `n < 6`, i.e. it fired at six. Once the grouping key
+       * became the visual signature (above) rather than the raw class string, firing at six started
+       * flagging a page's SIX SECTION HEADINGS as monotony — and section headings being the same
+       * size is correct design, not a defect. Confirmed as a false positive on a real build before
+       * changing it. The cap is now the same number the [rhythm] sibling-run check uses, so the
+       * pipeline states one threshold instead of two: six is fine, seven is a tail.
+       * This check still earns its place next to that one — it sees same-rank headings SPREAD
+       * across a page with nothing featured, which the sibling-run check cannot, because those
+       * headings have no common container. */
+      if (n <= 6) continue;
       const rank = sizeRank(cls);
       // is any heading of the same rank shipped LARGER? then something is featured -> fine.
       const featured = [...groups.keys()].some((o) => o !== cls && sizeRank(o) > rank);
@@ -195,6 +270,47 @@ for (const f of htmlFiles) {
       'grid. One element per page must escape it (a 2-col span, a negative-margin overlap, a ' +
       'vertical offset). A page where every row is the same shape reads as generated no matter how ' +
       'good the palette is.');
+  }
+}
+
+/* CHECK G — A RECORDED SIZE IS A PROMISE, AND PROMISES ARE CHECKABLE (2026-08-19).
+ *
+ * § Design (HARD RULES) row 3 — "Dominant element, the one named in DESIGN_IDEA, >= 1.5x a
+ * sibling's rendered area" — is the row the operator described as "the build RECORDED a dominant
+ * element and shipped none". RENDERED area cannot be computed from markup (see the note at the
+ * bottom of scripts/lib/design-dom.mjs; it needs layout, i.e. a browser). What CAN be computed, and
+ * is where the failure actually shows up, is the half the brief states as a NUMBER: a move that
+ * commits to "the review count at 200px" either ships type at that size or it does not.
+ *
+ * So this checks every explicit size in the recorded brief against the shipped output, with 20%
+ * tolerance because a clamp() that tops out slightly under a stated round number is a judgement
+ * call, not a broken promise. It fires only when a number was promised, so it can never cry wolf on
+ * a brief that made no measurable commitment — and when it does fire, the evidence is exact.
+ *
+ * Calibration: the rejected build promised "200px" and shipped clamp(120px,18vw,200px) — PASSES,
+ * correctly. Its dominance failure is real but lives on /services, where the [rhythm] cap catches
+ * it as a 12-row run. Two gates, two different halves of the same rule, neither guessing.
+ */
+const sizeClaims = [];
+for (const text of [idea || '', ...moves]) {
+  for (const m of text.matchAll(/(\d{2,4})\s*px\b/g)) sizeClaims.push({ raw: m[0], rem: parseInt(m[1], 10) / 16 });
+  for (const m of text.matchAll(/([\d.]+)\s*rem\b/g)) sizeClaims.push({ raw: m[0], rem: parseFloat(m[1]) });
+}
+if (sizeClaims.length) {
+  const shippedSizes = [maxRem];
+  for (const m of all.matchAll(/font-size:\s*([\d.]+)px/g)) shippedSizes.push(parseFloat(m[1]) / 16);
+  for (const m of all.matchAll(/clamp\([^)]*?([\d.]+)px\s*\)/g)) shippedSizes.push(parseFloat(m[1]) / 16);
+  const shippedMax = Math.max(...shippedSizes, 0);
+  facts.sizeClaims = sizeClaims.map((c) => c.raw);
+  facts.largestShippedRem = Number(shippedMax.toFixed(2));
+  const broken = sizeClaims.filter((c) => shippedMax < c.rem * 0.8);
+  if (broken.length) {
+    failures.push(
+      `[dominance] the brief commits to ${broken.map((b) => b.raw).join(', ')} and the largest type ` +
+      `anywhere in the shipped output is ${(shippedMax * 16).toFixed(0)}px. A size written into a ` +
+      'signature move and then not built is the exact shape of "recorded a dominant element and ' +
+      'shipped none" — the record says the page has a focal point and the page does not. Build the ' +
+      'size or rewrite the move; a brief that disagrees with the artifact is worse than no brief.');
   }
 }
 

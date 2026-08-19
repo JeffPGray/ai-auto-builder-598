@@ -3,7 +3,7 @@ name: auto-updating-google-rating
 description: Retrofit a deployed client site with a live, auto-updating Google rating + review-count badge straight from Google Places — the number refreshes itself, no redeploy, no monthly widget. Vercel only.
 argument-hint: [business-name]
 effort: medium
-allowed-tools: Bash(npx *), Bash(npm *), Bash(node *), Bash(bash *), Bash(python3 *), Bash(cd *), Bash(cp *), Bash(mv *), Bash(mkdir *), Bash(rm *), Bash(cat *), Bash(grep *), Bash(test *), Bash(curl *), Bash(printf *), Bash(sleep *), Bash(kill *), Bash(pkill *), Bash(head *), Bash(cut *), Bash(tr *), Read, Write, Edit, Glob, Grep
+allowed-tools: Bash(npx *), Bash(npm *), Bash(node *), Bash(bash *), Bash(python3 *), Bash(cd *), Bash(cp *), Bash(mv *), Bash(mkdir *), Bash(rm *), Bash(cat *), Bash(grep *), Bash(test *), Bash(curl *), Bash(printf *), Bash(sleep *), Bash(kill *), Bash(pkill *), Bash(head *), Bash(cut *), Bash(tr *), Bash(echo *), Read, Write, Edit, Glob, Grep
 ---
 
 # Add a live Google rating to $ARGUMENTS

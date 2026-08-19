@@ -3,7 +3,7 @@ name: build
 description: Build a bespoke Next.js website from gathered content for a business
 argument-hint: [business-name]
 effort: high
-allowed-tools: Bash(npx *), Bash(npm *), Bash(node *), Bash(python3 *), Bash(bash *), Bash(cd *), Bash(mkdir *), Bash(cp *), Bash(rm *), Bash(mv *), Bash(kill *), Bash(sleep *), Bash(grep *), Bash(cat *), Bash(test *), Bash(echo *), Bash(for *), Bash(wc *), Bash(sort *), Bash(uniq *), Bash(cut *), Bash(tee *), Bash(find *), Bash(wait *), Bash(*/notify.sh *), Read, Write, Edit, Glob, Grep, Skill, Agent, Task
+allowed-tools: Bash(npx *), Bash(npm *), Bash(node *), Bash(python3 *), Bash(bash *), Bash(cd *), Bash(mkdir *), Bash(cp *), Bash(rm *), Bash(mv *), Bash(kill *), Bash(sleep *), Bash(grep *), Bash(cat *), Bash(test *), Bash(echo *), Bash(for *), Bash(wc *), Bash(sort *), Bash(uniq *), Bash(cut *), Bash(tee *), Bash(find *), Bash(wait *), Bash(*/notify.sh *), Bash(ls *), Bash(tr *), Bash(date *), Read, Write, Edit, Glob, Grep, Skill, Agent, Task
 
 > ⚠️ **Terminal events only.** `NOTIFY_CHANNEL` fans out to two channels, so one call is two
 > messages. Alert here ONLY if this failure stops the pipeline or needs a human now. Stage
@@ -134,7 +134,7 @@ the line. Running this here costs ~1 second and saves an entire QA round.
 > down FIRST, before any TSX, is what makes it survive contact with a hundred other rules while
 > writing 14 routes — same reasoning as the Design Manifest checkpoint below, applied one level up:
 > that manifest plans WHERE richness lands, DESIGN_IDEA is WHY any of it is there. The three
-> signature moves must be specific enough to verify later (§ Adopt or document below extends the
+> signature moves must be specific enough to verify later (§ Design (HARD RULES) below extends the
 > existing KEY-EFFECTS fidelity check to these three) — "make it feel premium" is not a signature
 > move, "an isotherm-line SVG motif used as section dividers and the FAQ's list marker" is.
 >
@@ -874,7 +874,7 @@ rendered glyphs instead. Do not declare the build done until it prints `FONT_CHE
 1. **START from the `--design-system` font recommendation — it is usually right and overriding it is what broke a real build.** Measured 2026-08-19: the consult returned Literata / Schibsted Grotesk for an HVAC contractor (the exact pairing on the operator's preferred build); this instruction told the builder to discard it, the global no-reuse rule then rejected the fallback, and the build shipped Bodoni Moda — a Vogue didone — on an HVAC company. Take the consult's pairing unless it is BANNED below or collides with a SAME-TOWN build. Only if one of those applies, widen with: `python3 .claude/skills/ui-ux-pro-max/scripts/search.py "INDUSTRY KEYWORDS" --domain typography -n 5` and pick by seed from that shortlist.
 2. Pick a pairing with serif/slab heading + sans body
 3. Check both fonts against the banned lists below
-4. **Uniqueness rule**: pass `--heading-font "<Family Name>" --body-font "<Family Name>" --town "<city>"` into the § Convergence check's `design-ledger.mjs check`/`record` calls below (once ground/formula/harmony/character are also decided) — don't invent a second, separate invocation. The ledger checks font-name reuse deterministically across full build history: `FONT_LEDGER=REUSE` fires only on a **SAME-TOWN** heading-font collision and is a hard stop there (neighbouring owners can see each other's sites). A cross-town match prints `FONT_LEDGER=INFO` and is **NOT** a failure — keep the font. Scoped 2026-08-19: the rule used to be global, which rejected the consult's correct pairing and pushed a build onto the skill's own code example (a Vogue didone on an HVAC contractor). A same-town body-font match prints `FONT_LEDGER=WARN` (don't reuse the body font for neighbouring-town clients either, but it isn't a hard stop yet). This replaces the old "scan 3-4 recent client `globals.css` files" ad hoc skim — the ledger already has the full history, so there's nothing left for a manual scan to add.
+4. **Uniqueness rule**: pass `--heading-font "<Family Name>" --body-font "<Family Name>" --town "<city>"` into the § Step 4 — Uniqueness `design-ledger.mjs check`/`record` calls below (once ground/formula/harmony/character are also decided) — don't invent a second, separate invocation. The ledger checks font-name reuse deterministically across full build history: `FONT_LEDGER=REUSE` fires only on a **SAME-TOWN** heading-font collision and is a hard stop there (neighbouring owners can see each other's sites). A cross-town match prints `FONT_LEDGER=INFO` and is **NOT** a failure — keep the font. Scoped 2026-08-19: the rule used to be global, which rejected the consult's correct pairing and pushed a build onto the skill's own code example (a Vogue didone on an HVAC contractor). A same-town body-font match prints `FONT_LEDGER=WARN` (don't reuse the body font for neighbouring-town clients either, but it isn't a hard stop yet). This replaces the old "scan 3-4 recent client `globals.css` files" ad hoc skim — the ledger already has the full history, so there's nothing left for a manual scan to add.
 
 ### Banned fonts (never use in any position)
 Inter, Geist, Roboto, Arial, system-ui, sans-serif, Barlow, DM Sans, Poppins, Open Sans, Montserrat, Raleway, Nunito, Syne, Plus Jakarta Sans, Familjen Grotesk, Karla, Manrope, Bricolage Grotesque
@@ -914,7 +914,7 @@ a name for:
 |---|---|---|
 | `--surface` / `--surface-alt` (page base, most sections) | drawn from the tinted ladder (`--surface-1`/`-2`) | **true neutral** — `#ffffff` / near-white for a light-first brand, true near-black (`#0a0a0a`-ish, not a tinted `--surface-6`) for a dark-first one |
 | The 6-rung tinted ladder | used everywhere, is the whole rhythm system | **demoted to an accent device** — used only on a minority of sections (a stat strip, a testimonial band, the footer) as deliberate colour punctuation against the neutral base |
-| Reads as | warm, colour-forward, approachable — right for most everyday trades | restrained, premium — restraint IS the signal, same reasoning § Colour CHARACTER already gives for `none` harmony on jewellers/tailors/galleries/funeral masons |
+| Reads as | warm, colour-forward, approachable — right for most everyday trades | restrained, premium — restraint IS the signal, same reasoning § Design (HARD RULES) already gives for `none` harmony on jewellers/tailors/galleries/funeral masons |
 
 **Choosing it is a CHARACTER decision, made once, at the same point you pick harmony** — not a
 per-section toggle. Default FULL-TINT for everyday service trades. Consider NEUTRAL-CANVAS when
@@ -1827,7 +1827,7 @@ A `MISSING` on the first check means `node services/hero-video/render.mjs --slug
 
 > **`out/services.html` is the right artefact to check, not `out/services/`.** A static export also emits a `services/` directory holding only RSC payload `.txt` files. `python3 -m http.server` sees that directory and 301-redirects `/services` to `/services/`, which has no `index.html` — a purely local artefact of a server with no clean-URL handling. `npx serve out` and Vercel's filesystem handler both serve `/services` from `services.html` and return 200. Verify the extensionless paths on the LIVE deploy (the deploy skill does this), never conclude a 404 from `python3 -m http.server` alone.
 
-**Then assert the fonts actually reached the page** — the same class of silent failure, and the one that discards the whole typography step (see § Font → "How to LOAD the fonts"). Run from the repo root:
+**Then assert the fonts actually reached the page** — the same class of silent failure, and the one that discards the whole typography step (see § Step 2 — Typography → "How to LOAD the fonts"). Run from the repo root:
 
 ```bash
 node scripts/font-check.mjs clients/$ARGUMENTS/site

@@ -35,7 +35,7 @@ Run these against `clients/$ARGUMENTS/site/src` before writing a line. The answe
 | Analytics / pixels | `grep -rniE 'gtag\|googletagmanager\|fbq\|hotjar\|clarity\|plausible\|posthog' src/app` | **expect zero hits.** Zero means the honest line is that the site runs no analytics and no advertising trackers. A hit means your build added one — disclose it by name, or remove it | — |
 | Cookies / storage | `grep -rn 'document.cookie\|localStorage\|sessionStorage' src/app` | **expect zero hits.** Zero means the site sets no cookies of its own; only the Google map iframe, if present, sets any | — |
 
-**Fonts are not a third-party disclosure.** `next/font/google` self-hosts the woff2 into the build (§ Font), so no visitor request ever reaches Google Fonts. Writing that fonts are loaded from Google would be a false statement about this site.
+**Fonts are not a third-party disclosure.** `next/font/google` self-hosts the woff2 into the build (§ Step 2 — Typography), so no visitor request ever reaches Google Fonts. Writing that fonts are loaded from Google would be a false statement about this site.
 
 ### The chat widget — the disclosure nobody writes and every build needs
 

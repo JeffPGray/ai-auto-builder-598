@@ -28,6 +28,10 @@
  */
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import {
+  parseDom, buildClassColorMaps, resolveGround, opacityModifier,
+  luminance, chroma, perceptualDelta, parseColor, MARKETING_ROUTE,
+} from './lib/design-dom.mjs';
 
 const args = process.argv.slice(2);
 const JSON_OUT = args.includes('--json');
@@ -57,6 +61,14 @@ const css = files.filter((f) => f.endsWith('.css')).map((f) => readFileSync(f, '
 const pages = files.filter((f) => f.endsWith('.html') && !/404|_not-found/.test(f));
 const html = pages.map((f) => readFileSync(f, 'utf8')).join('\n');
 const all = css + '\n' + html;
+
+/* Shared measurement context for the checks that need real STRUCTURE (siblings, ancestors) or real
+ * PAINTED COLOUR rather than string matches. `buildClassColorMaps` reads the COMPILED css, so
+ * `.bg-surface-2` resolves to whatever it actually paints — empirical, not inferred from the token
+ * name. See scripts/lib/design-dom.mjs for why regex-over-HTML cannot answer these questions. */
+const { bg: bgMap, vars: varMap } = buildClassColorMaps(css);
+const marketingPages = pages.filter((f) => MARKETING_ROUTE.test(f.replace(outDir + '/', '')));
+const rel = (f) => f.replace(outDir + '/', '');
 
 /* 0. INVALID NUMERIC TAILWIND FONT-WEIGHT CLASSES. Caught live 2026-08-16: a build used
  * `font-700`/`font-800`/`font-900` (52 occurrences) — none are real Tailwind v3 utilities (the
@@ -109,8 +121,130 @@ if (declaresSecondary && usesSecondary === 0) {
     '[palette] --secondary is DERIVED but referenced 0 times. The build painted with the accent ' +
     'only, which is exactly what reads as "single colour". Deploy it on eyebrows, stat figures, ' +
     'icon strokes, dividers, link hovers or a section wash — anywhere that is not body text.');
-} else if (declaresSecondary && usesSecondary < 3) {
-  warnings.push(`[palette] --secondary referenced only ${usesSecondary}x — present but not doing work.`);
+} else if (declaresSecondary && usesSecondary < 10) {
+  // Threshold raised 0 -> 10 on 2026-08-19: § Design (HARD RULES) row 9 has always said ">= 10
+  // references", and this gate enforced ">0", so THREE references passed clean against a rule that
+  // demanded ten. Both calibration builds clear 10 comfortably (measured: 51 and 19 usages in
+  // marketing-page markup alone), so this closes real drift without touching a passing build.
+  failures.push(
+    `[palette] --secondary referenced only ${usesSecondary}x — § Design (HARD RULES) row 9 requires ` +
+    '>= 10. Present-but-token is how a page keeps reading as one colour with a second one technically ' +
+    'in the CSS. NOTE: the count is the easy half — see the [palette-weight] check below, which is ' +
+    'the one that decides whether those references are actually VISIBLE.');
+}
+
+/* 1b. IS THE SECONDARY ACTUALLY VISIBLE? — perceptual weight, not occurrences (2026-08-19).
+ *
+ * The occurrence count above is satisfiable by paint nobody can see, and a real build proved it:
+ * 51 secondary "usages" of which 32 were `bg-secondary-text/5` and `border-secondary-text/20` —
+ * a 5%-alpha fill and a 20%-alpha hairline. The operator's report of the same failure elsewhere was
+ * "used the secondary 19 times and it was invisible at distance". A counter cannot tell those apart
+ * from real paint; that is not a threshold problem, it is a MEASUREMENT problem.
+ *
+ * So measure what the eye actually integrates, exactly as the operator specified —
+ * AREA x ALPHA x CONTRAST-AGAINST-ITS-OWN-GROUND x CHROMA:
+ *
+ *   AREA     role weight from the shipped classes (a section fill is not a hairline border)
+ *   ALPHA    the Tailwind opacity modifier AND any alpha baked into the compiled hex
+ *   CONTRAST |ΔL| against the NEAREST ANCESTOR that paints a background — resolved per element,
+ *            because the same olive is bold on cream and invisible on navy, and a site-wide
+ *            average would call both the same
+ *   CHROMA   OKLab chroma: under ~0.04 it is a grey wearing the secondary's name
+ *
+ * Two independent floors, because they catch different failures:
+ *   presence  — the integral. Fails a page whose secondary is entirely hairlines and 5% washes.
+ *   structural roles — at least one usage that is a real FILL or a large figure at real strength.
+ *            This is § HARD-BLOCKER CONTRACT item 5's "no genuine second tone doing real
+ *            structural work", stated as a number instead of an impression.
+ *
+ * Conservative by construction: an unresolvable ground scores the NEUTRAL 0.5, never 0, so a
+ * markup shape this parser cannot read can never manufacture a failure.
+ */
+const SECONDARY_ROLE_AREA = {
+  sectionFill: 1.00,  // a section/band background — the strongest statement available
+  panelFill: 0.30,    // a padded card or panel
+  smallFill: 0.10,    // chip, pill, rule, marker
+  gradientStop: 0.40,
+  displayText: 0.20,  // text-3xl and up — a stat figure or section numeral
+  midText: 0.08,      // text-xl / 2xl
+  bodyText: 0.03,
+  border: 0.03,
+  icon: 0.03,
+  other: 0.02,
+};
+if (declaresSecondary) {
+  const secChroma = Math.max(...uniqSecHexes.map((h) => chroma(h) ?? 0), 0);
+  let presence = 0;
+  let structuralRoles = 0;
+  const roleTally = {};
+  for (const f of marketingPages) {
+    const page = readFileSync(f, 'utf8');
+    const nodes = parseDom(page);
+    for (const n of nodes) {
+      const hits = [...n.cls.matchAll(
+        /(?:^|\s)(?:[a-z0-9-]+:)*(bg|text|border|fill|stroke|ring|from|via|to|decoration|shadow)-(secondary[a-z-]*)((?:\/\[?[\d.]+\]?)?)(?=\s|$)/g)];
+      if (!hits.length) continue;
+      const ground = resolveGround(n, nodes, bgMap, varMap);
+      for (const [, role, token, mod] of hits) {
+        const hex = varMap.get(token) || varMap.get('secondary');
+        if (!hex) continue;
+        let alpha = opacityModifier(mod);
+        const compiled = bgMap.get(`bg-${token}${mod}`);
+        if (role === 'bg' && compiled) {
+          const pc = parseColor(compiled);
+          if (pc) alpha = Math.min(alpha, pc.a);
+        }
+        let area;
+        if (role === 'bg') {
+          const wholeBand = n.tag === 'section' || /\b(min-h-|py-1[0-9]|py-2[0-9]|py-3[0-9])/.test(n.cls);
+          const panel = /\bp-[4-9]\b|\bp-1[0-9]\b|\bpy-[4-9]\b/.test(n.cls);
+          area = wholeBand ? SECONDARY_ROLE_AREA.sectionFill
+            : panel ? SECONDARY_ROLE_AREA.panelFill : SECONDARY_ROLE_AREA.smallFill;
+        } else if (role === 'text') {
+          area = /text-(?:3xl|4xl|5xl|6xl|7xl|8xl|9xl)/.test(n.cls) ? SECONDARY_ROLE_AREA.displayText
+            : /text-(?:xl|2xl)/.test(n.cls) ? SECONDARY_ROLE_AREA.midText : SECONDARY_ROLE_AREA.bodyText;
+        } else if (role === 'from' || role === 'via' || role === 'to') area = SECONDARY_ROLE_AREA.gradientStop;
+        else if (role === 'border') area = SECONDARY_ROLE_AREA.border;
+        else if (role === 'fill' || role === 'stroke') area = SECONDARY_ROLE_AREA.icon;
+        else area = SECONDARY_ROLE_AREA.other;
+
+        const gl = ground === null ? null : luminance(ground);
+        const sl = luminance(hex);
+        // 0.55 ΔL is treated as "fully separated"; below that it scales down linearly.
+        const visibility = (gl === null || sl === null) ? 0.5 : Math.min(1, Math.abs(gl - sl) / 0.55);
+        const chromaFactor = Math.min(1, (chroma(hex) ?? 0) / 0.06);
+        presence += area * alpha * visibility * chromaFactor;
+        if (area >= 0.10 && alpha >= 0.5 && visibility >= 0.18) structuralRoles++;
+        const k = `${role}-${token}${mod}`;
+        roleTally[k] = (roleTally[k] || 0) + 1;
+      }
+    }
+  }
+  facts.secondaryChroma = Number(secChroma.toFixed(3));
+  facts.secondaryPresence = Number(presence.toFixed(3));
+  facts.secondaryStructuralRoles = structuralRoles;
+  facts.secondaryRoles = roleTally;
+  const SECONDARY_PRESENCE_FLOOR = 0.60;
+  if (secChroma < 0.04) {
+    failures.push(
+      `[palette-weight] --secondary has OKLab chroma ${secChroma.toFixed(3)} — under 0.04 it is a ` +
+      'GREY wearing the secondary\'s name, so every "second colour" reference on the page is really ' +
+      'another neutral. Re-derive it with real chroma, or the page has one hue by construction.');
+  } else if (structuralRoles === 0) {
+    failures.push(
+      '[palette-weight] the secondary is never once painted as a real FILL or a large figure at ' +
+      'full strength — every shipped reference is a hairline border, a sub-10% wash, or body-sized ' +
+      'text. That is § HARD-BLOCKER CONTRACT item 5 ("no genuine second tone doing real structural ' +
+      'work") measured rather than eyeballed. Give it one section band, one panel fill, or one ' +
+      `display figure. Roles shipped: ${JSON.stringify(roleTally)}`);
+  } else if (presence < SECONDARY_PRESENCE_FLOOR) {
+    failures.push(
+      `[palette-weight] secondary perceptual presence ${presence.toFixed(2)} (floor ` +
+      `${SECONDARY_PRESENCE_FLOOR}) = Σ(area x alpha x ΔL-vs-its-own-ground x chroma) across ` +
+      'marketing routes. The references EXIST and still do not register — which is precisely the ' +
+      'failure an occurrence count cannot see. Raise the alpha on the washes, widen the area, or ' +
+      `move it onto a ground it actually separates from. Roles shipped: ${JSON.stringify(roleTally)}`);
+  }
 }
 
 /* 2. DEPTH. A page with zero gradients is a page of flat rectangles. This counts gradient FUNCTIONS
@@ -151,10 +285,30 @@ const grainRule = (css.match(/[^{}]*\.grain[^{}]*\{[^}]*\}/g) || []);
 const opacities = grainRule.flatMap((r) => (r.match(/opacity:\s*([0-9.]+)/g) || []).map((m) => parseFloat(m.split(':')[1])));
 facts.grainRules = grainRule.length;
 facts.grainOpacities = opacities;
-if (grainRule.length && opacities.length && Math.max(...opacities) < 0.08) {
-  failures.push(
-    `[texture] grain overlay ships at opacity ${Math.max(...opacities)} — below human perception. ` +
-    'It costs the same to render and buys nothing. Light surfaces want ~0.10-0.14, dark ~0.14-0.20.');
+/* BAND, not a floor — and ONE number, not four (2026-08-19 drift audit). The repo held four
+ * different grain thresholds: § Design (HARD RULES) row 6 said 0.12-0.20, the HARD-BLOCKER CONTRACT
+ * said "~0.10 light / ~0.14 dark", this script failed only below 0.08, and this script's own error
+ * text advised "~0.10-0.14, dark ~0.14-0.20". A rule with four numbers is not a rule. Adopting the
+ * TABLE's 0.12-0.20 because it is the one stated as a hard rule with a threshold column, and adding
+ * the missing upper bound: grain above ~0.20 stops reading as texture and starts reading as noise
+ * or a rendering fault. Verified against both calibration builds before tightening — the rejected
+ * build ships 0.15 and the accepted floor build ships 0.12/0.16, so every real build already sits
+ * inside the band and this closes drift without failing anything that passes today. */
+const GRAIN_MIN = 0.12, GRAIN_MAX = 0.20;
+if (grainRule.length && opacities.length) {
+  const lo = Math.min(...opacities), hi = Math.max(...opacities);
+  if (hi < GRAIN_MIN) {
+    failures.push(
+      `[texture] grain overlay tops out at opacity ${hi} — under ${GRAIN_MIN} it is below the ` +
+      'threshold at which a human perceives it, so it costs the same to render and buys nothing. ' +
+      `§ Design (HARD RULES) row 6 requires ${GRAIN_MIN}-${GRAIN_MAX} (light surfaces toward the ` +
+      'bottom of the band, dark toward the top).');
+  } else if (lo > GRAIN_MAX) {
+    failures.push(
+      `[texture] grain overlay runs at opacity ${lo} — above ${GRAIN_MAX} it stops reading as ` +
+      'texture and starts reading as noise or a broken render. The band is ' +
+      `${GRAIN_MIN}-${GRAIN_MAX}.`);
+  }
 }
 
 /* 4. RHYTHM. Count DISTINCT section background treatments across the home page. Alternating two
@@ -168,11 +322,19 @@ if (home) {
     (c.match(/bg-[a-z0-9/\[\]#.-]+/g) || []).sort().join(' ') || '(none)'));
   facts.sections = secClasses.length;
   facts.distinctTreatments = treatments.size;
-  if (secClasses.length >= 5 && treatments.size < 3) {
+  /* THRESHOLD CORRECTED 2026-08-19 (drift audit). § Design (HARD RULES) row 7 has always required
+   * ">= 4 distinct section treatments" and this gate failed at "< 3", gated behind a ">= 5 sections"
+   * precondition that meant a 4-section page was never checked AT ALL. So the shipped rule was
+   * "3 is fine, and 4 sections need nothing" against a table demanding 4. Both calibration builds
+   * clear the real rule (rejected build: 4; accepted floor build: 6), so this is pure drift
+   * closure — it fails nothing that passes today. The precondition drops to 3 sections, below which
+   * "rhythm" is not yet a meaningful question. */
+  if (secClasses.length >= 3 && treatments.size < 4) {
     failures.push(
       `[rhythm] ${secClasses.length} sections but only ${treatments.size} distinct background ` +
-      'treatment(s). Alternating two neutrals is a stripe, not rhythm. Aim for 4+ across a long ' +
-      'page: light, alt-light, dark, image/gradient-backed.');
+      'treatment(s) — § Design (HARD RULES) row 7 requires 4+. Alternating two neutrals is a ' +
+      'stripe, not rhythm. Four means genuinely different grounds: light, alt-light, dark, and one ' +
+      'image- or gradient-backed.');
   }
   // Stagger — the difference between "things fade in" and "the page feels crafted".
   const groups = (h.match(/data-reveal-group/g) || []).length;
@@ -192,16 +354,57 @@ if (home) {
    * `data-photo-treatment` is the deliberately unambiguous signal — see build/SKILL.md
    * § "Photo art direction" for the three valid values and why an attribute beats inferring intent
    * from Tailwind class soup. */
+  /* ⚠️ REWRITTEN 2026-08-19 — this gate was failing builds on a requirement they were never taught.
+   * `data-photo-treatment` appears NOWHERE in build/SKILL.md, the template, qa-reviewer.md or
+   * qa-fix: the only two files in the repo that mention it are this script and
+   * verify-consistency.mjs. Its remediation text still points at "§ Photo art direction", a section
+   * deleted on 2026-08-19. Real builds emit the attribute only because they HIT this gate, read the
+   * failure text, and complied — a gate that teaches by failing costs a QA round every single time.
+   *
+   * Fix: measure the DESIGN FACT (was this photo art-directed?) instead of the LABEL. The explicit
+   * attribute is still honoured as the cleanest proof, but so is any of the treatments the skill
+   * actually describes: a wash/scrim overlay on the photo's container, a bespoke treatment class
+   * whose CSS carries a gradient/filter/blend, or a filter/blend utility on the image itself.
+   * Both calibration builds pass on the attribute AND on the inferred evidence. */
   const imgCount = (h.match(/<img\b/g) || []).length;
-  const treatedCount = (h.match(/data-photo-treatment="(duotone|contained|scrim)"/g) || []).length;
+  const explicitTreated = (h.match(/data-photo-treatment="(duotone|contained|scrim)"/g) || []).length;
+  // Bespoke classes whose CSS rule paints a gradient, a filter, or a blend mode — the mechanics of
+  // a duotone / scrim / graphic-containment treatment, whatever the build chose to name them.
+  const treatmentClasses = new Set();
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (!/(linear|radial|conic)-gradient\(|mix-blend-mode|filter:\s*(?!none)|backdrop-filter/.test(m[2])) continue;
+    for (const c of m[1].matchAll(/\.((?:[a-zA-Z0-9_-]|\\.)+)/g)) treatmentClasses.add(c[1].replace(/\\/g, ''));
+  }
+  const homeNodes = parseDom(h);
+  let inferredTreated = 0;
+  for (const n of homeNodes) {
+    if (n.tag !== 'img') continue;
+    if (/\b(grayscale|sepia|saturate-|contrast-|brightness-|mix-blend-|invert)\b/.test(n.cls)) { inferredTreated++; continue; }
+    const container = n.ancestors.slice(-3).map((a) => homeNodes[a]);
+    const treated = container.some((a) =>
+      a.cls.split(/\s+/).some((t) => treatmentClasses.has(t))
+      || /\b(aspect-\[|mask-|clip-path)/.test(a.cls));
+    // a wash/scrim sibling: an absolutely-positioned overlay inside the same container
+    const scrim = container.some((a) => a.children.some((cid) => {
+      const c = homeNodes[cid];
+      return c.tag !== 'img' && /\babsolute\b/.test(c.cls) && /\binset-0\b/.test(c.cls)
+        && /(bg-|from-|to-|via-)/.test(c.cls);
+    }));
+    if (treated || scrim) inferredTreated++;
+  }
   facts.images = imgCount;
-  facts.treatedPhotos = treatedCount;
-  if (imgCount >= 2 && treatedCount === 0) {
+  facts.treatedPhotos = explicitTreated;
+  facts.inferredTreatedPhotos = inferredTreated;
+  if (imgCount >= 2 && explicitTreated === 0 && inferredTreated === 0) {
     failures.push(
-      `[photo] ${imgCount} photo(s) on the home page and ZERO carry data-photo-treatment. Every ` +
-      'image ships as a bare rectangle — scraped raw material presented as-is reads as pasted, not ' +
-      'art-directed. Give the hero and at least one section-anchor photo a duotone, graphic-' +
-      'containment, or directional-scrim treatment (see § Design (HARD RULES)).');
+      `[photo] ${imgCount} photo(s) on the home page and NOT ONE is art-directed — no wash or scrim ` +
+      'overlay, no duotone/filter/blend, no graphic containment, and no explicit ' +
+      'data-photo-treatment attribute either. Every image ships as a bare rectangle, and scraped ' +
+      'raw material presented as-is reads as pasted rather than designed. Treat the hero and at ' +
+      'least one section-anchor photo: a directional scrim (an absolutely-positioned inset-0 ' +
+      'gradient over the image), a duotone/blend, or real graphic containment (aspect + mask + ' +
+      'radius). Any ONE of those satisfies this gate — the attribute is optional bookkeeping, not ' +
+      'the requirement.');
   }
 
   /* 4c. HERO MOTION. Measured 2026-08-16: `data-reveal` is correctly banned from the hero (it
@@ -302,8 +505,17 @@ if (facts.imageTotalKB > TOTAL_MAX_KB) {
 const imgTags = (html.match(/<img\b[^>]*>/g) || []);
 const undim = imgTags.filter((t) => !/\bwidth=/.test(t) || !/\bheight=/.test(t));
 facts.imgTags = imgTags.length; facts.imgTagsMissingDims = undim.length;
+/* PROMOTED warn -> FAIL 2026-08-19 (drift audit). § Design (HARD RULES) row 12 says "100%" and is
+ * marked ✅ enforced; this was a `warnings.push`, which can never fail a build — so the row claimed
+ * enforcement it did not have. Both calibration builds ship 0 undimensioned images, so the rule is
+ * already met in practice and promoting it costs nothing real while closing the CLS hole the row
+ * exists for. */
 if (undim.length) {
-  warnings.push(`[cls] ${undim.length}/${imgTags.length} <img> without explicit width+height.`);
+  failures.push(
+    `[cls] ${undim.length}/${imgTags.length} <img> without explicit width+height. Without them the ` +
+    'browser cannot reserve space, so the page reflows as images land — that is CLS, and it is ' +
+    'charged directly against the mobile Lighthouse score a business owner sees. § Design ' +
+    '(HARD RULES) row 12 requires 100%.');
 }
 
 /* 7. DESCRIPTIVE LINK TEXT. Lighthouse SEO flagged 8 links. "Learn more" / "click here" / a bare
@@ -577,73 +789,13 @@ if (home) {
   }
 }
 
-/* 15. IDENTICAL SIBLING COMPONENTS — the cold-front-ac defect (2026-08-19 Fable design-elevation
- * review). Every other check here counts a per-page or per-site AGGREGATE (gradients, photo
- * grounds, section treatments) — none of them can see WITHIN-page monotony. cold-front-ac shipped
- * 5 review cards and 5 FAQ items each with a byte-identical class string and zero structural
- * variant, and every existing gate passed clean (richness's own aggregate counts were satisfied
- * elsewhere on the page). 4+ identical siblings with no dominant/featured one is the single most
- * recognisable AI-page tell there is — this is the deterministic half of that fix; the guidance
- * half (named alternatives per section type — featured quote, bento, ledger rows) lives in
- * build/SKILL.md's composition guidance.
- *
- * CALIBRATED against two real builds before shipping: first pass matched on any rounded/bg- class
- * and false-positived on every repeated nav link and mobile-menu item (36 hits across
- * the-woodlands-plumbing-and-air, none real) — tightened to require a real boundary (border or
- * shadow, not bare rounded/bg-). Also excluded <input>/<textarea>/<select>/<option>/<label> (a
- * form's fields SHOULD share a class — real false positive on a 4-field contact form). Final pass:
- * cold-front-ac correctly flags exactly its 2 known defects (5 review cards, 4 stat cards);
- * the-woodlands-plumbing-and-air (2026-08-16, the pipeline's own quality floor) correctly flags 2
- * real ones of its own (a 9-item service list, a 9-item blog list) — consistent with Jeff's own
- * read that even the floor build isn't clean on every axis. */
-function tokenOverlap(a, b) {
-  const setA = new Set(a);
-  const inter = b.filter((t) => setA.has(t)).length;
-  return inter / Math.max(a.length, b.length, 1);
-}
-const STRUCTURAL_VARIANT = /(col-span|row-span|order-|lg:col|md:col|scale-1|text-(2|3|4)xl|aspect-)/;
-for (const f of pages) {
-  const page = readFileSync(f, 'utf8');
-  const counts = new Map();
-  for (const m of page.matchAll(/<(\w+)[^>]*?class="([^"]{60,400})"/g)) {
-    const tag = m[1];
-    const cls = m[2];
-    // <input>/<textarea>/<select> siblings sharing a class is correct UX (a form's fields SHOULD
-    // look identical), not the AI-slop pattern — excluded after calibrating against a real build's
-    // 4 identical contact-form inputs, a genuine false positive.
-    if (/^(input|textarea|select|option|label)$/i.test(tag)) continue;
-    // Component-scale only — must look like a card/panel with a real boundary (border or shadow;
-    // NOT bare `rounded`/`bg-` alone, which nav links, pills and menu items also carry, and which
-    // false-positived on every nav's repeated link classes when first calibrated against a real
-    // build). Padding of p-3 or more is still required to exclude compact chips/badges.
-    // Anchored to token boundaries and covering p-10/p-12+ (audit finding, 2026-08-19): the
-    // unanchored /p[xy]?-[3-9]/ matched INSIDE other tokens (gap-4, top-8 both satisfied it,
-    // wrongly admitting compact chips the comment says are excluded) and missed real generous
-    // padding like p-10/p-12 on hero-adjacent feature cards, letting a real identical-card defect
-    // there ship unflagged.
-    if (!/(border|shadow)/.test(cls) || !/(^|\s)p[xy]?-(?:[3-9]|1[0-9]|2[0-9])(\s|$)/.test(cls)) continue;
-    counts.set(cls, (counts.get(cls) || 0) + 1);
-  }
-  const keys = [...counts.keys()];
-  for (const [cls, n] of counts) {
-    if (n < 4) continue;
-    const toks = cls.split(/\s+/);
-    // A deliberate variant = a near-identical sibling class (>=70% shared tokens) that ALSO
-    // carries a structural modifier (span/order/scale/larger-type/aspect) — i.e. one card is
-    // genuinely different in shape, not just present at a different array index.
-    const hasVariant = keys.some((o) => o !== cls
-      && tokenOverlap(toks, o.split(/\s+/)) >= 0.7
-      && STRUCTURAL_VARIANT.test(o));
-    if (!hasVariant) {
-      failures.push(
-        `[repetition] ${n}x byte-identical component class on ${f.replace(outDir + '/', '')} with ` +
-        `no structural variant sibling ("${cls.slice(0, 80)}${cls.length > 80 ? '…' : ''}"). 4+ ` +
-        'identical cards with nothing dominant is the single most recognisable AI-page tell — make ' +
-        'one card structurally different (span/photo/scale/open state) or use a non-card layout ' +
-        'for this section (featured quote + supporting quotes, bento, full-width ledger rows).');
-    }
-  }
-}
+/* 15. (REMOVED 2026-08-19) IDENTICAL SIBLING COMPONENTS — superseded by verify-design-intent.mjs's
+ * [rhythm] check, which is strictly better: it counts VISUALLY-identical siblings inside ONE
+ * container, where this counted byte-identical class strings anywhere on the page. That difference
+ * matters — this version fired 2x on the-woodlands-plumbing-and-air, the build the operator treats
+ * as the acceptable floor, because 9 elements shared a class without being siblings in one list.
+ * A gate that fails the build you accept gets switched off, and then it protects nothing. [rhythm]
+ * fires 2x on the rejected build and 0x on the floor build — the line lands exactly between them. */
 
 /* 16. MONOTONE GROUND RUN — the deterministic kill for the mono-navy failure (2026-08-19).
  * A build shipped five section grounds within 0.05 OKLCH lightness of each other and every existing
@@ -704,6 +856,231 @@ if (existsSync(uiDir)) {
   }
   if (handRolledNav && !imported.includes('dropdown-menu') && !imported.includes('sheet')) {
     warnings.push('[primitives] nav appears hand-rolled (useState/aria-expanded) while sheet/dropdown-menu are vendored.');
+  }
+}
+
+/* 18. PER-ROUTE DESIGN BINDING — the check § Step 1d already CLAIMED existed (2026-08-19).
+ *
+ * build/SKILL.md's "The design idea binds on EVERY route" said, in prose: "richness-check.mjs counts
+ * these per page, not per site." It did not. Every richness measurement above is either site-wide
+ * (gradients counted over concatenated CSS) or home-page-only (`if (home)`), so a build could put
+ * the entire design idea on `/` and ship every other route bare — which is exactly what QA found on
+ * 2026-08-19: DESIGN_IDEA "Weather Authority" and its thermocline gradient present on `/`,
+ * ENTIRELY ABSENT from /about and /contact.
+ *
+ * Measured here per route. The rule as written: every marketing route carries at least one gradient
+ * or photo-ground.
+ *
+ * ⚠️ THE HARD PART IS RESOLVING WHAT COUNTS AS A GRADIENT ON A PAGE, and getting it wrong in either
+ * direction is fatal. A page can carry a gradient three ways: an inline style, a Tailwind
+ * `bg-gradient-to-*` utility, or — the one a naive check misses completely — a BESPOKE CLASS whose
+ * rule in globals.css paints the gradient (`.thermocline`, `.glow`, `.photo-ground::after`). Counting
+ * only inline gradient functions reports ZERO gradients on a page that visibly has one. So the CSS
+ * is parsed for every selector whose body contains a gradient, and the resulting class names are
+ * matched against each page's markup.
+ *
+ * CALIBRATION (this is what the resolution buys): with class resolution, the accepted floor build
+ * scores 8/8 routes bound — every route carries `.glow` — so it does not fire once. WITHOUT the
+ * resolution it would have reported 7 of its 8 routes bare, which is a gate that gets switched off
+ * in a day. The rejected build scores 11 bare routes out of 19 on the same measurement.
+ */
+const gradientClasses = new Set();
+for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+  if (!/(linear|radial|conic)-gradient\(/.test(m[2])) continue;
+  for (const c of m[1].matchAll(/\.((?:[a-zA-Z0-9_-]|\\.)+)/g)) gradientClasses.add(c[1].replace(/\\/g, ''));
+}
+const bareRoutes = [];
+const routeBinding = {};
+for (const f of marketingPages) {
+  const page = readFileSync(f, 'utf8');
+  let evidence = 0;
+  if (/(linear|radial|conic)-gradient\(/.test(page)) evidence++;
+  if (/\bbg-gradient-to-[trbl]{1,2}\b/.test(page)) evidence++;
+  for (const m of page.matchAll(/class="([^"]*)"/g)) {
+    if (m[1].split(/\s+/).some((t) => gradientClasses.has(t))) { evidence++; break; }
+  }
+  const photoGround = (page.match(/<section[^>]*>[\s\S]{0,600}?<img[^>]*absolute[^>]*inset-0/g) || []).length;
+  routeBinding[rel(f)] = evidence + photoGround;
+  if (evidence === 0 && photoGround === 0) bareRoutes.push(rel(f));
+}
+facts.routesChecked = marketingPages.length;
+facts.routesUnbound = bareRoutes.length;
+if (bareRoutes.length) {
+  failures.push(
+    `[binding] ${bareRoutes.length}/${marketingPages.length} marketing route(s) carry NO gradient ` +
+    'and NO photo-ground — not one expression of the design idea anywhere on the page: ' +
+    `${bareRoutes.slice(0, 6).join(', ')}${bareRoutes.length > 6 ? `, +${bareRoutes.length - 6} more` : ''}. ` +
+    'A concept that stops at the home page is not a design system, it is a home-page treatment, and ' +
+    'every other route then reads as the generic filler this pipeline exists to avoid. § Step 1d: ' +
+    'before writing each route, state which signature move appears on it and on which section. ' +
+    'Cheapest real fix: the same bespoke class the home page already uses (a section wash, a ' +
+    'photo-ground band) applied to one section per route — not a new invention per page.');
+}
+
+/* 19. SIGNATURE MOTIF — REPEATED, or it is not a motif (2026-08-19).
+ *
+ * § Design (HARD RULES) row 4: "Signature motif — the one named in DESIGN_IDEA — >= 3 appearances
+ * in built HTML." Never enforced, and the operator's exact complaint about the rejected build was
+ * "use a signature motif -> satisfied by one faint divider line". Measured on that build: its
+ * design-system.md names "Signature motif: isotherm contour lines", the build duly authored an
+ * `.isotherm-line` class, and shipped it EXACTLY ONCE across 19 pages. Its other bespoke device,
+ * `.thermocline`, shipped twice. Both were recorded as done.
+ *
+ * A motif is by definition a device the eye meets more than once — that is the entire difference
+ * between a motif and a decoration. So: count the bespoke, hand-authored classes (everything in the
+ * client's own globals.css that is NOT one of the pipeline's standard-issue devices, which have
+ * their own gates already) and require at least one of them to appear >= 3 times.
+ *
+ * CALIBRATION: rejected build's best bespoke device = 2 appearances -> FAILS. Accepted floor build:
+ * `.icon-chip` x24 and `.glow` x14 -> PASSES with an order of magnitude in hand. The separation is
+ * not marginal, which is what a threshold wants.
+ */
+const globalsPath = join(siteDir, 'src', 'app', 'globals.css');
+const STANDARD_DEVICES = new Set(['grain', 'grain-dark', 'grain-light', 'photo-ground',
+  'photo-ground-light', 'photo-ground-dark', 'photo-duotone', 'sr-only', 'container', 'prose']);
+if (existsSync(globalsPath)) {
+  const globalsCss = readFileSync(globalsPath, 'utf8');
+  const declared = new Set([...globalsCss.matchAll(/\.([a-zA-Z][a-zA-Z0-9_-]{2,40})/g)].map((m) => m[1]));
+  const motifCounts = new Map();
+  for (const m of html.matchAll(/class="([^"]*)"/g)) {
+    for (const t of m[1].split(/\s+/)) {
+      if (declared.has(t) && !STANDARD_DEVICES.has(t)) motifCounts.set(t, (motifCounts.get(t) || 0) + 1);
+    }
+  }
+  const ranked = [...motifCounts.entries()].sort((a, b) => b[1] - a[1]);
+  facts.bespokeMotifs = Object.fromEntries(ranked);
+  const best = ranked[0]?.[1] || 0;
+  if (best < 3) {
+    failures.push(
+      `[motif] no bespoke visual device appears 3+ times — best is ${best} ` +
+      `(${ranked.length ? ranked.map(([k, v]) => `${k}=${v}`).join(', ') : 'the client globals.css declares NONE'}). ` +
+      '§ Design (HARD RULES) row 4 requires >= 3 appearances of the motif named in DESIGN_IDEA. A ' +
+      'device the eye meets once is a decoration; a device it meets three times is what makes a ' +
+      'site feel authored. This is the measured form of the operator\'s "use a signature motif -> ' +
+      'satisfied by one faint divider line" — a real build shipped its named isotherm motif exactly ' +
+      'ONCE across 19 pages and recorded the move as done. Take the device already authored in ' +
+      'globals.css and deploy it on section dividers, card corners, the footer edge and the hero.');
+  }
+}
+
+/* 20. CANVAS MODE / GROUND — the ONE ground rule that is arithmetic rather than taste (2026-08-19).
+ *
+ * § Canvas mode states the invariant plainly: "on every light mode the page-base token sits at
+ * L >= 0.93", and § Step 3 states what `saturated` means just as plainly: "a white page body with
+ * the brand hue as full-chroma PANELS. It is NOT a page-wide ground." Neither was enforced, and the
+ * rejected build violated the second one at the root of everything else that was wrong with it: it
+ * recorded GROUND=saturated and then derived `--surface: #223d81` — the brand navy AS the page
+ * base, L = 0.053. Every downstream symptom (five navy rungs, grey-on-navy cards, the mono-tone
+ * page the operator rejected on sight) follows from that single decision.
+ *
+ * The existing [monotone] check catches the SYMPTOM (rungs too close together). This catches the
+ * CAUSE, and names it, which is the difference between "your sections look samey" and "you built a
+ * saturated ground when saturated means panels".
+ *
+ * Reads the ground the build RECORDED in status.md, so it compares intent against artifact. If no
+ * ground was recorded there is nothing to check and it stays silent rather than guessing.
+ */
+const statusForGround = statusPath ? readFileSync(statusPath, 'utf8') : '';
+const groundDecl = (statusForGround.match(/^\s*(?:-\s*)?(?:GROUND|Ground)\s*[:=]\s*([a-z-]+)/mi) || [])[1];
+const canvasMode = (statusForGround.match(/CANVAS_MODE\s*[:=]\s*([A-Za-z-]+)/) || [])[1];
+const pageBase = varMap.get('surface') || varMap.get('surface-1')
+  || (css.match(/(?:^|\})\s*(?:html|body)[^{}]*\{[^}]*background(?:-color)?:\s*(#[0-9a-fA-F]{3,8})/) || [])[1];
+const pageBaseL = pageBase ? luminance(pageBase) : null;
+facts.groundRecorded = groundDecl || null;
+facts.canvasMode = canvasMode || null;
+facts.pageBase = pageBase || null;
+facts.pageBaseLuminance = pageBaseL === null ? null : Number(pageBaseL.toFixed(3));
+if (groundDecl && pageBaseL !== null) {
+  const LIGHT_BASE_MIN = 0.93;
+  if (groundDecl === 'saturated' && pageBaseL < LIGHT_BASE_MIN) {
+    failures.push(
+      `[canvas] GROUND=saturated but the page base --surface is ${pageBase} (L ${pageBaseL.toFixed(3)}). ` +
+      '§ Step 3 defines `saturated` as SATURATED-PANEL: "a white page body with the brand hue as ' +
+      'full-chroma PANELS. It is NOT a page-wide ground." Painting the brand hue as the base is the ' +
+      'single decision that produces a mono-tone page — every section then sits on the same hue and ' +
+      'no amount of gradient, grain or secondary can undo it. The bar (§ The bar) is explicit that ' +
+      'the reference site is a WHITE body with indigo panels and that the drama is the ALTERNATION. ' +
+      `Re-derive with a base at L >= ${LIGHT_BASE_MIN} and put the hue on 1-2 sections.`);
+  } else if (/^(light|cream|saturated)$/.test(groundDecl) && pageBaseL < LIGHT_BASE_MIN) {
+    failures.push(
+      `[canvas] GROUND=${groundDecl} is a LIGHT mode, but the page base --surface is ${pageBase} ` +
+      `(L ${pageBaseL.toFixed(3)}). § Canvas mode's invariant: "on every light mode the page-base ` +
+      `token sits at L >= ${LIGHT_BASE_MIN}". Either the recorded ground is wrong or the derived ` +
+      'base is; they cannot both stand.');
+  }
+}
+
+/* 21. STOCK shadcn STYLING (2026-08-19). § Step 1c is unambiguous — "NEVER ship shadcn's default
+ * styling ... it is what v0, Lovable and every AI app-builder emits". The [primitives] check above
+ * pushes builds to USE the vendored primitives; without this one, complying with that produces
+ * stock new-york/slate components, which is a worse failure than hand-rolling. Only unambiguous
+ * shadcn-only tokens are matched: this pipeline has its own `accent` and `secondary` tokens, so
+ * `bg-accent` is NOT evidence and is deliberately excluded. Fires only on a primitive that is
+ * actually imported, so an unused vendored file cannot fail a build. */
+if (existsSync(uiDir)) {
+  const SHADCN_DEFAULT = /\b(?:bg|text|border|ring|from|to)-(?:background|foreground|muted|muted-foreground|popover|popover-foreground|card-foreground|primary|primary-foreground|destructive|destructive-foreground|input)\b/g;
+  const stock = [];
+  for (const file of readdirSync(uiDir).filter((f) => f.endsWith('.tsx'))) {
+    const name = file.replace('.tsx', '');
+    if (!facts.shadcnImported?.includes(name)) continue;
+    const hits = (readFileSync(join(uiDir, file), 'utf8').match(SHADCN_DEFAULT) || []);
+    if (hits.length >= 3) stock.push(`${name} (${hits.length} default tokens)`);
+  }
+  facts.shadcnStockStyled = stock;
+  if (stock.length) {
+    failures.push(
+      `[primitives] ${stock.join(', ')} still carry shadcn's DEFAULT token classes. § Step 1c: ` +
+      '"NEVER ship shadcn\'s default styling" — new-york + slate is the single most recognisable ' +
+      'look on the web and reads as "an AI made this" on sight, which is the exact failure using ' +
+      'the primitives was meant to avoid. Replace the default classes with this client\'s derived ' +
+      'tokens (bg-surface-*, text-on-dark, border-accent-*, the real radius and shadow scale). ' +
+      'shadcn supplies BEHAVIOUR only.');
+  }
+}
+
+/* 22. GRADIENT QUALITY — facts, deliberately NOT a hard threshold (2026-08-19).
+ *
+ * § Design (HARD RULES) row 5 reads ">= 4 gradients, EACH >= 15% perceptual delta between stops".
+ * The count half is enforced above. The "each >= 15%" half is measured here and reported, and it is
+ * NOT a failure condition — that is a calibration finding, not laziness, and it is worth stating
+ * because it is a real hole:
+ *
+ *   - The >= 4 count runs over CSS **and** HTML concatenated, so one inline gradient repeated across
+ *     4 pages counts 4 times. Measured: the accepted floor build has just TWO distinct gradient
+ *     recipes and scores 6 against the >= 4 floor purely on duplicate occurrences.
+ *   - Applying "each >= 15%" literally therefore fails the build the operator calls the floor, and
+ *     also condemns the deliberately-uniform photo wash that § Design rules explicitly REQUIRES
+ *     ("apply a uniform dark wash across the WHOLE image, not an edge-only gradient").
+ *
+ * So the numbers ship as facts a reviewer can act on, and `distinctGradientRecipes` makes the
+ * duplicate-counting visible instead of silently inflating the floor.
+ */
+{
+  const recipes = new Set();
+  for (const m of all.matchAll(/(?:linear|radial|conic)-gradient\((?:[^()]|\([^()]*\))*\)/g)) recipes.add(m[0]);
+  let perceptible = 0; const flat = [];
+  for (const g of recipes) {
+    if (/var\(--tw-gradient-stops\)/.test(g)) continue; // stops live on the element, not the rule
+    const stops = [...g.matchAll(/(#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|\btransparent\b|var\(--([a-z0-9-]+)\))/g)]
+      .map((m) => (m[0] === 'transparent' ? '#00000000' : (m[2] ? varMap.get(m[2]) : m[0]))).filter(Boolean);
+    let max = 0, comparable = false;
+    for (let i = 0; i < stops.length; i++) {
+      for (let j = i + 1; j < stops.length; j++) {
+        const d = perceptualDelta(stops[i], stops[j]);
+        if (d !== null) { comparable = true; max = Math.max(max, d); }
+      }
+    }
+    if (!comparable) continue;
+    if (max >= 0.15) perceptible++; else flat.push(`${max.toFixed(3)} ${g.slice(0, 48)}…`);
+  }
+  facts.distinctGradientRecipes = recipes.size;
+  facts.perceptibleGradients = perceptible;
+  if (flat.length) {
+    warnings.push(
+      `[depth] ${flat.length} gradient(s) have under 15% perceptual delta between stops and paint ` +
+      `as flat fills: ${flat.slice(0, 3).join(' | ')}. They still count toward the >= 4 floor, which ` +
+      'is how a page reaches "4 gradients" with nothing visibly graduated. A deliberate uniform ' +
+      'photo wash is legitimate here; a decorative section gradient at this delta is not.');
   }
 }
 
