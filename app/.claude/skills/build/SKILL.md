@@ -1416,7 +1416,18 @@ awards, a heritage/family narrative, premium pricing already implied) even insid
 trade like HVAC — a colour-saturated page under-sells a business the content says is upmarket.
 **Record the choice in `status.md`** next to the harmony decision, same as CHARACTER.
 
-### Motion usage floors (the engine now offers six hooks — use them)
+> 🔬 **A third mode, SATURATED-CANVAS, is evidenced but NOT YET IMPLEMENTED — flagged here rather
+> than rushed in untested (2026-08-19 Fable design-elevation review).** Direct first-hand inspection
+> of a real Awwwards-nominee trade-service site (southernlifts.com.au, an elevator/lift company —
+> the closest real comparable to this pipeline's own market) found its hero ground is the BRAND HUE
+> AT FULL SATURATION used as an environment — not FULL-TINT's low-chroma ladder, not
+> NEUTRAL-CANVAS's true-neutral base. `derive-palette.mjs`'s tinted-surface system currently has no
+> mode that produces this (its ladder deliberately caps surface chroma low). Implementing it means a
+> new derive-palette flag emitting a full-chroma surface pair (with near-white/near-black text,
+> still contrast-gate-verified) for the hero and 1-2 sections, seeded/CHARACTER-gated like the two
+> modes above. Do NOT half-implement this by hand-picking a saturated hex in a single build — it
+> needs the same arithmetic contrast/CVD guarantee the other two modes get from the real deriver
+> script. Next step: add and test the derive-palette flag properly, then document the mode here. (the engine now offers six hooks — use them)
 
 Amplitude was only half the problem. The other half was REACH: for a long time the engine offered
 four hooks, so a page could be fully compliant and still animate in two places, which is why the
@@ -1579,7 +1590,7 @@ actually good at:
 | **The brand accent itself** | the business's real logo colour | identity. Never overridden, never re-characterised. |
 | **Every other colour** — secondary, surfaces, text, semantics | `derive-palette.mjs` + `color-expert` | it solves for CONTRAST and CVD arithmetically and is verified by `contrast-check.mjs`. A recommendation cannot promise 4.5:1 against this client's actual surfaces; the deriver proves it. |
 | **Layout pattern, section order, STYLE, KEY EFFECTS** | `/ui-ux-pro-max` | it holds 161 product types and reasoning rules for exactly this. |
-| **Typography pairing** | `/ui-ux-pro-max` | its pairings are matched by trade and mood, and it returns a literal CSS import. |
+| **Typography pairing** | `/ui-ux-pro-max` typography *domain search* (shortlist) + build-skill trade-mask + seed | its domain-search shortlist is matched by trade and mood; § How to pick fonts below then applies the trade-mask/banned-list/uniqueness filters and picks by seed. **Not** the `--design-system` call's own font recommendation directly — see § How to pick fonts, which explicitly skips that field (fixed 2026-08-19, this row previously contradicted that section). |
 
 So on Mike's Bobcat the consult returned "Industrial grey + safety orange (#64748B / #94A3B8 / CTA
 #F97316)". Overriding that with the client's real `#FF8D13` and a derived deep-teal secondary is
