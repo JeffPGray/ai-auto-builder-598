@@ -2460,9 +2460,15 @@ roles. Because the palette is derived, this should be proving a property that is
 FAIL means a freehand colour bypassed the role tokens (or an overlay/glow shifted a surface) and
 the build does not ship until it passes. From the repo root:
 
+Run both together, backgrounded and reaped with `wait` (Fable consult, 2026-08-19 — the rendered
+check is documented elsewhere as the single most expensive script in the whole battery; the two are
+fully independent, so there's no reason to pay for them serially):
 ```bash
-node scripts/contrast-check.mjs --tokens clients/$ARGUMENTS/site/src/app/globals.css
-node scripts/contrast-check.mjs clients/$ARGUMENTS/site/out
+node scripts/contrast-check.mjs --tokens clients/$ARGUMENTS/site/src/app/globals.css > /tmp/contrast-tokens-$$.log 2>&1 &
+node scripts/contrast-check.mjs clients/$ARGUMENTS/site/out > /tmp/contrast-rendered-$$.log 2>&1 &
+wait
+cat /tmp/contrast-tokens-$$.log /tmp/contrast-rendered-$$.log
+rm -f /tmp/contrast-tokens-$$.log /tmp/contrast-rendered-$$.log
 ```
 
 The first line is the STATIC token audit (`TOKEN_CHECK=PASS` required): it verifies the full
@@ -2540,11 +2546,19 @@ against a 5-gradient design-manifest plan, and status.md had a "HyperUI citation
 instead of the required "## HyperUI components used" section with real citations — both invisible
 to every other Verify check, both would have been a 2-minute self-fix here instead of a lost round.
 
+All four independent of each other and of the nav-visibility check further below — run all five
+together in one backgrounded batch rather than five separate tool-call turns (same pattern as the
+QA gate battery; the concurrent-write paths they share, `data/design-fingerprints.json`, are
+already mkdir-lock-protected):
 ```bash
-node scripts/richness-check.mjs clients/$ARGUMENTS/site
-node scripts/hyperui-usage-check.mjs $ARGUMENTS
-node scripts/hyperui-transplant-check.mjs $ARGUMENTS
-node scripts/verify-reviews.mjs $ARGUMENTS
+node scripts/richness-check.mjs clients/$ARGUMENTS/site > /tmp/vf-richness-$$.log 2>&1 &
+node scripts/hyperui-usage-check.mjs $ARGUMENTS > /tmp/vf-hyperui-usage-$$.log 2>&1 &
+node scripts/hyperui-transplant-check.mjs $ARGUMENTS > /tmp/vf-hyperui-transplant-$$.log 2>&1 &
+node scripts/verify-reviews.mjs $ARGUMENTS > /tmp/vf-reviews-$$.log 2>&1 &
+node scripts/verify-nav-visibility.mjs clients/$ARGUMENTS/site/out > /tmp/vf-nav-$$.log 2>&1 &
+wait
+cat /tmp/vf-richness-$$.log /tmp/vf-hyperui-usage-$$.log /tmp/vf-hyperui-transplant-$$.log /tmp/vf-reviews-$$.log /tmp/vf-nav-$$.log
+rm -f /tmp/vf-richness-$$.log /tmp/vf-hyperui-usage-$$.log /tmp/vf-hyperui-transplant-$$.log /tmp/vf-reviews-$$.log /tmp/vf-nav-$$.log
 ```
 
 **`verify-reviews.mjs` closes the worst defect class this pipeline can ship** — a fabricated review
@@ -2565,11 +2579,8 @@ what visually sits behind it once the element escapes normal flow — a fixed el
 is whatever page content happens to be scrolled underneath it, which has no DOM relationship to it
 at all. `verify-nav-visibility.mjs` instead screenshots the real rendered page and samples the
 actual pixel colour behind each nav link, the same methodology this project's own contrast tooling
-already trusts over DOM inference for exactly this class of ambiguity.
-
-```bash
-node scripts/verify-nav-visibility.mjs clients/$ARGUMENTS/site/out
-```
+already trusts over DOM inference for exactly this class of ambiguity. (Already run as part of the
+5-check parallel batch above — `vf-nav-$$.log` — nothing further to invoke here.)
 
 `NAV_VISIBILITY_CHECK=FAIL` is CRITICAL: a nav link is unreadable against its real rendered
 backdrop at first load. Fix by either giving the nav a real background at all times (simplest,
