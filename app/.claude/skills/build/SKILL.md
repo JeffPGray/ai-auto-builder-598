@@ -306,34 +306,37 @@ gates and still only run once, against the finished site — see § Verify and t
 
 ### Per-service pages — `/services/<slug>` (the commercial-intent lane)
 
-**Ship a dedicated page for any service that can carry ≥120 words of TRUE, non-duplicated,
-service-specific detail.** Services that cannot clear that bar stay as sections on `/services`.
-Never split a service list just to multiply URLs — that is the doorway pattern, and `/seo` flags it.
+**EVERY named service gets its own `/services/<slug>` page. This is not conditional (Jeff, direct
+instruction 2026-08-19: "every service getting a page… we always need to generate content. Always.
+It's multi-page sites.").** A thin gathered description is not a reason to skip the page — it is a
+reason to WRITE the page's content, using § Blog's bucket-2 trade-craft prose (see the truth rule
+below and in § Blog). Multi-page is the standard shape of a Klaudius site, and commercial-intent
+search ("pool removal Oklahoma City", "AC repair The Woodlands") lands on a service page or lands
+nowhere.
 
-**Why this exists (Jeff, 2026-08-16: "none of the services have their own page? is that a logic
-thing that was worth reducing to one page?").** On demolition-okc the one-page call was CORRECT:
-nine services were gathered, but with 4-25 words each ("Interior Demolition — Full interior
-demolition services."), nine pages would all have been thin. The threshold worked.
+> ⚠️ **This SUPERSEDES the previous ≥120-word conditional threshold** (which folded thin-gather
+> services into `/services` sections). That rule was correct about one thing and wrong about the
+> conclusion: a page whose only content is a restated 20-word gathered bullet IS worthless — but
+> the fix is to write real content for it, not to delete the page. The three-bucket truth rule is
+> what makes that safe to do: bucket 2 (how this trade's work is actually done — general craft
+> knowledge, stated plainly) is NOT invention, and it is exactly what a service page needs.
 
-**The miss was elsewhere, and it is the point of this section.** That same build wrote FIVE blog
-articles of genuine depth on pool removal, land clearing, concrete breakup, interior demolition and
-storm cleanup. The depth existed; it just landed on `/blog`, which serves research intent, instead
-of on a service page, which serves BUYING intent. Someone searching "pool removal Oklahoma City"
-wants a page that sells that service, not an article about it.
+**The still-binding constraint is TRUTH, not word count.** A per-service page must carry: what the
+job actually involves, what the customer should expect (sequence, access, mess, duration), at least
+one real photo of that work if one was gathered, and a CTA. It must NEVER invent prices, permit
+rules, timelines, regulated numbers, or any claim specific to THIS business that gather did not
+find (bucket 1 stays gathered-only, bucket 3 stays forbidden — § Blog). Write real bucket-2 trade
+craft to give the page substance; never fabricate a business-specific fact to pad it.
 
-So when the blog research surfaces enough substance for an article, that same substance almost
-always clears 120 words for a service page. Decide the two together:
+**Not a doorway pattern, and here's the distinction that matters to `/seo`:** a doorway page is the
+same content re-skinned per keyword or per town. A genuinely distinct service, with its own real
+trade-craft explanation of how that specific job is done, is a legitimate page — that is what every
+real trade-service site ships. Duplicating one service's prose across several near-identical service
+slugs IS the doorway pattern and stays forbidden.
 
-| Service has | `/services` section | `/services/<slug>` page | Blog article |
-|---|---|---|---|
-| <25 words of real detail | yes | no | no |
-| ≥25, <120 words | yes | no | maybe |
-| ≥120 words of true, specific detail | yes (short, links to the page) | **yes** | yes, on a distinct angle |
-
-A per-service page must carry: what the job actually involves, what the customer should expect
-(sequence, access, mess, duration), at least one real photo of that work if one was gathered, and a
-CTA. It must NOT invent prices, permit rules, timelines or regulated numbers — the same bar as the
-blog. If it needs invention to reach 120 words, it does not qualify.
+Blog articles are decided separately and must take a DISTINCT angle from the service page — an
+article that restates the service page is wasted; it should go deeper on one aspect (a seasonal
+problem, a decision guide, a common failure) that the buying-intent page doesn't cover.
 
 > 🚨 **A card grid quoting the gathered bullet verbatim is NOT a page — caught live 2026-08-16
 > ("on AC it just ends up with 4 blocks and no text").** The-woodlands-plumbing-and-air's four
