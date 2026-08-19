@@ -77,7 +77,28 @@ the line. Running this here costs ~1 second and saves an entire QA round.
 > - Palette family: <what it suggested>
 > - Character: deep|vivid|muted|pale|dark  (why, in six words)
 > - Harmony: <type>  (why this pairs with the character)
+>
+> DESIGN_IDEA=<ONE sentence: the single idea every choice on this site serves>
+> - Hero archetype: <which of the five — full-bleed work-photo / split-diagonal / oversized-type-
+>   over-duotone / video plate / stat-anchored — and why it fits this trade and business>
+> - Signature move 1: <a specific, named, checkable choice — not a vibe>
+> - Signature move 2: <ditto>
+> - Signature move 3: <ditto>
+> - Differs from the last 3 builds: <one line — what's structurally different here, not just
+>   re-hued>
 > ```
+>
+> **Why DESIGN_IDEA exists (2026-08-19 Fable design-elevation review).** Correct + rich + varied
+> still isn't *stunning*. What real award-tier sites share, per a direct review of current Awwwards
+> React winners, is that every type/color/grid choice visibly serves ONE idea — a visitor could name
+> it. A build with no stated idea defaults to arranging correct pieces with no point of view, which
+> is exactly what "technically passes every gate, still reads as generic" means. Writing the idea
+> down FIRST, before any TSX, is what makes it survive contact with a hundred other rules while
+> writing 14 routes — same reasoning as the Design Manifest checkpoint below, applied one level up:
+> that manifest plans WHERE richness lands, DESIGN_IDEA is WHY any of it is there. The three
+> signature moves must be specific enough to verify later (§ Adopt or document below extends the
+> existing KEY-EFFECTS fidelity check to these three) — "make it feel premium" is not a signature
+> move, "an isotherm-line SVG motif used as section dividers and the FAQ's list marker" is.
 >
 > **Why this is now a recorded artifact rather than an instruction.** Build 3's `status.md` recorded
 > fonts and a palette line but **nothing from this step**, so there is no way to tell whether the

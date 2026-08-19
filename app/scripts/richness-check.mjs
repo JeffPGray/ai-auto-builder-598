@@ -441,6 +441,24 @@ if (!dsPath) {
       'suggestion — but write the deviation and its reason into status.md. A silent drop is how a ' +
       'build with a mandatory design step still ships generic.');
   }
+
+  /* DESIGN_IDEA / signature moves (2026-08-19 Fable design-elevation review, C3) — extends the same
+   * adopt-or-document mechanism above to the model-AUTHORED creative commitments, not just the
+   * tool's recommendations. § build/SKILL.md's design-system step now requires a one-sentence
+   * DESIGN_IDEA and 3 named signature moves BEFORE any TSX is written. This checks presence (the
+   * step was genuinely done, not skipped) — same discipline as VERIFY_GATES_OK_AT's presence check
+   * elsewhere in this pipeline, applied to a creative artifact instead of a technical one. */
+  const hasDesignIdea = /DESIGN_IDEA\s*=/.test(status);
+  const signatureMoveCount = [...status.matchAll(/Signature move \d+:/gi)].length;
+  facts.designIdea = { present: hasDesignIdea, signatureMoves: signatureMoveCount };
+  if (!hasDesignIdea || signatureMoveCount < 3) {
+    failures.push(
+      `[design] DESIGN_IDEA and/or its 3 signature moves are missing from status.md ` +
+      `(present=${hasDesignIdea}, signature moves recorded=${signatureMoveCount}/3). This is the ` +
+      'one-sentence organizing idea every choice on the page should serve, required before any TSX ' +
+      'per the design-system step — its absence is exactly how a build satisfies every other gate ' +
+      'and still reads as arranged-not-authored.');
+  }
 }
 
 /* 11. theme-color ON EVERY PAGE — the iPhone white-band bug.
