@@ -154,19 +154,18 @@ if [ "$VERIFY_FRESH" = "1" ]; then
   echo "FONT_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/font-check.log
   echo "CONTRAST_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/contrast.log
   echo "TOKEN_CHECK=PASS (carried from Verify, globals.css unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/token.log
-  echo "HYPERUI_USAGE_CHECK=PASS (carried from Verify, status.md unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/hyperui-usage.log
-  echo "HYPERUI_TRANSPLANT_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/hyperui-transplant.log
   echo "REVIEW_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/reviews.log
   echo "NAV_VISIBILITY_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/nav-visibility.log
 else
   node ../../../scripts/font-check.mjs . > /tmp/qa-gates-{slug}/font-check.log 2>&1 &
   node ../../../scripts/contrast-check.mjs out > /tmp/qa-gates-{slug}/contrast.log 2>&1 &
   node ../../../scripts/contrast-check.mjs --tokens src/app/globals.css > /tmp/qa-gates-{slug}/token.log 2>&1 &
-  ( cd ../../.. && node scripts/hyperui-usage-check.mjs {slug} ) > /tmp/qa-gates-{slug}/hyperui-usage.log 2>&1 &
-  ( cd ../../.. && node scripts/hyperui-transplant-check.mjs {slug} ) > /tmp/qa-gates-{slug}/hyperui-transplant.log 2>&1 &
   ( cd ../../.. && node scripts/verify-reviews.mjs {slug} ) > /tmp/qa-gates-{slug}/reviews.log 2>&1 &
   node ../../../scripts/verify-nav-visibility.mjs out > /tmp/qa-gates-{slug}/nav-visibility.log 2>&1 &
 fi
+# HyperUI usage/transplant checks REMOVED from the gate battery 2026-08-19 (Jeff's call — the
+# scripts, reference catalog, and lookup tool are deleted entirely). They no longer run at all,
+# carried or fresh.
 ( cd ../../.. && node scripts/font-uniqueness-check.mjs {slug} ) > /tmp/qa-gates-{slug}/font-uniqueness.log 2>&1 &
 ( cd ../../.. && node scripts/verify-hero-video.mjs --slug {slug} ) > /tmp/qa-gates-{slug}/hero-video.log 2>&1 &
 ( cd ../../.. && node scripts/verify-photos.mjs {slug} ) > /tmp/qa-gates-{slug}/photo.log 2>&1 &
@@ -287,33 +286,11 @@ echo "--- mobile pass ---"; cat /tmp/qa-mobile-{slug}.log; rm -f /tmp/qa-mobile-
 # NOTE the subshell + cd: this script resolves clients/<slug>/ from the REPO ROOT, unlike the
 # checks above which take a path. The parentheses keep the cd from leaking into later steps.
 
-# HyperUI usage verification (STATIC, EXPERIMENT-BRANCH-ONLY) — prints
-# HYPERUI_USAGE_CHECK=PASS/FAIL/SKIP. SKIP is normal off this branch (no vendored reference set
-# present) and is NOT a failure. On experiment/hyperui-components, FAIL is CRITICAL: it means
-# status.md's "## HyperUI components used" section is missing, has zero real path citations, cites
-# a path that doesn't exist, or falls short of the floor in build/SKILL.md's HyperUI section
-# (6 application-tier components across 4+ categories, 10 marketing-tier sections across 7+
-# categories — see the Step 4 checklist below for the enforced numbers, this comment previously
-# understated them). This exists because the branch's first real test had the reference set
-# available and never opened a single one of the 469 files — "informed by" prose is not a checkable
-# claim, and nothing before QA required a real one. Do NOT overrule a FAIL because the site looks
-# fine — same reasoning as PHOTO_CHECK: this proves a specific, named claim was made and is true,
-# not that the design is good.
-
-# HyperUI TRANSPLANT FIDELITY verification (STATIC, EXPERIMENT-BRANCH-ONLY) — prints
-# HYPERUI_TRANSPLANT_CHECK=PASS/WARN/FAIL/SKIP. SKIP is normal off this branch (no vendored
-# reference set present) and is NOT a failure. This is the check ABOVE it does not do: citing a
-# real vendored path proves the path exists and was named, not that the shipped element actually
-# inherited its structure. It reads the `data-hyperui="<cited path>"` stamp build/SKILL.md's HyperUI
-# section now requires on the root of every element that starts from a vendored file, and scores
-# the shipped subtree against the vendored file's structure (tag-shape + layout-class similarity,
-# invariant to the colour/word substitutions the skill mandates). FAIL is CRITICAL and hard: a
-# cited path that doesn't exist in the vendored set, or a `data-hyperui` stamp in the shipped output
-# that was never cited in status.md — both are unambiguous bookkeeping lies. A
-# HYPERUI_TRANSPLANT_CHECK=WARN line (an UNSTAMPED citation, or a DECORATIVE structural-similarity
-# score) is NOT a hard FAIL yet — this is a brand-new stamping convention with no calibration data
-# from a real build — but report it verbatim; hand-inspect any DECORATIVE verdict against the
-# actual rendered section rather than dismissing it.
+# HyperUI usage/transplant-fidelity verification — DELETED 2026-08-19 (Jeff's explicit call).
+# These two gates only ever proved a citation was technically valid (path exists, hash matches,
+# structure similarity score) — never that the result looked good. Real evidence: cold-front-ac
+# (2026-08-19) shipped 16 citations that PASSED both gates and still read as visually generic.
+# The reference catalog, both gate scripts, and the lookup tool no longer exist in this repo.
 
 # Copy/voice anti-repetition check (STATIC, MANDATORY, WARN-ONLY — gap 4 of 4 from Fable's
 # sameness-gap spec, SAMENESS-04) — prints COPY_FINGERPRINT_CHECK=PASS/WARN/SKIP. Masks this
@@ -420,7 +397,7 @@ npx playwright-cli -s=qa-{slug}-desktop eval "JSON.stringify(Array.from(document
 # every screenshot phase above (home + subpages, desktop + mobile) has been running concurrently
 # with these 11 checks the whole time instead of waiting until now to even start them.
 wait
-for f in font-check font-uniqueness contrast token hero-video photo hyperui-usage hyperui-transplant copy-fingerprint reviews nav-visibility; do
+for f in font-check font-uniqueness contrast token hero-video photo copy-fingerprint reviews nav-visibility; do
   echo "--- $f ---"; cat "/tmp/qa-gates-{slug}/$f.log"
 done
 rm -rf "/tmp/qa-gates-{slug}"
@@ -495,8 +472,6 @@ Then check every item below, **on every page**:
 - [ ] **Webfonts (hard FAIL) — read the `FONT_CHECK=` line printed by `font-check.mjs` in Step 3.** `FONT_CHECK=FAIL` is a CRITICAL issue: the site is rendering in system fallbacks (Georgia/Helvetica) and the entire typography step has been discarded. Report the script's individual FAIL lines verbatim. **Do NOT try to verify this yourself with a grep or with `getComputedStyle`** — both come back clean on a broken build (the source `@import` is present and computed style returns the declared stack whether or not the face ever loaded). The usual cause is a remote `@import` in `globals.css` whose URL contains a comma, which Turbopack drops with no warning; the fix is `next/font/google` in `layout.tsx`. A `FONT_CHECK=PASS` with warnings is not a FAIL, but quote the warnings in the report.
 - [ ] **Font uniqueness (hard FAIL) — read the `FONT_UNIQUENESS_CHECK=` line printed by `font-uniqueness-check.mjs` in Step 3.** `SKIP` means there's not yet enough font data anywhere in `data/design-fingerprints.json` to compare against (normal in the system's early runs) — not a finding. `FAIL` is CRITICAL and comes in two shapes, both reported verbatim: (1) claim-vs-artifact drift — this build's own design-ledger record claimed a different heading/body font than what `layout.tsx` actually ships, a bookkeeping-integrity bug, fix by correcting whichever side is wrong so they agree; (2) the shipped heading font collides name-for-name with one of the last 8 OTHER builds — never reuse a heading font (build/SKILL.md § How to pick fonts), fix by swapping the `next/font/google` import for a different shortlist entry and re-running `font-check.mjs`. A `FONT_UNIQUENESS_WARNING` line (a same-town body-font match, or a claimed font missing from the built CSS) is WARN-only — report it verbatim but do not fail on it alone.
 - [ ] **Photo verification (hard FAIL) — read the `PHOTO_CHECK=` line printed by `verify-photos.mjs` in Step 3.** `PHOTO_CHECK=FAIL` is a CRITICAL issue: the site is using a photo that gather never positively cleared. Report each FAIL line verbatim, naming the photo and the file that references it. **Do NOT overrule this because the photo looks acceptable to you** — the check is not asking whether the image is good, it is asking whether a verdict was RECORDED, and an unrecorded verdict is the exact hole a horror-clown photograph came through onto a plumbing company's home page on 2026-08-16. The fix is either to swap the reference to a photo listed as usable, or to Read the image and write the verdict into `gathered-content.md`. Deleting the `(not yet verified)` line to silence the check is tampering with the audit trail, not fixing the defect. **Then look at the photo yourself anyway** — this gate proves a decision exists, it cannot prove the decision was right.
-- [ ] **HyperUI usage (hard FAIL on this branch, N/A elsewhere) — read the `HYPERUI_USAGE_CHECK=` line printed by `hyperui-usage-check.mjs` in Step 3.** `SKIP` means the vendored reference set isn't present (normal off `experiment/hyperui-components`) — not a finding. `FAIL` on that branch is CRITICAL: report the line verbatim (it names exactly what's missing — no section, no citations, an invalid path, or below the citation floors: 6 application components across 4 categories, 10 marketing sections across 7 categories). Fix is to add real, checkable citations to `status.md`'s "## HyperUI components used" section per `build/SKILL.md`'s HyperUI section — never mark PASS on prose alone. A `HYPERUI_USAGE_CHECK_WARNING` line (leaked raw Tailwind colour classes) is not a hard FAIL but report it as a minor issue. A `HYPERUI_FINGERPRINT_WARNING` line (this build's marketing-tier citation set overlaps >=50% with one of the last 8 builds' sets, recorded in `data/design-fingerprints.json`) is likewise WARN-only — report it verbatim so the operator sees which prior build(s) it names, but do not fail on it.
-- [ ] **HyperUI transplant fidelity (hard FAIL on this branch, N/A elsewhere) — read the `HYPERUI_TRANSPLANT_CHECK=` line printed by `hyperui-transplant-check.mjs` in Step 3.** `SKIP` means the vendored reference set isn't present, or `clients/{slug}/site/out` doesn't exist yet (pre-build) — not a finding. `FAIL` is CRITICAL and hard: any of an invalid cited path, an uncited `data-hyperui` stamp, an `UNSTAMPED` citation, or a `DECORATIVE` structural-similarity score (promoted from WARN to hard FAIL 2026-08-18 — the calibration trigger fired for real: a real deployed build, aot-mechanical, was hand-inspected against its DECORATIVE-flagged citations and the scoring held, e.g. `badges/3.html` — a tiny removable filter-chip pattern in the real reference — cited on a full heading+paragraph content card, sharing nothing structural). Report the line verbatim. Fix for `UNSTAMPED` is adding the `data-hyperui="<exact cited path>"` attribute to the shipped element's root; fix for `DECORATIVE` is either genuinely rebuilding that section from the cited file's real structure, or citing a different file that actually matches what shipped. **Before citing ANY HyperUI path in a build, actually Read the real file at `.claude/skills/build/reference/hyperui/<path>` first** — a plausible-sounding path name is not evidence you looked at it, and this gate now hard-fails builds that didn't.
 - [ ] **Copy/voice anti-repetition (WARN-only, never a hard FAIL) — read the `COPY_FINGERPRINT_CHECK=` line printed by `copy-fingerprint-check.mjs` in Step 3.** `SKIP` means there's no built `out/` yet, or no prior build in the ledger carries a comparable sketch yet (normal in the system's early runs) — not a finding. `WARN` means this build's masked-prose skeleton estimated-overlaps a specific prior build at or above the (explicitly placeholder) threshold — report the line verbatim, including the named prior build(s) and the actual shared phrases listed underneath it, and hand-read those phrases against both builds' real pages. If they read as a genuinely recycled skeleton ("When your ⟨X⟩ breaks, you need ⟨Y⟩ who ⟨Z⟩" showing up twice), that's worth varying the wording for; if they read as an ordinary trade-copy convention any independent business might write ("fully licensed and insured"), that is a known, accepted false-positive shape for this gate and needs no action. **Never fail the round on this alone, under any circumstance** — masking has real, stated holes (see the script's own header) and this is deliberately the most judgement-laden of the four sameness gates.
 - [ ] **Token audit (hard FAIL) — read the `TOKEN_CHECK=` line printed by `contrast-check.mjs --tokens` in Step 3.** `TOKEN_CHECK=FAIL` is a CRITICAL issue: either part of the derived token set (accent roles, secondary, tinted neutrals, semantics) is missing from `:root`, or a declared pair was hand-edited below threshold. These tokens include interaction-only colours (error text, toasts) that no screenshot can prove, so the computed line is the only evidence — report its FAIL lines verbatim; the fix is re-running `scripts/derive-palette.mjs` and re-pasting, never inventing a replacement hex.
 - [ ] **Contrast (hard FAIL) — read the `CONTRAST_CHECK=` line printed by `contrast-check.mjs` in Step 3.** `CONTRAST_CHECK=FAIL` is a CRITICAL issue: at least one rendered text element is below its WCAG threshold. Report the script's individual FAIL lines verbatim (they carry the computed ratio, the composited fg/bg and the text). **Do NOT overrule the number by eye** — the recurring failure mode here is accent-coloured text or a white-on-accent CTA that *looks* tasteful at 2.5-2.9:1; it fails arithmetic, not eyesight, and eyeballing is how it shipped three times. The build derives compliant role tokens (`--accent-text`, `--accent-fill`/`--on-accent-fill`, etc. from `scripts/derive-palette.mjs`), so a failure almost always means a raw `--accent` (or a freehand hex) was used for a text job — the fix is swapping to the correct role token, not inventing a new colour.

@@ -1019,11 +1019,11 @@ node scripts/design-ledger.mjs record $ARGUMENTS \
 
 Added 2026-08-18 after a real build (aot-mechanical) shipped flat and generic despite the ground/
 typography/harmony/character decisions above all being made correctly — the failure wasn't a bad
-decision, it was that richness, motion and real HyperUI usage were never planned as concrete
-commitments before writing started, so under any time pressure (a watchdog kill, a long session)
-they were the first things silently dropped. A decision that exists only as intent in a long
-session's context is exactly what compaction (§ top of this file) discards first; a decision
-written to `status.md` survives a kill, a resume, or a compacted re-read.
+decision, it was that richness and motion were never planned as concrete commitments before writing
+started, so under any time pressure (a watchdog kill, a long session) they were the first things
+silently dropped. A decision that exists only as intent in a long session's context is exactly what
+compaction (§ top of this file) discards first; a decision written to `status.md` survives a kill, a
+resume, or a compacted re-read.
 
 Before writing `globals.css` or any `page.tsx`, write a `## Design manifest` section to `status.md`
 answering these five questions concretely — this costs a few hundred output tokens, not a
@@ -1038,15 +1038,6 @@ meaningful fraction of the build:
   section transition(s) + which card/panel wash(es), all `in oklch`.
 - Section treatments (need 4 distinct — light, alt-light, dark, image/gradient-backed): which
   section gets which.
-- HyperUI citations planned: which real components for which sections (hero stats, FAQ, CTA
-  bands, service cards, etc). **Decide the full category list here** (this is where it's actually
-  decided, first thing a builder reaches), then run the ONE batched lookup at § Targeted lookup
-  below (all categories in a single `&`+`wait` call, not one per category — corrected 2026-08-19,
-  this exact line used to instruct a per-category call and, being the first section reached, was
-  the one that actually got followed literally). Note each exact path + its printed `[hex6]` hash
-  HERE, now — this is the citation you'll paste into "## HyperUI components used" later, already
-  proven you looked at the real file instead of a plausible-sounding name (hyperui-transplant-check.mjs
-  hard-fails a missing/wrong hash).
 - Hero video: read back the `HERO_VIDEO=` line § Setup already wrote — confirm here which
   `<HeroVideo>` form this build uses.
 
@@ -1054,10 +1045,10 @@ Grain target: <opacity, per § Visual richness's ladder>.
 ```
 
 This is a plan, not a promise — if a section's real content genuinely can't support a photo ground
-or a planned citation turns out wrong once you're looking at the actual page, deviate and say so in
-the same status.md section (deviation is allowed, silence is not, same rule as everywhere else in
-this file). The point is that richness and real HyperUI usage are DECIDED before the first
-`<section>` is typed, not discovered as a gap by QA forty minutes later — the HARD-BLOCKER CONTRACT
+once you're looking at the actual page, deviate and say so in the same status.md section (deviation
+is allowed, silence is not, same rule as everywhere else in this file). The point is that richness
+is DECIDED before the first `<section>` is typed, not discovered as a gap by QA forty minutes
+later — the HARD-BLOCKER CONTRACT
 below is what QA grades the finished site against; this manifest is what makes clearing it the
 default outcome of writing the site once, not a second pass.
 
@@ -1239,16 +1230,13 @@ FALSE, not merely to look good to yourself.
 5. **COLOR** — TRUE if the most-saturated accent hue does more than 3 distinct jobs (functionally
    monochrome), OR if there is no genuine second tone doing real structural work and the page never
    shifts temperature while scrolling.
-6. **RICHNESS/HYPERUI** (added 2026-08-18, verbatim-shared with `richness-check.mjs` and
-   `hyperui-transplant-check.mjs`'s own hard-FAIL thresholds — the promotion those two gates
-   underwent the same day this line was added) — TRUE if any of: fewer than 4 gradient
-   declarations shipped; fewer than 2 photo-grounded sections (a gathered photo behind an 80-88%
-   wash); any `data-hyperui` citation is a path you did not actually Read this session (no
-   `[hex6]` proof-of-read hash, or a hash that doesn't match the real vendored file); grain
-   opacity below the visible threshold (~0.10 light / ~0.14 dark). This is the item a build clears
-   by following the § Design manifest checkpoint BEFORE writing TSX, not by patching it in after —
-   catching it here costs nothing, catching it in QA costs a full re-review because a richness fix
-   touches `globals.css`/`_components/`, which are escalation triggers.
+6. **RICHNESS** (added 2026-08-18, verbatim-shared with `richness-check.mjs`'s own hard-FAIL
+   thresholds) — TRUE if any of: fewer than 4 gradient declarations shipped; fewer than 2
+   photo-grounded sections (a gathered photo behind an 80-88% wash); grain opacity below the
+   visible threshold (~0.10 light / ~0.14 dark). This is the item a build clears by following the
+   § Design manifest checkpoint BEFORE writing TSX, not by patching it in after — catching it here
+   costs nothing, catching it in QA costs a full re-review because a richness fix touches
+   `globals.css`/`_components/`, which are escalation triggers.
 
 **Why prose rules alone don't work here, and why this is a contract rather than more guidance:**
 measured directly tonight — the design-consult tool (`ui-ux-pro-max`) recommended Playfair Display +
@@ -1423,196 +1411,9 @@ still seeded per business, so fleet variety and reproducibility are preserved.
 5. **Stagger the grids.** `data-reveal-group` on every multi-item wrapper (service cards, photo
    grids, review cards, FAQ lists). Whole-section fades read as a slideshow; stagger reads as craft.
 
-## 🧪 EXPERIMENT BRANCH ONLY — HyperUI reference set (`experiment/hyperui-components`)
-
-**469 real HyperUI examples vendored 2026-08-16** at `.claude/skills/build/reference/hyperui/` —
-295 application-tier UI primitives (accordions, badges, breadcrumbs, dropdowns, modals, tables,
-tabs, toasts, and 26 more) plus 174 marketing-tier sections (heroes, CTAs, pricing, testimonials,
-footers, and 17 more). Both tiers are available on this branch — an earlier version of this section
-said marketing was excluded; it is not, per the operator's explicit override on 2026-08-16.
-
-### 🚨 MANDATORY, not optional: this branch exists to test HyperUI-as-reference, not to make it available
-
-**The first real test on this branch failed to test anything.** The reference set was vendored,
-indexed, and available — the build read `INDEX.md` once, never opened a single one of the 469
-actual files, and shipped entirely custom components. `status.md` said, truthfully: *"None
-directly copied... informed the FAQ section's approach, but no file was used as a structural
-template."* That is what "available but not required" produces: a build that behaves exactly like
-a non-experiment build, because nothing forced it to behave differently. **Do not repeat this.**
-
-The floor, enforced by `scripts/hyperui-usage-check.mjs` in QA and treated as a hard-FAIL line the
-same way `PHOTO_CHECK` is:
-
-- **At least 6 distinct application-tier components**, from **at least 4 distinct categories**,
-  each genuinely used as the structural starting point for a real element on the site — not
-  merely "referenced" or "informed by". Concretely, pick real candidates for this client's actual
-  needs from categories like: `accordions` (FAQ), `stats` (review/trust numbers), `badges`
-  (licences/certifications/guarantees), `tabs` (service categories), `timelines` (process steps),
-  `modals` (photo lightbox / contact), `dropdown` / `select` (any filter or menu), `tables` /
-  `details-list` (pricing-adjacent comparison content that stays off the SERVICES/PRICING
-  hard-blocker), `progress-bars`, `steps`, `toggles`, `checkboxes` (any interactive form element),
-  `empty-states`, `breadcrumbs`. 34 application categories exist — 6 is still a small fraction,
-  not exhaustive use. If the client genuinely has no plausible use for 4+ categories, that itself
-  is worth a line in `status.md` — but check the full list (`hyperui-lookup.mjs --list-categories
-  --tier application`) for a real fit before concluding that.
-- Marketing-tier citations count toward their OWN separate floor (below) — they never substitute
-  for application-tier citations, and vice versa. Hitting one floor does not excuse skipping the
-  other.
-
-**🚨 Default to a HyperUI structural starting point for every eligible section — added 2026-08-16,
-operator directive: "used... on every component possible", after floors this exact size were met
-by an earlier build that still "has the same feel."** The floors above and below are an AUDITED
-MINIMUM, not a target — they exist so a QA gate can catch a build that used nothing, not so a
-build can stop the moment it clears them. Before writing any section — hero excepted, and any
-section whose content genuinely has no structural analogue in the library — check whether a
-vendored file (either tier) fits the job first, and use it as the structural starting point unless
-there's a real reason not to (a genuinely bespoke layout the content specifically calls for is a
-real reason; "I already wrote something" is not). This is a discipline change, not a new floor
-number: the floors stay the enforced minimum because they're what a script can verify, but the
-target for actual usage is "most sections," not "the fewest that clear the gate."
-
-### Targeted lookup, not a blind full-index read (cache-locality — do this ONCE, early)
-
-**Do not re-read `INDEX.md` (1000+ lines, 469 files, every entry carrying a `↳` visual descriptor) to find what you need.** Before writing any
-`page.tsx` — right after the design-system and palette decisions are made, in the same pass —
-decide EVERY category this build will need across BOTH tiers at once (the floor is 4+ application
-categories and 7+ marketing categories — decide the full list up front, not incrementally as you
-reach each section), then query all of them in ONE Bash call, backgrounded with `&` and reaped with
-`wait` (Fable consult, 2026-08-19 — the same pattern already shipped for find's search sweep, the
-QA gate battery, and QA screenshot capture; a real build citing 15-20+ components across 10+
-categories was paying one full tool-call turn per category before this fix):
-
-```bash
-mkdir -p /tmp/hyperui-lookup-$$
-node scripts/hyperui-lookup.mjs accordions --tier application > /tmp/hyperui-lookup-$$/accordions.log 2>&1 &
-node scripts/hyperui-lookup.mjs stats --tier application > /tmp/hyperui-lookup-$$/stats.log 2>&1 &
-node scripts/hyperui-lookup.mjs badges --tier application > /tmp/hyperui-lookup-$$/badges.log 2>&1 &
-# ...one line per category you decided on above, application AND marketing tier together...
-wait
-for f in /tmp/hyperui-lookup-$$/*.log; do echo "--- $f ---"; cat "$f"; done
-rm -rf /tmp/hyperui-lookup-$$
-```
-
-This returns only the matching category's entries (path, `[LOREM]` flag, word count, generic
-colour classes) — a deterministic $0 filter over `index.json`, not a model call and not a full-file
-read. **Read the specific candidate files you're going to use in this same early batch**, not
-scattered across the build as you happen to reach each section. Loading reference material once,
-early, in a stable position lets Claude's own prompt cache actually apply to it; reading it ad hoc
-throughout generation fights the cache instead of using it, and is a real, separate contributor to
-this branch's inflated token cost (see `HYPERUI-01` in the ledger for the measurement).
-
-**Every file you actually use, without exception:**
-1. **Replace every colour class with the derived palette token playing the same role**
-   (`gray-900`→`--ink`, `purple-100`→`--accent`/`--secondary`, `emerald-600`→`--accent-fill`,
-   etc.) — never ship a raw Tailwind colour name. `hyperui-usage-check.mjs` greps the shipped
-   source for a leaked literal class from a cited file and warns (not blocks) if it finds one —
-   treat that warning as a real defect to fix, not noise.
-2. **Replace every word flagged `[LOREM]`** with real content from `gathered-content.md`. A lorem
-   ipsum string reaching the shipped site is a `ship-scan.mjs` FAIL regardless of source, and the
-   hard-blocker contract's SERVICES/PRICING check fails on a stock price figure the same way.
-3. **The accordion pattern (native `<details>`/`<summary>` + `group-open:` variant) needs no new
-   dependency** — prefer it over inventing your own toggle state for FAQ-shaped content.
-
-**Marketing-tier files carry the higher risk and need the harder look.** This category was
-evaluated and INITIALLY rejected before this branch existed: the sibling `gr-no-website-builds`
-project's own 2,347-section library is 61% stock HyperUI/Flowbite marketing content and scored
-3-4/10 on the operator's own calibration — assembly of stock marketing copy is not design. It is
-vendored on this branch anyway, on the operator's explicit, informed override. That makes rules 1-2
-above load-bearing, not optional, for every marketing-tier file you touch — a marketing section
-with its lorem ipsum and stock colours intact is exactly the proven-negative outcome this whole
-experiment exists to test against.
-
-> 🚨 **MANDATORY, not just available — added 2026-08-16 after a real operator read of build 2:**
-> "it still doesn't feel like that hyper UI is completely embedded... I don't see a lot of that
-> sections library there." He was right, and the mechanism was exactly this: the 4-component floor
-> only counted APPLICATION-tier atomic widgets (accordions, badges, stats blocks, timelines) —
-> real, but grafted onto an otherwise 100%-custom page. The bones of the page — the hero layout,
-> the feature grid, the CTA band — never drew on the library at all, which is why 4 real components
-> still read as "the same feel". **At least 10 distinct marketing-tier SECTIONS, from at least 7
-> distinct categories** (raised 2026-08-18 from 4/3, after a real build cleared 4/3 while touching
-> ~19% of the section library; 7 of the 19 floor-eligible categories forces near-complete use of
-> the always-relevant set — banners, feature-grids, sections, stats, ctas, faqs, contact-forms,
-> blog-cards — plus one situational reach, and 10 sections is roughly 2 per route on a 5-route
-> site. Candidates: `feature-grids`, `sections`, `stats`, `ctas`, `team-sections`, `logo-clouds`,
-> `announcements`, `faqs`, `pricing`, `newsletter-signup`, `polls`, `product-cards`,
-> `product-collections`, `blog-cards`, or similar page-composition categories — not
-> `footers`/`headers`, which the site already has a fixed pattern for) must inform the STRUCTURE of
-> a real page section: the grid/flex composition, the card arrangement, the spacing rhythm, the
-> visual hierarchy. Four citations from ONE repeated category (e.g. four stat bands) does not
-> satisfy this — `hyperui-usage-check.mjs` requires category spread, not just count, because one
-> idea reused four times is not broad structural reach. This is a structural transplant, not a
-> content one — rules 1-2 above are even MORE load-bearing here than on the application tier,
-> because marketing-tier files carry more prose per file to strip. Use `hyperui-lookup.mjs
-> <category> --tier marketing` to find candidates the same way as application-tier ones. Counted
-> toward its own floor in `hyperui-usage-check.mjs`, separate from the application-tier floor —
-> hitting one does not excuse skipping the other.
-
-### Record usage as a checkable claim, not prose
-
-Write a section in `status.md` titled **exactly** `## HyperUI components used` (not "references
-used" — that heading is what the failed first test used, and `hyperui-usage-check.mjs` treats it
-as absent). One line per component, citing the exact vendored path in backticks, **immediately
-followed by the `[hex6]` hash `hyperui-lookup.mjs` printed next to that path** — copy it verbatim
-from the lookup output, never invent or reuse one from a different citation.
-`hyperui-transplant-check.mjs` recomputes the hash from the real vendored file and hard-fails a
-missing or mismatched one — the only way to produce the correct hash is to have actually run the
-lookup (or an equivalent recompute) against the real file, which is the whole point: a path
-invented from memory or copied from an example cannot carry a correct hash.
-
-```
-## HyperUI components used
-
-- `<category>/<n>.html` [hex6] -> what it became on this build (be specific: which section, what changed)
-- `<category>/<n>-dark.html` [hex6] -> what it became on this build
-```
-
-⚠️ **These two lines are deliberately placeholders, not real vendored paths — copying them
-verbatim trips `hyperui-transplant-check.mjs`'s invalid-path hard FAIL immediately.** That is on
-purpose. A real, working example block sat here until 2026-08-18: it listed genuine paths
-(`accordions/2.html`, `stats/1-dark.html`, `badges/3.html`, `marketing-feature-grids/2.html`,
-`marketing-stats/1-dark.html`...), and a real build (aot-mechanical) was later found citing four
-of those SIX EXACT paths — including two, `badges/3.html` and `stats/1-dark.html`, that shared
-almost nothing structurally with what actually shipped (a tiny removable filter-chip pattern cited
-on a full heading+paragraph content card; a bordered-stat-card pattern cited on plain
-`<div className="text-center">`). The example was being read as a menu to pick from, not an
-illustration of the *shape* of a citation line — this codebase's own standing lesson, "rules lose
-to examples," playing out exactly as documented. Never cite a path you have not personally Read
-this session at `.claude/skills/build/reference/hyperui/<path>` — a plausible-sounding name is not
-evidence you looked at it, and the gate now hard-fails builds that didn't.
-
-This is what makes the eventual comparison against a non-HyperUI build honest — a specific,
-falsifiable claim instead of "informed by", which is exactly the sentence that let the first test
-ship with zero verifiable usage. `hyperui-usage-check.mjs` validates every cited path is real and
-enforces the floor above; QA reports `HYPERUI_USAGE_CHECK=PASS/FAIL` the same way it reports
-`PHOTO_CHECK`.
-
-### 🚨 Second obligation for every citation: stamp the shipped element, don't just cite it
-
-Citing a real path proves the path exists and was named — it does not prove which shipped element,
-if any, actually inherited that file's structure, and there is no way for anything downstream to
-infer the mapping from the citation alone. A build could cite `marketing-stats/1.html` and ship
-five different `<dl>` blocks; nothing in `status.md` says which one, if any, is "the one" — or
-whether none of them are. **Every section (or component root) that starts from a vendored HyperUI
-file must carry `data-hyperui="<the exact cited path>"` on its root element**, the same
-"an attribute beats inferring intent from Tailwind class soup" principle `data-photo-treatment`
-already established for photo art direction (see § Photo art direction below):
-
-```tsx
-<section data-hyperui="marketing-stats/1.html" className="grain bg-surface">
-  <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-    ...
-  </div>
-</section>
-```
-
-The value is the exact `category/file.html` path as it appears in `status.md`'s citation line —
-not a paraphrase, not the category alone. **Every citation now has TWO obligations, not one: cite
-it in `status.md`'s `## HyperUI components used` section, AND stamp the shipped element with the
-matching `data-hyperui`.** A citation with no matching stamp anywhere in the built output, and a
-stamp whose value was never cited, are both bookkeeping lies `hyperui-transplant-check.mjs` treats
-as findings — see that script's own header for the exact severity split (an invalid path or an
-uncited stamp is a hard FAIL; a citation with zero stamps, or a stamp whose shipped structure barely
-resembles the vendored file, is WARN-only for now, pending calibration against real builds).
+**HyperUI is deleted from this pipeline (2026-08-19) — see § Verify's note further below for the
+full reasoning.** Every section here is authored directly against the design system, richness
+rules, and composition guidance in this file, with no external component library involved.
 
 ## Photo art direction (mandatory) — the real ceiling on "premium"
 
@@ -2602,28 +2403,36 @@ node scripts/fix-dashes.mjs $ARGUMENTS
 digit range) — it never rewrites a sentence, so if the resulting prose reads awkwardly, that's worth
 a manual pass, but the mechanical defect itself is already closed. Both skip JSX/JS comments.
 
-**Then run richness and HyperUI verification HERE, not only at QA (Fable consult, 2026-08-19 —
-shift-left).** These three used to run for the first time in QA, meaning a FAIL there cost a whole
-round: rebuild, re-screenshot, re-gate, re-review — measured at 45-70+ minutes on a real dispatch,
-against ~seconds to run the same scripts here before handoff. Two of three round-1 criticals on a
-real client build (fabricated content aside) were exactly this class: richness shipped 2 gradients
-against a 5-gradient design-manifest plan, and status.md had a "HyperUI citations planned:" section
-instead of the required "## HyperUI components used" section with real citations — both invisible
-to every other Verify check, both would have been a 2-minute self-fix here instead of a lost round.
+**Then run richness verification HERE, not only at QA (Fable consult, 2026-08-19 — shift-left).**
+This used to run for the first time in QA, meaning a FAIL there cost a whole round: rebuild,
+re-screenshot, re-gate, re-review — measured at 45-70+ minutes on a real dispatch, against
+~seconds to run the same script here before handoff. A real client build's round-1 critical was
+exactly this class: richness shipped 2 gradients against a 5-gradient design-manifest plan,
+invisible to every other Verify check, would have been a 2-minute self-fix here instead of a lost
+round.
 
-All four independent of each other and of the nav-visibility check further below — run all five
-together in one backgrounded batch rather than five separate tool-call turns (same pattern as the
-QA gate battery; the concurrent-write paths they share, `data/design-fingerprints.json`, are
-already mkdir-lock-protected):
+**HyperUI is deleted from this pipeline as of 2026-08-19 (Jeff's explicit call) — the reference
+catalog, both gate scripts, and the lookup tool are gone, not just unwired.** It was made mandatory
+2026-08-16 to fix a specific earlier problem (a build that had a reference set available and never
+opened a single file), but the fix overshot: the-woodlands-plumbing-and-air (2026-08-16, before
+HyperUI adoption existed) is the actual quality bar this pipeline is chasing, and the mandatory
+cycle added since — search a 469-file catalog, pick 6+ components across 4+ categories, wire and
+cite each one, clear two hard-FAIL gates — added real, measured time without moving the site closer
+to that bar. cold-front-ac (2026-08-19) shipped 16 gate-PASSING citations and still read as
+generic; a review confirmed the actual generic pattern on that build was hand-written, not
+HyperUI-sourced at all. Every section is now authored directly against the design system, richness
+rules, and composition guidance in this file — no external component library involved.
+
+Independent of the nav-visibility check further below — run both together in one backgrounded batch
+rather than two separate tool-call turns (same pattern as the QA gate battery; the concurrent-write
+paths they share, `data/design-fingerprints.json`, are already mkdir-lock-protected):
 ```bash
 node scripts/richness-check.mjs clients/$ARGUMENTS/site > /tmp/vf-richness-$$.log 2>&1 &
-node scripts/hyperui-usage-check.mjs $ARGUMENTS > /tmp/vf-hyperui-usage-$$.log 2>&1 &
-node scripts/hyperui-transplant-check.mjs $ARGUMENTS > /tmp/vf-hyperui-transplant-$$.log 2>&1 &
 node scripts/verify-reviews.mjs $ARGUMENTS > /tmp/vf-reviews-$$.log 2>&1 &
 node scripts/verify-nav-visibility.mjs clients/$ARGUMENTS/site/out > /tmp/vf-nav-$$.log 2>&1 &
 wait
-cat /tmp/vf-richness-$$.log /tmp/vf-hyperui-usage-$$.log /tmp/vf-hyperui-transplant-$$.log /tmp/vf-reviews-$$.log /tmp/vf-nav-$$.log
-rm -f /tmp/vf-richness-$$.log /tmp/vf-hyperui-usage-$$.log /tmp/vf-hyperui-transplant-$$.log /tmp/vf-reviews-$$.log /tmp/vf-nav-$$.log
+cat /tmp/vf-richness-$$.log /tmp/vf-reviews-$$.log /tmp/vf-nav-$$.log
+rm -f /tmp/vf-richness-$$.log /tmp/vf-reviews-$$.log /tmp/vf-nav-$$.log
 ```
 
 **`verify-reviews.mjs` closes the worst defect class this pipeline can ship** — a fabricated review
@@ -2667,22 +2476,19 @@ resolving to `out/`) is already applied in `contrast-check.mjs` — nothing to c
 invoke it above, but treat any PRE-2026-08-19 `CONTRAST_CHECK=PASS` recorded in an existing
 client's `status.md`/`qa-report.md` as unverified, not evidence of clean contrast.
 
-All FIVE checks in this section — richness, HyperUI usage, HyperUI transplant, reviews
-(`REVIEW_CHECK`), and nav visibility (`NAV_VISIBILITY_CHECK`) — must print PASS (or the
-appropriate SKIP off the experiment branch — see each script's own QA-section documentation above
-for what SKIP means and when it's normal, not a finding). A FAIL on any of them here means: go fix
-the actual gap (add the missing gradients/textures, write the real "## HyperUI components used"
-section with genuine `[hex6]`-hashed citations per `hyperui-lookup.mjs`, replace an invented review
-with a real one, give the nav a legible resting state) and re-run — same discipline as
-`FONT_CHECK=FAIL` above. Do not hand a build with a FAIL on any of these five to QA; that is
+All THREE checks in this section — richness, reviews (`REVIEW_CHECK`), and nav visibility
+(`NAV_VISIBILITY_CHECK`) — must print PASS (or the appropriate SKIP — see each script's own
+QA-section documentation above for what SKIP means and when it's normal, not a finding). A FAIL on
+any of them here means: go fix the actual gap (add the missing gradients/textures, replace an
+invented review with a real one, give the nav a legible resting state) and re-run — same discipline
+as `FONT_CHECK=FAIL` above. Do not hand a build with a FAIL on any of these three to QA; that is
 exactly the cost this section exists to avoid paying twice.
 
-**If FONT_CHECK, TOKEN_CHECK, CONTRAST_CHECK, and all five checks above genuinely printed PASS (or
-a normal SKIP) — all eight, not just the first three — record it now** so QA doesn't re-run any of
+**If FONT_CHECK, TOKEN_CHECK, CONTRAST_CHECK, and all three checks above genuinely printed PASS (or
+a normal SKIP) — all six, not just the first three — record it now** so QA doesn't re-run any of
 them against the identical artefact (Fable consult, 2026-08-19 — extends the original 3-check
-dedupe to cover the five shift-left checks added the same night; previously only font/contrast/
-token were skippable in QA, so the five newer checks, including the browser-based nav-visibility
-screenshot pass, silently re-ran every single round regardless):
+dedupe to cover the shift-left checks added the same night; HyperUI usage/transplant removed from
+this dedupe 2026-08-19, they no longer run at all):
 ```bash
 echo "VERIFY_GATES_OK_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> clients/$ARGUMENTS/data/status.md
 ```
