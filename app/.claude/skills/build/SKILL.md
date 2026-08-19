@@ -725,7 +725,7 @@ no install step** during a build.
 - `sheet` → mobile nav drawer (focus trap, escape-to-close, scroll lock — all handled)
 - `dropdown-menu` → the Services nav dropdown (keyboard nav + ARIA wiring)
 - `accordion` → FAQ (replaces hand-rolled `<details>`; gives animated height + correct roles)
-- `dialog` → anything modal, though § Composition still says exhaust inline alternatives first
+- `dialog` → anything modal, though `impeccable` bans modal-as-first-thought — exhaust inline/progressive alternatives first
 
 They are built on Radix, so they are `'use client'` — fine under `output: 'export'`. To add another
 primitive: `npx shadcn@latest add <name>` from the client's `site/` directory.
