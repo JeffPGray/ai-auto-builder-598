@@ -714,6 +714,38 @@ Where `impeccable` and `ui-ux-pro-max` disagree on composition, **`impeccable` w
 > 2026-08-19, so no build could ever invoke `impeccable`, `taste-skill`, `anti-ai-slop` or anything
 > else. The pipeline was architecturally locked to the lookup table.
 
+### Step 1c — shadcn/ui primitives (pre-vendored, use them for MECHANICS only)
+
+`templates/trade-site` now ships shadcn/ui already wired — `components.json`, `src/lib/utils.ts`
+(`cn`), and four vendored primitives in `src/app/_components/ui/`: **accordion, dialog, sheet,
+dropdown-menu**. They arrive with `cp -r templates/trade-site`, so there is **no network fetch and
+no install step** during a build.
+
+**Use them for the interactive mechanics that are error-prone to hand-write:**
+- `sheet` → mobile nav drawer (focus trap, escape-to-close, scroll lock — all handled)
+- `dropdown-menu` → the Services nav dropdown (keyboard nav + ARIA wiring)
+- `accordion` → FAQ (replaces hand-rolled `<details>`; gives animated height + correct roles)
+- `dialog` → anything modal, though § Composition still says exhaust inline alternatives first
+
+They are built on Radix, so they are `'use client'` — fine under `output: 'export'`. To add another
+primitive: `npx shadcn@latest add <name>` from the client's `site/` directory.
+
+> ⛔ **NEVER ship shadcn's default styling. This is the single rule that matters here.**
+> Default shadcn (new-york + slate) is the most recognisable look on the web — it is what v0,
+> Lovable and every AI app-builder emits, and shipping it unmodified reads as "an AI made this"
+> instantly, which is the exact failure this pipeline exists to avoid. The operator's own
+> `taste-skill` states it: *"You may use shadcn/ui, but NEVER in its generic default state."*
+>
+> So on every primitive you use: **replace the default classes with this client's derived tokens**
+> (`bg-surface-*`, `text-on-dark`, `border-accent-*`, the real radius and shadow scale from the
+> design system). `components.json` sets `cssVariables: false` deliberately so nothing silently
+> inherits a slate palette. shadcn supplies BEHAVIOUR; `impeccable` and `derive-palette` supply
+> every visual decision. If a rendered component still looks like stock shadcn, it is wrong.
+
+**Scope limit:** primitives only. Do not reach for shadcn card/button/badge to compose sections —
+that is exactly how a site becomes a recognisable template. Section composition is `impeccable`'s
+job (§ Step 1b), and the trade seed's Card-Grid Alternative still governs layout.
+
 ### Step 2 — Typography (script + seed, never the `--design-system` font field)
 
 ```bash

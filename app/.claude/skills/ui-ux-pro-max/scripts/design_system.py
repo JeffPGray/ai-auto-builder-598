@@ -358,6 +358,7 @@ class DesignSystemGenerator:
                 "mood_story": best_trade.get("Temperature/Mood Story", ""),
                 "transition_style": best_trade.get("Section Transition Style", ""),
                 "card_alternative": best_trade.get("Card-Grid Alternative", ""),
+                "type_pool": best_trade.get("Typography Pool (heading / body)", ""),
                 "reference_notes": best_trade.get("Reference Notes", "")
             } if best_trade else {}
         }
@@ -483,6 +484,8 @@ def format_ascii_box(design_system: dict) -> str:
         for line in wrap_text(f"Section transitions: {trade.get('transition_style', '')}", "|     ", BOX_WIDTH):
             lines.append(line.ljust(BOX_WIDTH) + "|")
         for line in wrap_text(f"Card-grid alternative: {trade.get('card_alternative', '')}", "|     ", BOX_WIDTH):
+            lines.append(line.ljust(BOX_WIDTH) + "|")
+        for line in wrap_text(f"TYPOGRAPHY POOL (pick from these only): {trade.get('type_pool', '')}", "|     ", BOX_WIDTH):
             lines.append(line.ljust(BOX_WIDTH) + "|")
         if trade.get("reference_notes"):
             for line in wrap_text(f"Note: {trade.get('reference_notes', '')}", "|     ", BOX_WIDTH):

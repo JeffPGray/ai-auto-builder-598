@@ -75,7 +75,7 @@ CSV_CONFIG = {
         # all) on every build.
         "file": "trade-identities.csv",
         "search_cols": ["Trade Family", "Keywords"],
-        "output_cols": ["Trade Family", "Keywords", "Design Ideas (3 seeds)", "Hero Archetype Fit", "Signature Motif", "Material/Texture Direction", "Temperature/Mood Story", "Section Transition Style", "Card-Grid Alternative", "Reference Notes"]
+        "output_cols": ["Trade Family", "Keywords", "Design Ideas (3 seeds)", "Hero Archetype Fit", "Signature Motif", "Material/Texture Direction", "Temperature/Mood Story", "Section Transition Style", "Card-Grid Alternative", "Typography Pool (heading / body)", "Reference Notes"]
     }
 }
 
