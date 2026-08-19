@@ -1424,13 +1424,22 @@ target for actual usage is "most sections," not "the fewest that clear the gate.
 
 **Do not re-read `INDEX.md` (1000+ lines, 469 files, every entry carrying a `↳` visual descriptor) to find what you need.** Before writing any
 `page.tsx` — right after the design-system and palette decisions are made, in the same pass —
-decide which categories this client's site plausibly needs (aim for the 4-6 that fit a trade
-site: accordions, stats, badges, tabs or timelines, maybe modals), then query exactly those:
+decide EVERY category this build will need across BOTH tiers at once (the floor is 4+ application
+categories and 7+ marketing categories — decide the full list up front, not incrementally as you
+reach each section), then query all of them in ONE Bash call, backgrounded with `&` and reaped with
+`wait` (Fable consult, 2026-08-19 — the same pattern already shipped for find's search sweep, the
+QA gate battery, and QA screenshot capture; a real build citing 15-20+ components across 10+
+categories was paying one full tool-call turn per category before this fix):
 
 ```bash
-node scripts/hyperui-lookup.mjs accordions --tier application
-node scripts/hyperui-lookup.mjs stats --tier application
-node scripts/hyperui-lookup.mjs badges --tier application
+mkdir -p /tmp/hyperui-lookup-$$
+node scripts/hyperui-lookup.mjs accordions --tier application > /tmp/hyperui-lookup-$$/accordions.log 2>&1 &
+node scripts/hyperui-lookup.mjs stats --tier application > /tmp/hyperui-lookup-$$/stats.log 2>&1 &
+node scripts/hyperui-lookup.mjs badges --tier application > /tmp/hyperui-lookup-$$/badges.log 2>&1 &
+# ...one line per category you decided on above, application AND marketing tier together...
+wait
+for f in /tmp/hyperui-lookup-$$/*.log; do echo "--- $f ---"; cat "$f"; done
+rm -rf /tmp/hyperui-lookup-$$
 ```
 
 This returns only the matching category's entries (path, `[LOREM]` flag, word count, generic
