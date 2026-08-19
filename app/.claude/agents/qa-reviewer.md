@@ -447,6 +447,55 @@ echo "--- h1 count per route (each must be 1) ---"
 for f in $(find src/app -name 'page.tsx' -not -path '*/admin/*'); do echo "$f: $(grep -c '<h1' "$f")"; done
 ```
 
+### Visual boldness (run FIRST, before anything else — hard FAIL, not a presence check)
+
+**This is not the same question as richness-check's gradient/treatment counts, and it cannot be
+answered by grepping for whether a named element exists.** Added 2026-08-19 after a real, direct
+finding: cold-front-ac's design-elevation build had a real DESIGN_IDEA, a named signature motif, a
+stated dominant-element plan, and zero identical-card violations — every deterministic gate passed —
+and the operator, looking at the deployed site, called it flatter than the build it replaced. The
+gap: "a signature motif exists somewhere" and "16 back-to-back plain rows with one faint divider
+line" both satisfy a presence check equally. This section exists to catch the difference a presence
+check structurally cannot.
+
+Open the real screenshots and answer these with **specific pixel/structural evidence**, not
+impressions:
+
+1. **Does the stated dominant element actually read as dominant?** If `status.md`'s DESIGN_IDEA
+   names a specific item as visually dominant (bigger, spanning, differently coloured, featured),
+   find it in the screenshot and confirm it is **structurally distinguishable at a glance** — not
+   "technically has one extra class," genuinely bigger/differently-treated than its siblings. If the
+   plan named a dominant element and the screenshot shows it reading as just another row in the
+   list, that is a **hard FAIL**: the build's own stated plan was not executed, which is worse than
+   never having planned it, because it means the deviation-check machinery was satisfied by the
+   sentence existing rather than the thing being built.
+2. **Scan for any run of 4+ visually-uniform blocks, even if none are byte-identical.** A list of
+   ledger rows (icon + heading + paragraph, repeated 10+ times with only the words changing) is the
+   same monotony problem as identical cards, just without triggering that specific detector. If a
+   section runs 4 or more items in an unbroken uniform rhythm with nothing breaking it (no scale
+   change, no colour shift, no structural variant) for more than roughly one screen-height of scroll,
+   flag it — recommend breaking it up (group into sub-sections with their own header, feature one
+   item, alternate treatment every 3-4 items) even though no deterministic script currently catches
+   this shape.
+3. **Type scale: is there ONE moment of real scale drama, or is everything moderate?** Real
+   award-tier trade sites (verified first-hand against southernlifts.com.au and others during the
+   2026-08-19 design-elevation research) commit to type that is genuinely oversized somewhere on the
+   page — not just "a bit bigger than body text." If every heading on the page sits within a narrow,
+   safe size range, that is a finding — name where a real scale jump belongs (the hero headline, one
+   stat figure, the section numerals) and whether it's actually there.
+4. **Would this specific page, shown next to southernlifts.com.au or a similarly bold reference,
+   read as the same tier, or visibly more timid?** Answer honestly. "It's fine" or "it's clean" is
+   not a passing answer to this question — those are exactly the words that shipped a 2/10-rated
+   build before. Name the SPECIFIC thing that makes it read as more timid (muted colour on the
+   dominant element, no real scale jump, uniform row rhythm, low visual weight on the signature
+   motif) or confirm there genuinely isn't one.
+
+**Any FAIL here is CRITICAL, same severity tier as a hard-blocker contract violation** — it means
+the build technically satisfies its own stated design plan's presence-checks while visually failing
+to deliver what that plan promised. Fix by making the named dominant element ACTUALLY dominant
+(real size/colour/span difference, not a sentence), breaking up uniform-rhythm runs, and committing
+to at least one real scale-drama moment — not by softening this check.
+
 ### Multi-page (run these first — they gate everything else)
 - [ ] **Every route returns 200 (hard FAIL).** Read the `--- ROUTE STATUS ---` block from Step 3 — it curls the `.html` artefact, which is what the host serves the extensionless path from. Any non-200 is critical: a missing `/services` means the site is a one-pager wearing a nav that links to nothing, which is worse than an honest one-pager. **Also check the nav actually points at routes that exist** — cross-reference the `nav a` href list against ROUTES; a nav link to a page that was dropped is a dead link and is critical.
 - [ ] **No thin stubs (hard FAIL).** Read the `WORDS_<route>=` values. Any marketing page under ~120 words is a stub — flag it critical and name the page. The build skill forbids creating a route that content can't support; the correct fix is a real page or no page.
