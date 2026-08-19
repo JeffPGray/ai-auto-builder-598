@@ -158,6 +158,15 @@ if (existsSync(target) && fs.statSync(target).isDirectory()) {
     woff2: "font/woff2", json: "application/json", txt: "text/plain", mp4: "video/mp4", ico: "image/x-icon" };
   server = createServer((req, res) => {
     let p = decodeURIComponent(new URL(req.url, "http://x").pathname);
+    // Strip the /klaudius/<slug>/ assetPrefix (next.config.mjs) before resolving to `out/`.
+    // Fable consult, 2026-08-19: without this, every CSS/JS/font request 404s under this naive
+    // server (the document lives at root, assets are prefixed for the real shared-lane host), the
+    // page renders with ZERO real styling, and this check was measuring unstyled default-browser
+    // HTML instead of the real site — the exact same root cause font-check.mjs already documents
+    // as a known false-positive source. Verified: a real nav-invisibility bug that shipped past
+    // this exact check (0 failures reported) reproduced and confirmed fixed by this one change —
+    // see scripts/verify-nav-visibility.mjs's header for the full incident.
+    p = p.replace(/^\/klaudius\/[^/]+\//, "/");
     let file = path.join(root, p);
     if (p === "/") file = path.join(root, "index.html");
     else if (!path.extname(p)) {

@@ -333,8 +333,10 @@ fi
 ( cd ../../.. && node scripts/hyperui-usage-check.mjs {slug} ) > /tmp/qa-gates-{slug}/hyperui-usage.log 2>&1 &
 ( cd ../../.. && node scripts/hyperui-transplant-check.mjs {slug} ) > /tmp/qa-gates-{slug}/hyperui-transplant.log 2>&1 &
 ( cd ../../.. && node scripts/copy-fingerprint-check.mjs {slug} ) > /tmp/qa-gates-{slug}/copy-fingerprint.log 2>&1 &
+( cd ../../.. && node scripts/verify-reviews.mjs {slug} ) > /tmp/qa-gates-{slug}/reviews.log 2>&1 &
+node ../../../scripts/verify-nav-visibility.mjs out > /tmp/qa-gates-{slug}/nav-visibility.log 2>&1 &
 wait
-for f in font-check font-uniqueness contrast token hero-video photo hyperui-usage hyperui-transplant copy-fingerprint; do
+for f in font-check font-uniqueness contrast token hero-video photo hyperui-usage hyperui-transplant copy-fingerprint reviews nav-visibility; do
   echo "--- $f ---"; cat "/tmp/qa-gates-{slug}/$f.log"
 done
 rm -rf "/tmp/qa-gates-{slug}"
@@ -513,7 +515,7 @@ Then check every item below, **on every page**:
 - [ ] Phone number is correct
 - [ ] Address is correct
 - [ ] Opening hours match gathered data
-- [ ] Testimonial quotes are real (appear in gathered-content.md)
+- [ ] **Testimonial quotes are real (hard FAIL) — read the `REVIEW_CHECK=` line printed by `verify-reviews.mjs` in Step 3.** `REVIEW_CHECK=FAIL` is CRITICAL: a shipped review/testimonial quote does not appear verbatim in `gathered-content.md` — this is the exact defect class (a fabricated review published under a real business's name) that shipped on a real client build before this check existed. Hand-verify each flagged quote: a real quote with trivial punctuation cleanup is a false positive (note it, don't fail on it alone), but an author name that appears nowhere in `gathered-content.md` is fabrication and must be replaced with a real review from the Reviews section. `SKIP` means no review-shaped objects were found in source, or no `gathered-content.md`/`site/src/app` yet — not a finding.
 - [ ] Services listed are real (not generic filler)
 - [ ] Star rating and review count are accurate
 - [ ] **Rescue parity (hard FAIL).** If `clients/{slug}/data/parity-checklist.md` exists, run `node scripts/parity-check.js {slug}` from the repo root. Any missing atom = critical FAIL — list every one in the report. Exit code 2 means the check could not run — also FAIL, and say why. Echo every `WAIVED:` row (atom + reason) into qa-report.md under a "Waived content" heading. No checklist file (classic build) = skip, not a finding.
@@ -641,6 +643,8 @@ Then check every item below, **on every page**:
 - [ ] **Mobile photo / caption overlap.** In any gallery or featured-work section that mixes `aspect-[X/Y]` with `h-full` on the same image element, the two sizing modes conflict and on mobile the image either collapses or overshoots, often overlapping the caption beneath. Grep every page: `grep -rn 'h-full aspect-\[' clients/{slug}/site/src/app --include='*.tsx'` — result MUST be empty. Pick exactly one: aspect ratio governs height, OR h-full does. Never both.
 
 - [ ] **Marquee animation speed.** If the site has a marquee/ticker strip, grep globals.css: `grep -n 'animation: marquee' clients/{slug}/site/src/app/globals.css`. The duration must be in the 18–28 second range for a 2x-duplicated track. Anything 35s+ feels broken and stationary; anything under 12s is dizzying. Flag if outside 18–28s.
+
+- [ ] **Nav link visibility at fresh load, scroll=0 (hard FAIL) — read the `NAV_VISIBILITY_CHECK=` line printed by `verify-nav-visibility.mjs` in Step 3.** `FAIL` is CRITICAL: a nav link's real, pixel-sampled backdrop makes it unreadable on first load, before any scroll. Unlike `CONTRAST_CHECK` above (which reads the DOM ancestor chain), this samples actual rendered pixels — the only reliable method for a `position: fixed` nav whose true visual backdrop is whatever page content is scrolled underneath it, not its DOM parent. Do NOT overrule a FAIL because `CONTRAST_CHECK=PASS` on the same element — that check structurally cannot see this failure mode (verified: a real invisible-nav bug reproduced 0 failures on `CONTRAST_CHECK` and was only caught by this check). `SKIP` means no `[data-nav]` element with links was found — not this template, not a finding.
 
 - [ ] **No gap above the navbar after scrolling.** If the navbar is `fixed` with a top offset (e.g. `top-[34px]`), any element rendered above it (an info strip with phone/hours/etc.) MUST also be fixed/sticky — otherwise it scrolls away in normal flow and leaves an empty gap exposing the page background. Test this explicitly: look at the very top of `qa-mid.webp` and `qa-bottom.webp` (the post-scroll screenshots). If you can see body content / hero background showing through above the navbar, flag as critical. Also grep the source: if `fixed top-[Npx]` (any positive offset) appears on the navbar, find the element rendered immediately above it in JSX and confirm it also has `fixed`/`sticky` positioning. A bare `<div className="bg-...">` above a `fixed top-[34px]` navbar is the bug signature.
 

@@ -102,8 +102,14 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 # mcp__supabase ZERO times and use scripts/db.py. Only find/follow-up/warm-leads reference the
 # Supabase MCP, and each has a db.py path. Do NOT copy this flag onto a /find or /follow-up
 # dispatch without re-checking that.
+# DISPATCH_OUTPUT_FORMAT=json (opt-in via env, default unchanged) — on a clean exit the log ends
+# with a single JSON object carrying real usage/cost/duration_ms, instead of the default text
+# stream. Added 2026-08-19 for Jeff's request to track real tokens/time on a dispatch, rather than
+# the etime/cputime proxies used all night. Opt-in, not default, because it only pays off on a
+# clean finish — a watchdog-killed run still yields a 0-byte log either way, same as today.
 env -u CLAUDECODE -u CLAUDE_CODE CLAUDE_WORKER_CHILD=1 \
   claude -p --permission-mode dontAsk --model opus --effort high --strict-mcp-config \
+  ${DISPATCH_OUTPUT_FORMAT:+--output-format "$DISPATCH_OUTPUT_FORMAT"} \
   "$(cat "$PROMPT_FILE")" > "$LOG" 2>&1 &
 CHILD=$!
 echo "dispatched pid=$CHILD  dead-quiet=${STALL_MIN}m  writeless-cap=${QUIET_MAX_MIN}m  soft-ceiling=${MAX_MIN}m  hard-cap=${HARD_MAX_MIN}m"

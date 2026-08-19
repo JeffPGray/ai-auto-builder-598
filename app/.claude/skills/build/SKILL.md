@@ -2522,6 +2522,73 @@ payload fails here instead of passing a naive grep.
 What it does NOT prove, and must never be reported as proving: that any answer engine will cite the site.
 There is no artefact-level test for a citation.
 
+**Then run richness and HyperUI verification HERE, not only at QA (Fable consult, 2026-08-19 —
+shift-left).** These three used to run for the first time in QA, meaning a FAIL there cost a whole
+round: rebuild, re-screenshot, re-gate, re-review — measured at 45-70+ minutes on a real dispatch,
+against ~seconds to run the same scripts here before handoff. Two of three round-1 criticals on a
+real client build (fabricated content aside) were exactly this class: richness shipped 2 gradients
+against a 5-gradient design-manifest plan, and status.md had a "HyperUI citations planned:" section
+instead of the required "## HyperUI components used" section with real citations — both invisible
+to every other Verify check, both would have been a 2-minute self-fix here instead of a lost round.
+
+```bash
+node scripts/richness-check.mjs clients/$ARGUMENTS/site
+node scripts/hyperui-usage-check.mjs $ARGUMENTS
+node scripts/hyperui-transplant-check.mjs $ARGUMENTS
+node scripts/verify-reviews.mjs $ARGUMENTS
+```
+
+**`verify-reviews.mjs` closes the worst defect class this pipeline can ship** — a fabricated review
+published under a real business's name — which until now had NO deterministic check anywhere in
+the pipeline, only the three-bucket-truth-rule's prose. It scans every review/testimonial-shaped
+object literal in the built `.tsx` source and confirms the quote text appears verbatim in
+`gathered-content.md`. `REVIEW_CHECK=FAIL` is CRITICAL: hand-verify each flagged quote against
+`gathered-content.md` (a real quote with trivial punctuation cleanup is a false positive; an author
+name that appears nowhere in the gathered content is fabrication) and replace any genuinely
+invented review with a real one from `gathered-content.md`'s Reviews section before proceeding.
+
+**Then verify nav-link contrast at scroll=0 with a PIXEL-SAMPLED check, not the ancestor-walk
+`contrast-check.mjs` above uses (Fable consult, 2026-08-19).** A real client build shipped a
+`position: fixed` transparent nav with light-on-dark link styling — invisible against a light
+subpage until the visitor scrolls. `contrast-check.mjs` ran clean (0 failures) against the exact
+reproduced bug: its ancestor-walk reads what a `position:fixed` element's DOM PARENT paints, not
+what visually sits behind it once the element escapes normal flow — a fixed element's real backdrop
+is whatever page content happens to be scrolled underneath it, which has no DOM relationship to it
+at all. `verify-nav-visibility.mjs` instead screenshots the real rendered page and samples the
+actual pixel colour behind each nav link, the same methodology this project's own contrast tooling
+already trusts over DOM inference for exactly this class of ambiguity.
+
+```bash
+node scripts/verify-nav-visibility.mjs clients/$ARGUMENTS/site/out
+```
+
+`NAV_VISIBILITY_CHECK=FAIL` is CRITICAL: a nav link is unreadable against its real rendered
+backdrop at first load. Fix by either giving the nav a real background at all times (simplest,
+most robust) or darkening/lightening the underlying content enough that the transparent state
+stays legible everywhere it can appear — never by trusting `contrast-check.mjs`'s PASS on the same
+element, which cannot see this failure mode. `SKIP` is normal if the site has no `[data-nav]`
+element with links (not this template) — not a finding.
+
+⚠️ **Separately, while building this check, a serious pre-existing bug in `contrast-check.mjs`
+itself was found and fixed: its local static server 404s on every CSS/JS/font request under a
+shared-lane build** (the document serves at root but `next.config.mjs`'s mandatory `assetPrefix`
+points assets at `/klaudius/<slug>/...`), so the page it evaluated had **zero real styling** —
+unstyled default-browser HTML reads as good contrast by default, so this was producing a
+false-clean `CONTRAST_CHECK=PASS` on every shared-lane build, not a nav-specific gap. Confirmed on
+a real build: after the fix, the SAME already-deployed-looking build went from `0 failures / 584
+elements` to `48 failures / 524 elements` — real, previously invisible defects (near-white text on
+near-white backgrounds across most sections). The fix (strip the `/klaudius/<slug>/` prefix before
+resolving to `out/`) is already applied in `contrast-check.mjs` — nothing to change in how you
+invoke it above, but treat any PRE-2026-08-19 `CONTRAST_CHECK=PASS` recorded in an existing
+client's `status.md`/`qa-report.md` as unverified, not evidence of clean contrast.
+
+All three must print PASS (or the appropriate SKIP off the experiment branch — see each script's own
+QA-section documentation above for what SKIP means and when it's normal, not a finding). A FAIL on
+any of them here means: go fix the actual gap (add the missing gradients/textures, write the real
+"## HyperUI components used" section with genuine `[hex6]`-hashed citations per `hyperui-lookup.mjs`)
+and re-run — same discipline as `FONT_CHECK=FAIL` above. Do not hand a build with a FAIL on any of
+these three to QA; that is exactly the cost this section exists to avoid paying twice.
+
 Rescue leads with a parity checklist: after the build, self-check with `node scripts/parity-check.js $ARGUMENTS` (from the repo root) — it must exit clean; QA runs the same check and hard-fails on misses.
 
 ## Update status (MANDATORY - do this last)
