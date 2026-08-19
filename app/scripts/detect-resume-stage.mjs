@@ -70,13 +70,23 @@ const verifyMarkerMatch = [...statusText.matchAll(/VERIFY_GATES_OK_AT=(\S+)/g)];
 const lastVerifyMarker = verifyMarkerMatch.length ? verifyMarkerMatch[verifyMarkerMatch.length - 1][1] : null;
 const srcMtime = has(join(siteDir, 'src')) ? newestSrcMtime(join(siteDir, 'src')) : null;
 const markerTime = lastVerifyMarker ? Date.parse(lastVerifyMarker) : NaN;
-// verifyOk is true only if a marker exists AND it is not provably stale against the real source
-// tree (an unparseable marker or unreadable src/ degrades to "trust the marker", not silently PASS
-// nor silently FAIL — either failure direction is wrong without real information).
-const verifyOk = !!lastVerifyMarker && (Number.isNaN(markerTime) || srcMtime === null || markerTime >= srcMtime);
-const verifyStale = !!lastVerifyMarker && !verifyOk;
 const qaText = text(qaReport);
 const qaPass = /## Verdict:\s*PASS/i.test(qaText);
+// A real QA cycle already started against THIS marker if qa-report.md exists and is at least as
+// new as the marker (second code-review pass, 2026-08-19). Without this carve-out, every normal
+// qa-fix round (which legitimately writes into site/src AFTER Verify's marker — that's the whole
+// point of a fix round) would look identical to an interrupted from-scratch rebuild, sending the
+// pipeline back to a full /build when it should be continuing the QA loop. srcMtime is only
+// trusted as evidence of an interrupted REBUILD when no such QA cycle has been recorded yet.
+const qaReportMtime = has(qaReport) ? statSync(qaReport).mtimeMs : null;
+const qaCycleStartedOnThisMarker = qaReportMtime !== null && !Number.isNaN(markerTime) && qaReportMtime >= markerTime;
+// verifyOk is true only if a marker exists AND it is not provably stale against the real source
+// tree (an unparseable marker or unreadable src/ degrades to "trust the marker", not silently PASS
+// nor silently FAIL — either failure direction is wrong without real information), UNLESS a real
+// QA cycle already started on this marker, in which case later site/src writes are presumed to be
+// normal qa-fix activity, not evidence of an interrupted rebuild.
+const verifyOk = !!lastVerifyMarker && (qaCycleStartedOnThisMarker || Number.isNaN(markerTime) || srcMtime === null || markerTime >= srcMtime);
+const verifyStale = !!lastVerifyMarker && !verifyOk;
 const qaFail = /## Verdict:\s*FAIL/i.test(qaText);
 const dbUrl = dbDeployedUrl(slug);
 // dbUrl === undefined means the DB call itself failed — fall back to the status.md hint (best
