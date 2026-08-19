@@ -69,6 +69,14 @@ chk "no fashion/luxury style for trade"  "! echo \"\$OUT\" | grep -qiE 'STYLE:.*
 chk "no compliance style as identity"    "! echo \"\$OUT\" | grep -qi 'STYLE:.*Accessible'"
 chk "TRADE IDENTITY block printed"       "echo \"\$OUT\" | grep -q 'TRADE IDENTITY'"
 
+echo ""; echo "── 7b. fix-phase context discipline (where the metrics actually break) ──"
+chk "qa-fix groups findings by file"     "grep -q 'BY FILE' .claude/skills/qa-fix/SKILL.md"
+chk "qa-fix mandates one read per file"  "grep -q 'ONE read, then ALL of its edits' .claude/skills/qa-fix/SKILL.md"
+chk "qa-fix points at mechanical fixers" "grep -q 'fix-dashes.mjs' .claude/skills/qa-fix/SKILL.md"
+chk "qa-fix has post-compaction reload"  "grep -q 'brief-only' .claude/skills/qa-fix/SKILL.md"
+for m in fix-dashes fix-img-dims ship-scan verify-design-intent; do
+  chk "fixer exists: $m.mjs"             "test -f scripts/$m.mjs"; done
+
 echo ""; echo "── 8. no dangling references to deleted sections ──"
 chk "no dead § refs"                     "! grep -rqE '§ (Visual richness|Composition|Colour roles|Ground|Trade personality|Photo art direction|Section treatments|Design manifest|Typography variation)' .claude/skills/*/SKILL.md .claude/agents/*.md CLAUDE.md scripts/*.mjs"
 chk "Bodoni not a code example"          "! grep -q 'Bodoni_Moda' .claude/skills/build/SKILL.md"
