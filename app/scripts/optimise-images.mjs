@@ -81,13 +81,16 @@ const roleWidth = (name) => {
 
 mkdirSync(dest, { recursive: true });
 const files = readdirSync(src).filter((f) => /\.(jpe?g|png|webp)$/i.test(f));
-let before = 0, after = 0;
-const rows = [];
 
-for (const f of files) {
+// Encode with bounded concurrency (Fable consult, 2026-08-19) instead of one file fully awaited
+// before the next starts. sharp/libvips releases the event loop during its native encode work, so
+// files genuinely overlap; effort:6 (the deliberately slow setting) is exactly where this matters
+// most. Bounded at 4, not unbounded — libvips has its own internal thread pool per operation, so
+// firing everything at once would oversubscribe rather than help. Each file's own per-width loop
+// stays sequential (variants of the same photo share no benefit from overlapping).
+async function processFile(f) {
   const inPath = join(src, f);
   const kbIn = statSync(inPath).size / 1024;
-  before += kbIn;
   const stem = basename(f, extname(f));
   const isLogo = stem.toLowerCase().includes('logo');
   const isPng = extname(f).toLowerCase() === '.png';
@@ -96,9 +99,7 @@ for (const f of files) {
    * transparency is far more visible than the handful of KB it saves. They are already small. */
   if (isLogo && isPng) {
     if (!DRY) copyFileSync(inPath, join(dest, f));
-    after += kbIn;
-    rows.push([f, kbIn, kbIn, 'kept (logo/alpha)']);
-    continue;
+    return [f, kbIn, kbIn, 'kept (logo/alpha)'];
   }
 
   const cap = roleWidth(stem);
@@ -139,13 +140,29 @@ for (const f of files) {
     const f2 = w === widths[widths.length - 1] ? outPath : join(dest, `${stem}-${w}.webp`);
     return n + (existsSync(f2) ? statSync(f2).size / 1024 : 0);
   }, 0);
-  var variantNote = `${widths.join('/')}px`;
-  after += kbOut;
+  const variantNote = `${widths.join('/')}px`;
   const note = DRY ? '(dry run)' : allVariantsFresh
     ? `-> ${stem}.webp @ ${variantNote} (cached, source unchanged)`
     : `-> ${stem}.webp @ ${variantNote}`;
-  rows.push([f, kbIn, kbOut, note]);
+  return [f, kbIn, kbOut, note];
 }
+
+// Bounded-concurrency pool: CONCURRENCY files in flight at once, preserving each file's own
+// sequential per-width encode. Simple manual pool (no new dependency) — a worker pulls the next
+// unclaimed file as soon as its previous one finishes.
+const CONCURRENCY = 4;
+const rows = new Array(files.length);
+let nextIndex = 0;
+async function worker() {
+  while (nextIndex < files.length) {
+    const i = nextIndex++;
+    rows[i] = await processFile(files[i]);
+  }
+}
+await Promise.all(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
+
+let before = 0, after = 0;
+for (const [, kbIn, kbOut] of rows) { before += kbIn; after += kbOut; }
 
 for (const [f, i, o, note] of rows) {
   const pct = i > 0 ? Math.round((1 - o / i) * 100) : 0;
