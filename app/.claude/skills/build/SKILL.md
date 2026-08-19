@@ -247,6 +247,35 @@ The two failure modes are symmetric and both are real:
 - **Compressing rich content into a one-pager** gives the business one URL to rank, one `<title>`, one meta description and one H1 for their whole trade, and an owner comparing it against a competitor's site sees a brochure with no depth. This is the common failure and the one this section exists to stop.
 - **Padding four thin pages out of one page's worth of material** is worse than one good page. It is the doorway-page pattern `/seo` warns about, it dilutes the copy, and the owner can tell. An honest one-pager beats four pages of filler.
 
+### Incremental per-file check (run immediately after EACH page.tsx, not once at the end)
+
+**Fable consult, 2026-08-19 — the pipelined-teams question.** The operator asked whether writer/
+auditor work could pipeline (one page audited while the next is written). Verdict: full QA can't
+— it needs the whole site (nav, shared components, cross-page duplication) and a fresh agent per
+Rule 10/11, so pulling it page-by-page is net-negative. But a narrow slice of it IS free and real:
+a handful of deterministic, PER-FILE text patterns need zero cross-page context and zero rebuild —
+running them the instant each page.tsx is saved, instead of waiting for the full QA battery to
+find them, deletes an entire fix-and-rebuild round when they'd otherwise be the only defect. On a
+real live build the same night this was written, exactly this class of issue (an AI self-reference
+phrase repeated on two pages, an em-dash pattern repeated across all five blog articles) was 4 of
+6 total QA findings and the reason round 1 FAILed.
+
+Run this after every single page.tsx (and blog-data.ts) you write — it's a few grep calls against
+one file, not a rebuild, not an agent, seconds not minutes:
+```bash
+FILE=src/app/<route>/page.tsx   # substitute the file you just wrote (also run on blog-data.ts)
+grep -inE "as an AI|I'm an AI|language model" "$FILE" && echo "FIX: AI self-reference — reword to e.g. 'automated chat software'" || echo "OK: no AI self-reference"
+grep -nE $'\xe2\x80\x94|\xe2\x80\x93' "$FILE" && echo "FIX: em/en dash present — house style bans both, use a comma/period/restructure" || echo "OK: no em/en dashes"
+IMGS=$(grep -o '<img' "$FILE" | wc -l); W=$(grep -oE 'width[={"]' "$FILE" | wc -l); H=$(grep -oE 'height[={"]' "$FILE" | wc -l); if [ "$IMGS" -gt "$W" ] || [ "$IMGS" -gt "$H" ]; then echo "FIX: $IMGS <img> but only $W width / $H height attrs — every img needs explicit width+height"; else echo "OK: img dimensions ($IMGS img / $W width / $H height)"; fi
+grep -oE '[A-Z][^.!?<>{}]{40,}[.!?]' "$FILE" | sort | uniq -d | grep . && echo "FIX: the sentence above appears twice in this file — replace one instance with distinct copy" || echo "OK: no duplicated sentences"
+```
+Every line prints an explicit OK or FIX, so a clean file never leaves a failing exit code in the
+transcript. Note the dash check catches en-dashes (U+2013) as well as em-dashes — both are banned.
+This is NOT a substitute for the full ship-scan/richness/QA battery later — it only catches the
+subset of defects that are genuinely per-file and pattern-matchable. Cross-page issues (shared-nav
+contrast, whole-site gradient count, copy fingerprint against prior builds) still need the real
+gates and still only run once, against the finished site — see § Verify and the QA Loop.
+
 ### Per-service pages — `/services/<slug>` (the commercial-intent lane)
 
 **Ship a dedicated page for any service that can carry ≥120 words of TRUE, non-duplicated,
