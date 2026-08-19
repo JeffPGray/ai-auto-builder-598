@@ -127,6 +127,51 @@ for i in 1 2 3 4 5 6 7 8 9 10; do [ -s .qa-port ] && break; sleep 0.3; done
 PORT=$(cat .qa-port)
 for i in 1 2 3 4 5 6 7 8 9 10; do curl -s -o /dev/null "http://localhost:$PORT" && break; sleep 0.5; done
 
+# Gate battery launched HERE, now, in the background — overlapped with ALL screenshot work below
+# instead of waiting until after it (Fable consult, 2026-08-19). Safe to overlap because these 9
+# scripts each launch their OWN separate browser instance (chromium.launch() inside contrast-check/
+# nav-visibility) or touch no browser at all — none of them shares the qa-{slug}-desktop/-mobile
+# playwright SESSIONS the screenshot code below uses, so there's no race. (The screenshot phases
+# themselves stay sequential to each other — home then subpages — because subpages deliberately
+# REUSES those same two sessions; concurrent navigation on one shared session would be a real race.
+# Only the gate battery, which shares no session with anything, moves.) Waited on once at the very
+# end of this call, after every screenshot phase, not here.
+mkdir -p /tmp/qa-gates-{slug}
+VERIFY_AT=$(grep -oE '^VERIFY_GATES_OK_AT=.*' ../data/status.md 2>/dev/null | tail -1 | cut -d= -f2)
+VERIFY_FRESH=0
+if [ -n "$VERIFY_AT" ]; then
+  VERIFY_EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "$VERIFY_AT" +%s 2>/dev/null || date -d "$VERIFY_AT" +%s 2>/dev/null)
+  if [ -n "$VERIFY_EPOCH" ]; then
+    touch -d "@$VERIFY_EPOCH" "/tmp/.verify-marker-{slug}" 2>/dev/null \
+      || touch -t "$(date -r "$VERIFY_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null)" "/tmp/.verify-marker-{slug}" 2>/dev/null
+  fi
+  if [ -f "/tmp/.verify-marker-{slug}" ] && [ -z "$(find out src/app/globals.css ../data/status.md -newer "/tmp/.verify-marker-{slug}" -type f 2>/dev/null | head -1)" ]; then
+    VERIFY_FRESH=1
+  fi
+  rm -f "/tmp/.verify-marker-{slug}"
+fi
+if [ "$VERIFY_FRESH" = "1" ]; then
+  echo "FONT_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/font-check.log
+  echo "CONTRAST_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/contrast.log
+  echo "TOKEN_CHECK=PASS (carried from Verify, globals.css unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/token.log
+  echo "HYPERUI_USAGE_CHECK=PASS (carried from Verify, status.md unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/hyperui-usage.log
+  echo "HYPERUI_TRANSPLANT_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/hyperui-transplant.log
+  echo "REVIEW_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/reviews.log
+  echo "NAV_VISIBILITY_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/nav-visibility.log
+else
+  node ../../../scripts/font-check.mjs . > /tmp/qa-gates-{slug}/font-check.log 2>&1 &
+  node ../../../scripts/contrast-check.mjs out > /tmp/qa-gates-{slug}/contrast.log 2>&1 &
+  node ../../../scripts/contrast-check.mjs --tokens src/app/globals.css > /tmp/qa-gates-{slug}/token.log 2>&1 &
+  ( cd ../../.. && node scripts/hyperui-usage-check.mjs {slug} ) > /tmp/qa-gates-{slug}/hyperui-usage.log 2>&1 &
+  ( cd ../../.. && node scripts/hyperui-transplant-check.mjs {slug} ) > /tmp/qa-gates-{slug}/hyperui-transplant.log 2>&1 &
+  ( cd ../../.. && node scripts/verify-reviews.mjs {slug} ) > /tmp/qa-gates-{slug}/reviews.log 2>&1 &
+  node ../../../scripts/verify-nav-visibility.mjs out > /tmp/qa-gates-{slug}/nav-visibility.log 2>&1 &
+fi
+( cd ../../.. && node scripts/font-uniqueness-check.mjs {slug} ) > /tmp/qa-gates-{slug}/font-uniqueness.log 2>&1 &
+( cd ../../.. && node scripts/verify-hero-video.mjs --slug {slug} ) > /tmp/qa-gates-{slug}/hero-video.log 2>&1 &
+( cd ../../.. && node scripts/verify-photos.mjs {slug} ) > /tmp/qa-gates-{slug}/photo.log 2>&1 &
+( cd ../../.. && node scripts/copy-fingerprint-check.mjs {slug} ) > /tmp/qa-gates-{slug}/copy-fingerprint.log 2>&1 &
+
 (
   npx playwright-cli -s=qa-{slug}-desktop open "http://localhost:$PORT"
   sleep 1
@@ -185,9 +230,10 @@ echo "--- mobile pass ---"; cat /tmp/qa-mobile-{slug}.log; rm -f /tmp/qa-mobile-
 # Prints FONT_CHECK=PASS or FONT_CHECK=FAIL. Step 4 gates on it: FAIL is a CRITICAL issue.
 #
 # NOTE: this and the next 8 checks are independent of each other (none reads another's output),
-# so they run as ONE parallel batch below rather than one at a time — see the combined block after
-# the last check's comment. Read each check's own comment for what it does; only the invocation
-# moved.
+# so they run as ONE parallel batch launched right after the port-ready check ABOVE (before any
+# screenshot work starts, so they overlap with all of it — see that block's own comment), not here
+# and not one at a time. Read each check's own comment below for what it does; only the invocation
+# moved — twice now: first into a batch, then earlier in the call so it overlaps screenshots too.
 
 # Font uniqueness verification (STATIC, MANDATORY) — verifies the ARTIFACT, not the claim made to
 # the design ledger at design-choice time. Parses the real next/font/google import in
@@ -282,69 +328,9 @@ echo "--- mobile pass ---"; cat /tmp/qa-mobile-{slug}.log; rm -f /tmp/qa-mobile-
 # the actual shared phrases (re-derived fresh from that prior build's own files, only computed once
 # the threshold trips) — report it verbatim, but do NOT fail the round on it alone.
 
-# Combined parallel batch for all 11 checks above. Backgrounded with `&` and reaped with `wait`
-# WITHIN this one Bash tool call — this is NOT the detached-background-process pattern the Call 2
-# warning above is about (that risk is a `&` that outlives the tool call and needs an approval
-# nothing answers headlessly; a `wait` before the call returns means the whole compound command
-# still blocks normally). None of these 11 checks reads another's output, and the concurrent-write
-# paths they share (data/design-fingerprints.json) are already mkdir-lock-protected
-# (scripts/lib/file-lock.mjs), so running them together is safe. Was ~9 sequential Bash-tool-call
-# turns; now 1 — each turn re-sends the accumulated session context, so this is a real token and
-# wall-clock saving, not just wall-clock.
-mkdir -p /tmp/qa-gates-{slug}
-
-# Verify/QA dedupe (Fable consult, 2026-08-18, WIDENED 2026-08-19): /build's own Verify step just
-# ran font-check, both contrast-check calls, AND (as of 2026-08-19) richness/hyperui-usage/
-# hyperui-transplant/reviews/nav-visibility against this exact `out/` moments ago. If nothing
-# under out/, globals.css, or status.md (the hyperui checks read status.md's citation section) has
-# changed since Verify recorded its PASS, re-running any of these 7 checks here proves nothing new
-# — contrast-check and nav-visibility in particular are real-browser passes, the most expensive
-# scripts in this battery. Trust the marker only when it's provably still fresh; any doubt (missing
-# marker, or newer files) falls through to re-running for real, which is always safe, just not free.
-VERIFY_AT=$(grep -oE '^VERIFY_GATES_OK_AT=.*' ../data/status.md 2>/dev/null | tail -1 | cut -d= -f2)
-VERIFY_FRESH=0
-if [ -n "$VERIFY_AT" ]; then
-  VERIFY_EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "$VERIFY_AT" +%s 2>/dev/null || date -d "$VERIFY_AT" +%s 2>/dev/null)
-  # -newer needs a reference FILE, not an epoch, so stamp a throwaway marker at VERIFY_EPOCH and
-  # compare every out/ + globals.css + status.md file's mtime against it. macOS `touch -d @epoch`
-  # vs GNU `touch -t` — try both, whichever this host supports wins.
-  if [ -n "$VERIFY_EPOCH" ]; then
-    touch -d "@$VERIFY_EPOCH" "/tmp/.verify-marker-{slug}" 2>/dev/null \
-      || touch -t "$(date -r "$VERIFY_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null)" "/tmp/.verify-marker-{slug}" 2>/dev/null
-  fi
-  if [ -f "/tmp/.verify-marker-{slug}" ] && [ -z "$(find out src/app/globals.css ../data/status.md -newer "/tmp/.verify-marker-{slug}" -type f 2>/dev/null | head -1)" ]; then
-    VERIFY_FRESH=1
-  fi
-  rm -f "/tmp/.verify-marker-{slug}"
-fi
-
-if [ "$VERIFY_FRESH" = "1" ]; then
-  echo "FONT_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/font-check.log
-  echo "CONTRAST_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/contrast.log
-  echo "TOKEN_CHECK=PASS (carried from Verify, globals.css unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/token.log
-  echo "HYPERUI_USAGE_CHECK=PASS (carried from Verify, status.md unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/hyperui-usage.log
-  echo "HYPERUI_TRANSPLANT_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/hyperui-transplant.log
-  echo "REVIEW_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/reviews.log
-  echo "NAV_VISIBILITY_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/nav-visibility.log
-else
-  node ../../../scripts/font-check.mjs . > /tmp/qa-gates-{slug}/font-check.log 2>&1 &
-  node ../../../scripts/contrast-check.mjs out > /tmp/qa-gates-{slug}/contrast.log 2>&1 &
-  node ../../../scripts/contrast-check.mjs --tokens src/app/globals.css > /tmp/qa-gates-{slug}/token.log 2>&1 &
-  ( cd ../../.. && node scripts/hyperui-usage-check.mjs {slug} ) > /tmp/qa-gates-{slug}/hyperui-usage.log 2>&1 &
-  ( cd ../../.. && node scripts/hyperui-transplant-check.mjs {slug} ) > /tmp/qa-gates-{slug}/hyperui-transplant.log 2>&1 &
-  ( cd ../../.. && node scripts/verify-reviews.mjs {slug} ) > /tmp/qa-gates-{slug}/reviews.log 2>&1 &
-  node ../../../scripts/verify-nav-visibility.mjs out > /tmp/qa-gates-{slug}/nav-visibility.log 2>&1 &
-fi
-
-( cd ../../.. && node scripts/font-uniqueness-check.mjs {slug} ) > /tmp/qa-gates-{slug}/font-uniqueness.log 2>&1 &
-( cd ../../.. && node scripts/verify-hero-video.mjs --slug {slug} ) > /tmp/qa-gates-{slug}/hero-video.log 2>&1 &
-( cd ../../.. && node scripts/verify-photos.mjs {slug} ) > /tmp/qa-gates-{slug}/photo.log 2>&1 &
-( cd ../../.. && node scripts/copy-fingerprint-check.mjs {slug} ) > /tmp/qa-gates-{slug}/copy-fingerprint.log 2>&1 &
-wait
-for f in font-check font-uniqueness contrast token hero-video photo hyperui-usage hyperui-transplant copy-fingerprint reviews nav-visibility; do
-  echo "--- $f ---"; cat "/tmp/qa-gates-{slug}/$f.log"
-done
-rm -rf "/tmp/qa-gates-{slug}"
+# (All 11 gate-battery checks — including the Verify/QA freshness dedupe — already launched in the
+# background right after the port-ready check above, overlapped with every screenshot phase below.
+# Waited on and printed once, at the very end of this call, after subpages — see there.)
 
 # (Mobile home-page pass now runs concurrently with desktop above — see Call 3.)
 
@@ -429,6 +415,15 @@ npx playwright-cli -s=qa-{slug}-desktop resize 1366 1000
 npx playwright-cli -s=qa-{slug}-desktop goto "http://localhost:$PORT/"
 npx playwright-cli -s=qa-{slug}-desktop eval "JSON.stringify(Array.from(document.querySelectorAll('nav a')).map(function(a){return a.getAttribute('href')}))"
 # ------------------------------------------------------------------------------
+
+# NOW reap the gate battery launched at the very start of this call (Fable consult, 2026-08-19) —
+# every screenshot phase above (home + subpages, desktop + mobile) has been running concurrently
+# with these 11 checks the whole time instead of waiting until now to even start them.
+wait
+for f in font-check font-uniqueness contrast token hero-video photo hyperui-usage hyperui-transplant copy-fingerprint reviews nav-visibility; do
+  echo "--- $f ---"; cat "/tmp/qa-gates-{slug}/$f.log"
+done
+rm -rf "/tmp/qa-gates-{slug}"
 
 # 4. Shrink the screenshots BEFORE you read them (MANDATORY — this is a context-budget fix).
 # Measured 2026-08-16: this reviewer's context held 21 image blocks totalling 2.74 MB, which was
