@@ -628,16 +628,27 @@ function refTokens(raw, quoted) {
 }
 
 function checkStaleRefs() {
-  // targets: every heading, every bold pseudo-heading, and `# § Name` anchors inside code fences
-  // (the deploy skill uses those as section markers inside one long bash block).
-  const targets = [];
+  // Targets are collected PER FILE: every heading, every bold pseudo-heading, and `# § Name`
+  // anchors inside code fences (the deploy skill uses those as markers inside one long bash block).
+  //
+  // File-locality matters. A corpus-wide target pool silently resolved cms/SKILL.md's "§ Abort
+  // path" against a similarly-named section in a different skill — the reader following that ref
+  // inside the CMS skill finds nothing, which is exactly the defect. A `§` ref resolves against its
+  // OWN file, plus any file it names on the same line.
+  const targetsByFile = new Map();
+  const push = (file, t) => {
+    if (!t.length) return;
+    if (!targetsByFile.has(file)) targetsByFile.set(file, []);
+    targetsByFile.get(file).push(t);
+  };
   for (const d of docs) {
-    for (const h of d.headings) targets.push(tokens(h.text));
+    const f = short(d.path);
+    for (const h of d.headings) push(f, tokens(h.text));
     d.lines.forEach((raw, i) => {
       const b = raw.match(/^\s*\*\*(.{4,70}?)\*\*/);
-      if (b) targets.push(tokens(b[1]));
+      if (b) push(f, tokens(b[1]));
       const anchor = d.inFence[i] && raw.match(/^\s*#\s*§\s*(.+)$/);
-      if (anchor) targets.push(tokens(anchor[1]));
+      if (anchor) push(f, tokens(anchor[1]));
     });
   }
 
@@ -654,8 +665,7 @@ function checkStaleRefs() {
     for (const raw of s.lines) {
       const body = raw.replace(/^\s*(?:[*#/]+|\/\/|--)?\s*/, '');
       if (!body.startsWith('§')) continue;
-      const t = tokens(body.replace(/^§\s*/, '').split(/\s+[—–-]\s+/)[0]);
-      if (t.length) targets.push(t);
+      push(s.name, tokens(body.replace(/^§\s*/, '').split(/\s+[—–-]\s+/)[0]));
     }
   }
 
@@ -675,22 +685,42 @@ function checkStaleRefs() {
         const quoted = m[1] !== undefined;
         const rt = refTokens(quoted ? m[1] : m[2], quoted);
         if (!rt.length) continue;
+        // Scope = the ref's own file, plus any file the line names — either as a path
+        // (`build/SKILL.md`) or as a slash-command (`/build`, `/seo`), which is how CLAUDE.md and
+        // the agent file cite skills.
+        const scope = [...(targetsByFile.get(s.name) || [])];
+        for (const nm of raw.matchAll(/([A-Za-z0-9_./-]+\.md)/g)) {
+          for (const [f, ts] of targetsByFile) if (f.endsWith(nm[1]) || nm[1].endsWith(basename(f))) scope.push(...ts);
+        }
+        for (const nm of raw.matchAll(/[`/]([a-z][a-z-]{2,})\b/g)) {
+          const ts = targetsByFile.get(`.claude/skills/${nm[1]}/SKILL.md`);
+          if (ts) scope.push(...ts);
+        }
+        const targets = scope;
         // resolve on a WORD-PREFIX relation: the ref's tokens are a prefix of a heading's tokens,
         // or vice versa. "§ Blog" resolves to "## Blog (MANDATORY...)"; "§ Colour CHARACTER"
         // resolves to nothing, which is the real defect.
-        const resolved = targets.some((ht) => {
+        const matches = (ht) => {
           if (!ht.length) return false;
           const n = Math.min(rt.length, ht.length);
           for (let k = 0; k < n; k++) if (rt[k] !== ht[k]) return false;
           return true;
-        });
-        if (resolved) continue;
+        };
+        if (targets.some(matches)) continue;
+        // Not resolvable in scope. If it resolves SOMEWHERE in the corpus the ref is merely
+        // under-qualified (a reader has to guess which file) — a candidate, not a finding. If it
+        // resolves nowhere at all, the section is genuinely gone.
+        const elsewhere = [...targetsByFile.entries()].find(([, ts]) => ts.some(matches));
         add({
           kind: 'stale-ref',
-          confidence: 'high',
-          subject: `dead § ref: "${rt.join(' ')}"`,
-          sides: [{ file: s.name, line: i + 1, claim: 'points at no heading in the corpus', text: raw.trim().slice(0, 190) }],
-          why: 'A cross-reference to a section that was renamed or deleted. The rule it points at is unreachable, so whatever it was guarding is now unstated.',
+          confidence: elsewhere ? 'medium' : 'high',
+          subject: elsewhere
+            ? `under-qualified § ref: "${rt.join(' ')}" exists only in ${elsewhere[0]}, which this line does not name`
+            : `dead § ref: "${rt.join(' ')}"`,
+          sides: [{ file: s.name, line: i + 1, claim: elsewhere ? 'resolves only in another file' : 'points at no heading anywhere', text: raw.trim().slice(0, 190) }],
+          why: elsewhere
+            ? 'The section exists, but in a file this line never names — a reader following the ref inside this file finds nothing.'
+            : 'A cross-reference to a section that was renamed or deleted. The rule it points at is unreachable, so whatever it was guarding is now unstated.',
         });
       }
     });

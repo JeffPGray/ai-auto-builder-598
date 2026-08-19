@@ -407,11 +407,18 @@ question existed and nothing was computed from the answer.
    idea anywhere (one real asymmetric moment elsewhere clears this)?
 5. **COLOR** (T/F): the accent hue does more than 3 distinct jobs (functionally monochrome), or the
    page never shifts temperature while scrolling?
+6. **RICHNESS** (T/F): TRUE if any of — fewer than 4 gradient declarations shipped; fewer than 2
+   photo-grounded sections (a gathered photo behind an 80-88% wash); grain opacity outside the
+   0.12-0.20 band. Read these off `richness-check.mjs`'s own facts block rather than judging by eye;
+   its thresholds ARE this item. **Added here 2026-08-19: `build/SKILL.md` has defined six items
+   since 2026-08-18 and this grader enumerated five, so RICHNESS was graded by nobody — in the one
+   mechanism whose entire design is "shared byte-for-byte with the grader, nothing to interpret
+   generously on either side."**
 
 **Any TRUE is an automatic critical FAIL**, reported exactly like any other critical issue, sent
 through the normal `/qa-fix` round. Do not soften a TRUE because the rest of the site is strong —
-that is precisely the leniency this mechanism exists to remove. All 5 FALSE is required to pass this
-section; it is not weighed against the deterministic checks above, it is a fifth independent gate.
+that is precisely the leniency this mechanism exists to remove. All 6 FALSE is required to pass this
+section; it is not weighed against the deterministic checks above, it is an independent gate.
 
 ## Step 5: Write report
 
@@ -430,7 +437,8 @@ Reviewer: Independent QA Agent
 - IMAGERY: TRUE/FALSE — {one line of evidence}
 - LAYOUT: TRUE/FALSE — {one line of evidence}
 - COLOR: TRUE/FALSE — {one line of evidence}
-<!-- Any TRUE above is copied into Critical below as its own issue. All 5 FALSE is required for PASS. -->
+- RICHNESS: TRUE/FALSE — {one line of evidence}
+<!-- Any TRUE above is copied into Critical below as its own issue. All 6 FALSE is required for PASS. -->
 
 ## Issues Found
 <!-- List every issue. Be specific. Name the PAGE and include file + line number, e.g. (services/page.tsx line 88). An issue with no page named is ambiguous on a multi-page site. -->

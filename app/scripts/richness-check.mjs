@@ -352,7 +352,7 @@ if (home) {
    * scrim, not even on the hero. Scraped Google Maps/Facebook photos are inconsistent raw material;
    * an untreated photo reads as "we pasted what we scraped", which is the opposite of designed.
    * `data-photo-treatment` is the deliberately unambiguous signal — see build/SKILL.md
-   * § "Photo art direction" for the three valid values and why an attribute beats inferring intent
+   * § Design (HARD RULES) for the three valid values and why an attribute beats inferring intent
    * from Tailwind class soup. */
   /* ⚠️ REWRITTEN 2026-08-19 — this gate was failing builds on a requirement they were never taught.
    * `data-photo-treatment` appears NOWHERE in build/SKILL.md, the template, qa-reviewer.md or
