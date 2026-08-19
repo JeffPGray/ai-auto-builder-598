@@ -352,9 +352,14 @@ async function main() {
   fs.mkdirSync(outputDir, { recursive: true });
 
   const toDownload = photos.slice(0, maxPhotos);
-  const downloaded = [];
 
-  for (let i = 0; i < toDownload.length; i++) {
+  // Bounded-concurrency pool (Fable consult, 2026-08-19) instead of one CDN download fully
+  // awaited before the next starts — up to ~10 sequential downloads per gather. gmapsN.jpg
+  // filenames stay deterministic (index-based, not completion-order), and `slots` preserves the
+  // original photo order regardless of which download happens to finish first, since downstream
+  // code treats gmaps1/gmaps2/... as meaningfully ordered (e.g. hero-image preference).
+  const slots = new Array(toDownload.length);
+  async function downloadOne(i) {
     const photo = toDownload[i];
     const photoName = photo.name; // e.g. "places/PLACE_ID/photos/PHOTO_REF"
     // Source dimensions, i.e. what Google holds. Kept for reference only — never reported
@@ -378,16 +383,28 @@ async function main() {
       // case WxH is derived from the requested width rather than read off the file. Say so
       // rather than let an estimate pass as a measurement — that conflation is this bug.
       const est = result.measured ? "" : " [estimated]";
-      downloaded.push({
+      slots[i] = {
         file: filename, path: filepath, size: size,
         width: w, height: h, orientation: orientation,
         srcWidth: srcW, srcHeight: srcH, measured: result.measured,
-      });
+      };
       console.error(`  Downloaded: ${filename} (${Math.round(size / 1024)}KB) ${w}x${h} ${orientation}${src}${est}`);
     } else {
       console.error(`  Failed: ${filename}`);
     }
   }
+  const DOWNLOAD_CONCURRENCY = 5;
+  let nextPhoto = 0;
+  async function downloadWorker() {
+    while (nextPhoto < toDownload.length) {
+      const i = nextPhoto++;
+      await downloadOne(i);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(DOWNLOAD_CONCURRENCY, toDownload.length) }, downloadWorker)
+  );
+  const downloaded = slots.filter(Boolean);
 
   // Output summary. Orientation matters for layout: most Google photos are
   // portrait 3:4 and belong in portrait containers, never short wide boxes.
