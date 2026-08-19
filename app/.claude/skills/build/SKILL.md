@@ -3,7 +3,7 @@ name: build
 description: Build a bespoke Next.js website from gathered content for a business
 argument-hint: [business-name]
 effort: high
-allowed-tools: Bash(npx *), Bash(npm *), Bash(node *), Bash(python3 *), Bash(cd *), Bash(mkdir *), Bash(cp *), Bash(kill *), Bash(sleep *), Bash(*/notify.sh *), Read, Write, Edit, Glob, Grep, Skill
+allowed-tools: Bash(npx *), Bash(npm *), Bash(node *), Bash(python3 *), Bash(bash *), Bash(cd *), Bash(mkdir *), Bash(cp *), Bash(rm *), Bash(mv *), Bash(kill *), Bash(sleep *), Bash(grep *), Bash(cat *), Bash(test *), Bash(echo *), Bash(for *), Bash(wc *), Bash(sort *), Bash(uniq *), Bash(cut *), Bash(tee *), Bash(find *), Bash(wait *), Bash(*/notify.sh *), Read, Write, Edit, Glob, Grep, Skill, Agent, Task
 
 > ⚠️ **Terminal events only.** `NOTIFY_CHANNEL` fans out to two channels, so one call is two
 > messages. Alert here ONLY if this failure stops the pipeline or needs a human now. Stage
@@ -794,7 +794,11 @@ treatment, and subpages then read as the generic filler the operator keeps calli
 **Before you write each route, state in one line how THIS page expresses the DESIGN_IDEA** — which
 signature move appears, on which section. Every marketing route (`/`, `/services`, `/about`,
 `/contact`, and every `/services/<slug>`) carries **at least one** of the three signature moves and
-at least one gradient or photo-ground. `richness-check.mjs` counts these per page, not per site.
+at least one gradient or photo-ground. **⚠️ NOT YET MECHANICALLY ENFORCED — this is on you.** `richness-check.mjs` currently scopes its
+rhythm/motion/photo-ground checks to `index.html` and counts gradients site-wide over concatenated
+CSS, so a design idea present on `/` and absent from `/about` and `/contact` passes every gate.
+That is the exact defect this step exists to prevent, so verify it by eye per route until the
+per-page check lands.
 
 ### Step 2 — Typography (script + seed, never the `--design-system` font field)
 
@@ -907,19 +911,6 @@ the gathered content itself signals premium positioning (high-end brands service
 awards, a heritage/family narrative, premium pricing already implied) even inside an "ordinary"
 trade like HVAC — a colour-saturated page under-sells a business the content says is upmarket.
 **Record the choice in `status.md`** next to the harmony decision, same as CHARACTER.
-
-> 🔬 **A third mode, SATURATED-CANVAS, is evidenced but NOT YET IMPLEMENTED — flagged here rather
-> than rushed in untested (2026-08-19 Fable design-elevation review).** Direct first-hand inspection
-> of a real Awwwards-nominee trade-service site (southernlifts.com.au, an elevator/lift company —
-> the closest real comparable to this pipeline's own market) found its hero ground is the BRAND HUE
-> AT FULL SATURATION used as an environment — not FULL-TINT's low-chroma ladder, not
-> NEUTRAL-CANVAS's true-neutral base. `derive-palette.mjs`'s tinted-surface system currently has no
-> mode that produces this (its ladder deliberately caps surface chroma low). Implementing it means a
-> new derive-palette flag emitting a full-chroma surface pair (with near-white/near-black text,
-> still contrast-gate-verified) for the hero and 1-2 sections, seeded/CHARACTER-gated like the two
-> modes above. Do NOT half-implement this by hand-picking a saturated hex in a single build — it
-> needs the same arithmetic contrast/CVD guarantee the other two modes get from the real deriver
-> script. Next step: add and test the derive-palette flag properly, then document the mode here. (the engine now offers six hooks — use them)
 
 Amplitude was only half the problem. The other half was REACH: for a long time the engine offered
 four hooks, so a page could be fully compliant and still animate in two places, which is why the
@@ -1035,18 +1026,25 @@ rows are stated here as binding and are being moved into the script — until th
 
 | # | Rule | Threshold | Enforced |
 |---|---|---|---|
-| 1 | Scale drama — largest heading vs body | **≥ 3.5×** computed px | ⏳ |
-| 2 | Grid break — elements differing from siblings by span/offset/translate | **≥ 1** per page | ⏳ |
+| 1 | Scale drama — largest heading vs body | **≥ 3.5×** computed px | ✅ verify-design-intent CHECK B |
+| 2 | Grid break — elements differing from siblings by span/offset/translate | **≥ 1** per page | ✅ verify-design-intent CHECK E |
 | 3 | Dominant element — the one named in DESIGN_IDEA | **≥ 1.5×** a sibling's rendered area | ⏳ |
 | 4 | Signature motif — the one named in DESIGN_IDEA | **≥ 3** appearances in built HTML | ⏳ |
 | 5 | Gradients | **≥ 4**, each ≥ 15% perceptual delta between stops | ✅ |
-| 6 | Grain opacity | **0.12 – 0.20** | ✅ |
-| 7 | Distinct section treatments | **≥ 4** | ✅ |
+| 6 | Grain opacity | **0.12 – 0.20** | ⚠️ script fails only below **0.08**, no upper bound — drift |
+| 7 | Distinct section treatments | **≥ 4** | ⚠️ script fails below **3**, and only when ≥5 sections — drift |
 | 8 | Photo-grounded sections (photo behind 80–88% wash) | **≥ 2** | ✅ |
-| 9 | `--secondary` usage | **≥ 10** references | ✅ |
+| 9 | `--secondary` usage | **≥ 10** references | ⚠️ script fails only at **0**, warns under 3 — drift |
 | 10 | Identical siblings — 4+ same-class cards/panels with no structural variant | **0** allowed | ✅ |
-| 11 | Uniform-rhythm run — 4+ visually identical blocks with nothing breaking them | **0** allowed | ⏳ |
-| 12 | Every `<img>` carries width+height | **100%** | ✅ |
+| 11 | Uniform-rhythm run — 4+ visually identical blocks with nothing breaking them | **0** allowed | ✅ verify-design-intent CHECK D |
+| 12 | Every `<img>` carries width+height | **100%** | ⚠️ script WARNS only, never fails — drift |
+
+
+> ⚠️ **The ⚠️ rows are DRIFT, found by audit 2026-08-19: the table states the intended threshold and
+> the script enforces a weaker one.** Until the scripts are tightened, treat the TABLE's number as the
+> rule and do not take a passing gate as proof you met it. A ✅ that does not enforce what it claims is
+> the exact failure this pipeline keeps producing — three rows here claimed enforcement they did not
+> have, and two rows marked 'not yet scripted' were in fact already enforced.
 
 ### Ground: commit, do not hedge
 
@@ -1999,7 +1997,7 @@ this dedupe 2026-08-19, they no longer run at all):
 ```bash
 echo "VERIFY_GATES_OK_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> clients/$ARGUMENTS/data/status.md
 ```
-Only write this line if every one of the eight genuinely passed (or SKIPped legitimately). Skip it
+Only write this line if every one of the six genuinely passed (or SKIPped legitimately). Skip it
 if anything FAILed and you're about to fix-and-rebuild — a stale/wrong marker is worse than no
 marker, since QA's freshness check trusts it without re-verifying the claim itself.
 

@@ -3,7 +3,7 @@ name: qa-fix
 description: Fix issues found by the QA reviewer agent. Reads qa-report.md and fixes each issue listed.
 argument-hint: [business-name]
 effort: high
-allowed-tools: Bash(npx *), Bash(cd *), Bash(kill *), Bash(sleep *), Bash(curl *), Read, Write, Edit, Glob, Grep
+allowed-tools: Bash(npx *), Bash(node *), Bash(bash *), Bash(cd *), Bash(kill *), Bash(sleep *), Bash(curl *), Bash(grep *), Bash(cat *), Bash(test *), Bash(rm *), Read, Write, Edit, Glob, Grep
 ---
 
 # Fix QA Issues for $ARGUMENTS

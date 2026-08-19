@@ -20,20 +20,87 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 
 cd "clients/$SLUG/site" || exit 1
 mkdir -p qa-screenshots
+# `set -u` is on, so every variable the EXIT trap touches must exist BEFORE the trap is armed —
+# otherwise an early failure fires the trap against an unbound name and teardown itself dies.
+PORT=""; STALE_PORT=""; QA_SERVE_PID=""
 # GUARANTEED TEARDOWN via EXIT trap on BOTH sessions — fires on normal end, error, `exit`, and
 # SIGTERM/SIGHUP/SIGINT reaps, so a crashed or timed-out QA run no longer orphans either browser.
 # playwright-cli sessions never self-close, and on a machine running the pipeline they pile up fast
 # without this. DO NOT also trap INT/TERM/HUP to "harden" it: an explicit signal trap DEFERS
 # teardown until the hung foreground command returns, which regresses the common leader-only-SIGTERM
 # reap into a leak; EXIT-only rides bash's fatal-signal path that force-runs the trap; SIGKILL stays
-# uncatchable (that residual needs a periodic sweeper, not a trap). $PORT is read when the trap
-# fires and the guard stops an empty $PORT from pkill-ing unrelated servers. Substitute "$SLUG" in
+# uncatchable (that residual needs a periodic sweeper, not a trap). The guards stop an empty
+# $STALE_PORT / $QA_SERVE_PID from pkill-ing or kill-ing unrelated processes. Substitute "$SLUG" in
 # both close lines below too, exactly like every other -s=qa-"$SLUG"-* line.
-trap '[ -n "$PORT" ] && pkill -f "http.server $PORT --directory" 2>/dev/null; npx playwright-cli -s=qa-"$SLUG"-desktop close 2>/dev/null; npx playwright-cli -s=qa-"$SLUG"-mobile close 2>/dev/null || true' EXIT
-# Wait for Call 2 to record its port, then for the backgrounded server to bind.
+trap '[ -n "$QA_SERVE_PID" ] && kill "$QA_SERVE_PID" 2>/dev/null; [ -n "$STALE_PORT" ] && pkill -f "http.server $STALE_PORT --directory" 2>/dev/null; npx playwright-cli -s=qa-"$SLUG"-desktop close 2>/dev/null; npx playwright-cli -s=qa-"$SLUG"-mobile close 2>/dev/null || true' EXIT
+
+# ---- THE SERVER EVERY BROWSER CHECK BELOW MEASURES AGAINST --------------------------------
+# This call OWNS the QA server. It used to inherit whatever Call 2 bound, which is
+# `python3 -m http.server <port> --directory out` — and that server is WRONG for this template.
+#
+# next.config.mjs sets a mandatory assetPrefix of `/klaudius/<slug>`, so the document serves at `/`
+# while every CSS/JS/font URL inside it is prefixed. `http.server` has no idea about the prefix and
+# 404s every one of them. The page then renders unstyled and NEVER HYDRATES — silently, with an
+# empty console, because a module that is never requested cannot fail loudly.
+#
+# Measured on cold-front-ac, 2026-08-19, same build, two servers:
+#   http.server  -> CSS 404, JS 404, hero <video> readyState 0 / paused / videoWidth 0, no WCAG
+#                   pause control in the DOM at all  => HERO_VIDEO_PLAYBACK_CHECK=FAIL (a FALSE red)
+#   qa-serve.mjs -> CSS 200, JS 200, readyState 4, currentTime advancing, pause control present
+#                   => HERO_VIDEO_PLAYBACK_CHECK=PASS
+# Every screenshot in this file was being taken of that same unstyled, dead page, and the visual
+# review that reads them could not tell. Replacing the server is therefore not a tidy-up: it is the
+# difference between this whole call measuring the site and measuring a rendering failure.
+#
+# Call 2 is left alone deliberately (it is agent prose owned elsewhere, and it also proves the port
+# is bindable). We kill its server and bind our own. qa-serve picks its OWN free port rather than
+# reusing Call 2's, because reusing it races the kill: `pkill` returns before the socket leaves
+# TIME_WAIT and the new bind would intermittently EADDRINUSE. Everything downstream — including
+# verify-hero-video.mjs — reads the port from .qa-port, which qa-serve rewrites, so a new port
+# propagates on its own.
 for i in 1 2 3 4 5 6 7 8 9 10; do [ -s .qa-port ] && break; sleep 0.3; done
-PORT=$(cat .qa-port)
+[ -s .qa-port ] && STALE_PORT=$(cat .qa-port)
+[ -n "$STALE_PORT" ] && pkill -f "http.server $STALE_PORT --directory" 2>/dev/null
+rm -f .qa-port
+node ../../../scripts/qa-serve.mjs . > /tmp/qa-serve-"$SLUG".log 2>&1 &
+QA_SERVE_PID=$!
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do [ -s .qa-port ] && break; sleep 0.25; done
+PORT=$(cat .qa-port 2>/dev/null || true)
+if [ -z "$PORT" ]; then
+  echo "SERVE_SANITY_CHECK=FAIL — qa-serve.mjs never wrote .qa-port. Its log:"; cat /tmp/qa-serve-"$SLUG".log
+  echo "Every browser check in this call would measure nothing. Aborting the QA capture."
+  exit 1
+fi
 for i in 1 2 3 4 5 6 7 8 9 10; do curl -s -o /dev/null "http://localhost:$PORT" && break; sleep 0.5; done
+
+# ---- SERVE SANITY (deterministic, MANDATORY, HARD-ABORTS THIS CALL) -----------------------
+# The point of a gate is that a wrong answer cannot be walked past. Swapping the server above is
+# worthless if a future change silently breaks it again and the run carries on measuring a dead
+# page — which is exactly the failure this replaces. So prove it, here, every round: pull the first
+# real asset URL out of the shipped index.html (the prefixed one the BROWSER will request, not a
+# path we construct) and require a 200 through this server. Anything else aborts the capture
+# instead of producing 21 screenshots of an unstyled page and a battery of false reds.
+ASSET=$(grep -oE '(href|src)="/klaudius/[^"]+\.(css|js)"' out/index.html 2>/dev/null | head -1 | sed -E 's/^(href|src)="//; s/"$//')
+if [ -z "$ASSET" ]; then
+  # No prefixed asset in the document: either KLAUDIUS_ASSET_PREFIX='' (a legitimate escape hatch
+  # in next.config.mjs) or an unstyled build. Fall back to asserting SOME stylesheet resolves —
+  # never silently skip, because "found nothing to check" is how a broken build looks too.
+  ASSET=$(grep -oE 'href="[^"]+\.css"' out/index.html 2>/dev/null | head -1 | sed -E 's/^href="//; s/"$//')
+fi
+if [ -z "$ASSET" ]; then
+  echo "SERVE_SANITY_CHECK=FAIL — out/index.html references no stylesheet at all. The build is"
+  echo "  broken or was never run; screenshots of it would be meaningless. Aborting."
+  exit 1
+fi
+ASSET_CODE=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$PORT$ASSET")
+if [ "$ASSET_CODE" != "200" ]; then
+  echo "SERVE_SANITY_CHECK=FAIL — the QA server 404s the page's own assets ($ASSET_CODE on $ASSET)."
+  echo "  The page will render unstyled and will NOT hydrate, so every screenshot, contrast,"
+  echo "  nav-visibility and hero-video result from this call would be measuring a dead page."
+  echo "  This is the python3 -m http.server / assetPrefix fault — see the block above. Aborting."
+  exit 1
+fi
+echo "SERVE_SANITY_CHECK=PASS — assets resolve through the QA server (200 on $ASSET), page will hydrate."
 
 # Gate battery launched HERE, now, in the background — overlapped with ALL screenshot work below
 # instead of waiting until after it (Fable consult, 2026-08-19). Safe to overlap because these 9
@@ -48,7 +115,16 @@ mkdir -p /tmp/qa-gates-"$SLUG"
 VERIFY_AT=$(grep -oE '^VERIFY_GATES_OK_AT=.*' ../data/status.md 2>/dev/null | tail -1 | cut -d= -f2)
 VERIFY_FRESH=0
 if [ -n "$VERIFY_AT" ]; then
-  VERIFY_EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "$VERIFY_AT" +%s 2>/dev/null || date -d "$VERIFY_AT" +%s 2>/dev/null)
+  # TZ=UTC is LOAD-BEARING. build/SKILL.md writes this marker with `date -u`, i.e. a UTC stamp.
+  # BSD `date -jf` has no timezone in the format, so it parses those digits as LOCAL time. In any
+  # negative-UTC-offset zone (CDT = UTC-5) the marker lands HOURS IN THE FUTURE, nothing is ever
+  # "newer" than it, VERIFY_FRESH stays 1, and the five carried gates below are written as literal
+  # PASS strings WITHOUT BEING RUN: FONT_CHECK, CONTRAST_CHECK, TOKEN_CHECK, REVIEW_CHECK,
+  # NAV_VISIBILITY_CHECK. Measured 2026-08-19: a marker at 18:38:40Z parsed to 18:38:40 CDT, a
+  # 5-hour skew, while out/index.html had been rebuilt 30 minutes AFTER the marker and still read
+  # as fresh. NAV_VISIBILITY_CHECK genuinely FAILs on 3 of 5 clients, so this was burying real
+  # findings, not hypotheticals. GNU date (-d) already handles the trailing Z correctly.
+  VERIFY_EPOCH=$(TZ=UTC date -jf "%Y-%m-%dT%H:%M:%SZ" "$VERIFY_AT" +%s 2>/dev/null || date -d "$VERIFY_AT" +%s 2>/dev/null)
   if [ -n "$VERIFY_EPOCH" ]; then
     touch -d "@$VERIFY_EPOCH" "/tmp/.verify-marker-"$SLUG"" 2>/dev/null \
       || touch -t "$(date -r "$VERIFY_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null)" "/tmp/.verify-marker-"$SLUG"" 2>/dev/null

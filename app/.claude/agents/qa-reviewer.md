@@ -2,7 +2,7 @@
 name: qa-reviewer
 description: Independent QA reviewer that checks a built website with fresh eyes. Reports issues only - never fixes them. Used by the pipeline to eliminate self-review bias.
 model: sonnet
-tools: Bash, Read, Glob, Grep, Skill
+tools: Bash, Read, Write, Glob, Grep, Skill
 ---
 
 # Independent QA Reviewer
@@ -110,9 +110,14 @@ cd clients/{slug}/site
 # (not in Call 1) so the pick sits microseconds before the http.server bind — across two separate
 # Bash calls the gap is seconds, wide enough for two parallel QA runs to grab the same port and one
 # to fail to bind.
-QA_PORT=$(python3 -c "import socket; s=socket.socket(); s.bind(('',0)); p=s.getsockname()[1]; s.close(); print(p)")
-echo "$QA_PORT" > .qa-port
-python3 -m http.server "$QA_PORT" --directory out
+# ⛔ NOT `python3 -m http.server --directory out`. next.config.mjs sets a MANDATORY assetPrefix of
+# /klaudius/<slug>/, so the document serves at / while every CSS/JS/font URL it references is
+# prefixed — and no out/klaudius/ directory exists. Verified on three real clients 2026-08-19: every
+# asset 404s, the page renders UNSTYLED and NEVER HYDRATES, and every screenshot you then review is
+# of a broken page. It also produced a false HERO_VIDEO_PLAYBACK_CHECK=FAIL (readyState 0, paused,
+# videoWidth 0) on a video that was correct — React never hydrated, so its play() never ran.
+# qa-serve.mjs strips the prefix and writes .qa-port itself.
+node ../../../scripts/qa-serve.mjs . --port "$(python3 -c "import socket; s=socket.socket(); s.bind((\'\',0)); p=s.getsockname()[1]; s.close(); print(p)")"
 ```
 
 **Call 3 — open, screenshot, tear down (foreground).** Current `npx playwright-cli` no longer auto-opens a browser on `screenshot`/`goto`, so you MUST `open` first (it returns once the page loads — don't background it) or every screenshot fails with `"browser is not open"`. Write screenshots to `qa-screenshots/` inside `site/` (playwright-cli only writes under its working directory), not `../screenshots/`. Desktop and mobile now run as TWO named sessions (`qa-{slug}-desktop`, `qa-{slug}-mobile`) **in parallel** — they share nothing (separate browsers, separate viewports, both read-only against the same static server) — backgrounded with `&` and reaped with `wait` inside this one Bash call (Fable consult, 2026-08-18: measured ~2x on the home-page pass alone, and the same pattern generalizes to every subpage below). This is still per-client-named, not the shared default, so concurrent pipeline lanes still can't hijack each other's browser.
