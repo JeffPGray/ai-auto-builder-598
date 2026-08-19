@@ -119,10 +119,28 @@ class DesignSystemGenerator:
             "severity": rule.get("Severity", "MEDIUM")
         }
 
+    # Baseline/compliance styles whose "identity" payload is universal accessibility
+    # requirements (focus rings, ARIA labels, skip links, 44px touch targets) rather than a real
+    # visual point of view -- these are correctly enforced everywhere by the contrast/a11y gates
+    # already, so returning one of them AS the site's design identity produces a build with no
+    # actual art direction (2026-08-19 Fable review, real case: cold-front-ac's design-system.md
+    # style was "Accessible & Ethical" -- KEY EFFECTS was literally "focus rings, ARIA labels,
+    # skip links, 44px touch targets", a compliance checklist, not a design). Never returned as
+    # THE style for a marketing/trade site; only used as a genuine last resort if literally
+    # nothing else matched at all.
+    _BASELINE_COMPLIANCE_STYLES = {"accessible & ethical", "inclusive design"}
+
     def _select_best_match(self, results: list, priority_keywords: list) -> dict:
         """Select best matching result based on priority keywords."""
         if not results:
             return {}
+
+        non_baseline = [r for r in results
+                         if r.get("Style Category", "").strip().lower() not in self._BASELINE_COMPLIANCE_STYLES]
+        if non_baseline:
+            results = non_baseline
+        # else: every candidate was a baseline style -- fall through and use them rather than
+        # returning nothing, but this should be rare enough to be worth noticing if it happens.
 
         if not priority_keywords:
             return results[0]
@@ -213,6 +231,15 @@ class DesignSystemGenerator:
 
         # Step 4: Select best matches from each domain using priority
         style_results = self._extract_results(search_results.get("style", {}))
+        # Zero style results for the real query used to silently fall through to a hardcoded
+        # "Minimalism" default several lines down (2026-08-19 Fable review, real case: the query
+        # "HVAC heating cooling contractor" returns zero style-domain hits because styles.csv
+        # contains none of those literal words). Before accepting that default, retry the style
+        # search using the REASONING's own style_priority terms (e.g. "Trust & Authority" for a
+        # trade-service category) -- those are category-level design intent, not a blank default.
+        if not style_results and style_priority:
+            fallback_style_search = search(" ".join(style_priority), "style", SEARCH_CONFIG["style"]["max_results"])
+            style_results = self._extract_results(fallback_style_search)
         color_results = self._extract_results(search_results.get("color", {}))
         typography_results = self._extract_results(search_results.get("typography", {}))
         landing_results = self._extract_results(search_results.get("landing", {}))
