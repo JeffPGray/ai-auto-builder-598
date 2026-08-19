@@ -109,7 +109,7 @@ if (!has(gathered)) {
   note = verifyStale
     ? `design-system.md exists; a VERIFY_GATES_OK_AT marker is present but is STALE — site/src has files newer than the marker's timestamp, meaning a later rebuild started (and was likely interrupted) after that marker was written.`
     : 'design-system.md exists; build has not completed Verify (no VERIFY_GATES_OK_AT in status.md).';
-  resumeInstruction = `/gather and /ui-ux-pro-max are done — DO NOT re-run either; their outputs are at ${gathered} and ${designSystem}. The build itself was interrupted mid-way (${verifyStale ? 'the VERIFY_GATES_OK_AT marker present is stale against site/src\'s real mtimes' : 'no VERIFY_GATES_OK_AT marker in status.md'}), so re-run /build ${slug} from the top — it is idempotent per-page and will overwrite whatever partial pages exist. Then continue the QA loop -> /deploy. Read status.md first for anything already recorded (HyperUI citations planned, design manifest) so you don't re-derive decisions that were already made.`;
+  resumeInstruction = `/gather and /ui-ux-pro-max are done — DO NOT re-run either; their outputs are at ${gathered} and ${designSystem}. The build itself was interrupted mid-way (${verifyStale ? 'the VERIFY_GATES_OK_AT marker present is stale against site/src\'s real mtimes' : 'no VERIFY_GATES_OK_AT marker in status.md'}), so re-run /build ${slug} from the top — it is idempotent per-page and will overwrite whatever partial pages exist. Then continue the QA loop -> /deploy. Read status.md first for anything already recorded (DESIGN_IDEA, signature moves, design manifest) so you don't re-derive decisions that were already made.`;
 } else if (!qaPass) {
   stage = qaFail ? 'POST_VERIFY_QA_FAILED' : 'POST_VERIFY_PRE_QA';
   note = qaFail

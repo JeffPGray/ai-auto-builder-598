@@ -616,7 +616,12 @@ for (const f of pages) {
     // NOT bare `rounded`/`bg-` alone, which nav links, pills and menu items also carry, and which
     // false-positived on every nav's repeated link classes when first calibrated against a real
     // build). Padding of p-3 or more is still required to exclude compact chips/badges.
-    if (!/(border|shadow)/.test(cls) || !/p[xy]?-[3-9]/.test(cls)) continue;
+    // Anchored to token boundaries and covering p-10/p-12+ (audit finding, 2026-08-19): the
+    // unanchored /p[xy]?-[3-9]/ matched INSIDE other tokens (gap-4, top-8 both satisfied it,
+    // wrongly admitting compact chips the comment says are excluded) and missed real generous
+    // padding like p-10/p-12 on hero-adjacent feature cards, letting a real identical-card defect
+    // there ship unflagged.
+    if (!/(border|shadow)/.test(cls) || !/(^|\s)p[xy]?-(?:[3-9]|1[0-9]|2[0-9])(\s|$)/.test(cls)) continue;
     counts.set(cls, (counts.get(cls) || 0) + 1);
   }
   const keys = [...counts.keys()];

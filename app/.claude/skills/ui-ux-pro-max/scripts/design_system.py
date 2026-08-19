@@ -53,6 +53,11 @@ class DesignSystemGenerator:
         """Execute searches across multiple domains."""
         results = {}
         for domain, config in SEARCH_CONFIG.items():
+            # "trade" gets its own dedicated, unconditional call in generate() (it needs to run
+            # regardless of category, per the 2026-08-19 gating fix) -- searching it here too was a
+            # wasted, immediately-discarded BM25 pass on every single query (audit finding).
+            if domain == "trade":
+                continue
             if domain == "style" and style_priority:
                 # For style, also search with priority keywords
                 priority_query = " ".join(style_priority[:2]) if style_priority else query
@@ -264,16 +269,22 @@ class DesignSystemGenerator:
 
         best_landing = landing_results[0] if landing_results else {}
 
-        # Trade-specific real art direction (2026-08-19 Fable design-elevation review, B2) -- only
-        # for the "Trade Service (...)" categories this pipeline's actual market lives in. Every
-        # other category (SaaS, e-commerce, etc.) is unaffected; those already have richer style/
-        # product coverage elsewhere in this tool.
+        # Trade-specific real art direction (2026-08-19 Fable design-elevation review, B2; gating
+        # fixed same day after a code-review audit). Originally gated on
+        # `category.startswith("Trade Service")` -- but that depends entirely on products.csv's own
+        # BM25 routing, which a common real phrasing can hijack: "roofing company" routed to
+        # "Job Board/Recruitment" and "auto repair shop" routed to "Coffee Shop" in testing, silently
+        # skipping the trade lookup even though trade-identities.csv's own keywords (which literally
+        # include "roofing") would have matched fine on their own. Fixed to run the trade search
+        # UNCONDITIONALLY and trust its own BM25 relevance (score > 0, enforced inside search()) --
+        # a 9-row, genuinely trade-specific CSV is not going to spuriously match a SaaS or e-commerce
+        # query, so no category gate is needed at all. Every other category is still unaffected in
+        # practice: it simply won't score a hit.
         best_trade = {}
-        if category.startswith("Trade Service"):
-            trade_search = search(query, "trade", SEARCH_CONFIG["trade"]["max_results"])
-            trade_results = self._extract_results(trade_search)
-            if trade_results:
-                best_trade = trade_results[0]
+        trade_search = search(query, "trade", SEARCH_CONFIG["trade"]["max_results"])
+        trade_results = self._extract_results(trade_search)
+        if trade_results:
+            best_trade = trade_results[0]
 
         # Step 5: Build final recommendation
         # Combine effects from both reasoning and style search
