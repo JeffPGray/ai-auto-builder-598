@@ -1093,7 +1093,87 @@
       "title": "hyperui-lookup.mjs category queries batched; swarm/parallel-agent architecture evaluated and rejected",
       "verified": "build/SKILL.md HyperUI lookup section now instructs querying ALL categories (both application and marketing tier) in ONE backgrounded &+wait Bash call instead of one call per category -- same pattern as find/gather/deploy/QA batching already shipped tonight. Real, unfixed gap: a build citing 15-22+ components across 10+ categories was paying one full tool-call turn per category. 10th Fable consult (parallel agents/teams/swarms for single-client speedup, explicitly requested by Jeff) gave a clear reject: read live file mtimes on the actual running cold-front-ac build and found globals.css/Icons.tsx/a new StickyCTA.tsx file all got touched MID-page-writing (design feedback loop, not just taste drift -- a real merge-collision risk across parallel agents), and the token math shows N-way page fan-out would increase TOTAL tokens ~20-30% (duplicated gathered-content.md/design-system.md/site-data.ts/globals.css context per agent) to save only ~25-30min wall-clock -- while the actual binding constraint is Pro/Max subscription token-RATE, not wall-clock, and multi-client parallelism (already existing, prompts/parallel-run.md) already solves real daily throughput. Not implementing intra-client agent fan-out.",
       "updated": "2026-08-19T04:15:00Z"
+    },
+    {
+      "id": "HYPERUI-DELETE-01",
+      "status": "done",
+      "summary": "Deleted HyperUI entirely from the pipeline (Jeff's explicit call) -- scripts, 469-file/3.2MB reference catalog, all mandatory-adoption instructions and hard-FAIL gates removed from build/SKILL.md, qa-reviewer.md, CLAUDE.md.",
+      "reason": "Real evidence it wasn't earning its cost: cold-front-ac shipped 16 gate-PASSING HyperUI citations and still read as visually generic; a Fable review confirmed the actual generic pattern (identical review cards) was hand-written, not HyperUI-sourced. Both gates only ever verified citation bookkeeping, never visual quality.",
+      "verified": "git commit 0a109ce, 479 files changed/49044 deletions; grep confirms no active script imports/calls the deleted files (only historical comments remain); every .mjs passes node --check; dispatch-build.sh and dispatch-staged.sh pass bash -n.",
+      "owner": "main-session"
+    },
+    {
+      "id": "COLDFRONT-PARKED-01",
+      "status": "done",
+      "blocked_reason": null,
+      "summary": "cold-front-ac ELEVATED build COMPLETE and DEPLOYED. Live at https://cold-front-ac.grayreserve.agency \u2014 all 13 routes verified 200 (home, services, about, contact, blog index, 5 articles, privacy, terms). Design: dark ground, split harmony, deep character, Vollkorn+Red Hat Display (formula 2), cool navy accent #204080. 3 QA rounds (final PASS). All gates passed: FONT_CHECK, TOKEN_CHECK, CONTRAST_CHECK (596 elements/0 failures), RICHNESS_CHECK, NAV_VISIBILITY_CHECK, AEO_CHECK, ship-scan clean. GHL mirror created (contact LOYHPdhZS2aJSOB0Yyrm, opp qYW168dWTuAjEX8bBu2J). OUTBOUND_SENDER=ghl so outreach handled by GHL workflow. Disk pruned 545MB\u219220MB. Supabase status=deployed.",
+      "verified": "curl 200 on all 13 routes against live https://cold-front-ac.grayreserve.agency, Supabase deployed_url recorded, GHL mirror confirmed, VERIFY_GATES_OK_AT recorded in status.md, design-ledger recorded, success alert sent via notify.sh.",
+      "owner": "main-session"
+    },
+    {
+      "id": "P1-P4-FABLE-ARCH-01",
+      "status": "done",
+      "summary": "Implemented P1 (resumable dispatch via checkpoint detection), P2 (per-stage model/effort tiering script, built but not yet live-tested end to end), P3 (import-graph-scoped QA escalation, transitive), P4 (widened concurrent prose sub-agent lane) from the 2026-08-19 Fable architecture review. Two full code-review audit passes found and fixed 12 real bugs total across the new scripts (detect-resume-stage.mjs, fix-dashes.mjs, fix-img-dims.mjs, dispatch-staged.sh) -- including one critical bug (stale-marker false-positive) that could have mis-fired on the live cold-front-ac dispatch and was fixed while that dispatch was still running.",
+      "verified": "Commits daa2b37, 5c0e9b2, 120f813, d470f35, fae71f6, 9142a7e, 0a109ce (this last one is the HyperUI deletion, listed separately as HYPERUI-DELETE-01). P1 proven live on the real killed-and-resumed cold-front-ac dispatch, not just fixtures.",
+      "owner": "main-session"
+    },
+    {
+      "id": "UIUX-ELEVATE-01",
+      "status": "done",
+      "summary": "Fable overnight design-elevation review COMPLETE (2 reports: main + first-hand Awwwards addendum). Implementation in progress -- 6 real commits landed: (B3) fixed ui-ux-pro-max retrieval for HVAC queries + excluded baseline-compliance styles from being selected as site identity; (D) new identical-sibling-component detector in richness-check.mjs, calibrated against 2 real builds to kill false positives (nav links, form inputs); (B1/C2/C3) mandatory DESIGN_IDEA + 3 signature moves, enforced by richness-check; (C1) fixed a real precedence-table contradiction; (B2) new trade-identities.csv (9 real trade families) wired end-to-end into ui-ux-pro-max, verified via the real CLI path; folded in Fable's first-hand Awwwards findings (dark/saturated-ground bias for HVAC/plumbing/electrical, type-as-hero archetype, SATURATED-CANVAS flagged as a real next step but NOT rushed in untested).",
+      "verified": "Audit pass (agent a665184785900e49b) found 3 real bugs (unanchored padding regex in richness-check.mjs, fragile category-string trade-gating in design_system.py, stale HyperUI string in detect-resume-stage.mjs) -- all 3 fixed and verified in commit 02e09c3, including against the audit's own exact failure-case queries (roofing company, auto repair shop, electrician services, landscaping company, painting company all now correctly resolve; SaaS/e-commerce/quantum-computing queries regression-clean at zero trade payload).",
+      "owner": "main-session",
+      "next_step": "Run cold-front-ac end-to-end via the resume system with DISPATCH_OUTPUT_FORMAT=json per Jeff's standing instruction.",
+      "lane": "general",
+      "title": "Fable overnight design-elevation review: implement + verify",
+      "blocked_reason": null
+    },
+    {
+      "id": "UIUX-ELEVATE-DEFERRED-01",
+      "status": "blocked",
+      "blocked_reason": "Deliberately NOT implemented tonight -- needs its own tested derive-palette.mjs code change, not a rushed hand-picked hex in one build. Flagged with full reasoning in build/SKILL.md's Canvas mode section.",
+      "summary": "SATURATED-CANVAS: a third canvas mode (alongside FULL-TINT and NEUTRAL-CANVAS) for a full-chroma-brand-hue-as-environment ground, evidenced by first-hand inspection of southernlifts.com.au (real Awwwards-nominee trade-service site). derive-palette.mjs's current tinted-surface system has no mode that produces this.",
+      "next_step": "Add and test a new derive-palette.mjs flag emitting a full-chroma surface pair with the same contrast/CVD guarantee the other two modes get (arithmetic, not hand-picked), seeded/CHARACTER-gated like FULL-TINT/NEUTRAL-CANVAS, then document it properly.",
+      "owner": "unassigned"
+    },
+    {
+      "id": "UIUX-B4-REJECTED-01",
+      "status": "done",
+      "summary": "Fable's B4 recommendation (cut the ~680-line dead React Native mirror in ui-ux-pro-max/SKILL.md, add a new 'trade chapter' there) was investigated and REJECTED as based on a false premise -- verified that ui-ux-pro-max/SKILL.md's prose is never actually read during a real build. Per app/CLAUDE.md's own rule, /ui-ux-pro-max is the one pipeline step invoked via scripts/search.py (a CLI script reading the CSVs), not via the Skill tool -- confirmed via grep that nothing in build/SKILL.md or CLAUDE.md ever reads ui-ux-pro-max/SKILL.md directly. So the mirror costs zero real tokens in practice, and a 'trade chapter' written into that file would never be seen by a build either. B2 (trade-identities.csv) was correctly the right lever instead, since it flows through the actual search.py -> stdout -> design-system.md path the model does read -- already implemented and verified.",
+      "reason": "Caught before implementing wasted work -- a real correction to Fable's report, not a rubber-stamp of every recommendation.",
+      "owner": "main-session"
+    },
+    {
+      "id": "DESIGN-RESET-01",
+      "status": "done",
+      "title": "Reset design skill to hard measured rules",
+      "summary": "Removed 14 design sections (1,034 lines of soft prose) from build/SKILL.md, replaced with one 105-line section where every rule states a NUMBER or names a SCRIPT. Restored the load-bearing font mechanics (next/font/google, Turbopack @import bug) the cut would otherwise have lost. Fixed all 10 dangling refs across 5 files. build/SKILL.md 2,580 -> 1,752 lines, 203KB -> 140KB. All infrastructure lifts kept untouched (chatbot, AEO, SEO, blog, multi-page, every-service-a-page, dropdowns, legal, booking, CMS-on-purchase, perf).",
+      "verified": "commit history on JeffPGray/ai-auto-builder-598 main; font mechanics confirmed restored by grep; zero dangling section refs remain.",
+      "owner": "main-session"
+    },
+    {
+      "id": "DESIGN-INTENT-GATE-01",
+      "status": "done",
+      "title": "verify-design-intent.mjs -- anti-cliff-notes gate",
+      "summary": "Two jobs, neither depending on model memory. (1) --brief-only re-injects DESIGN_IDEA/hero/ground/3 signature moves in ~8 lines; build/SKILL.md now says RUN THIS after any compaction. (2) enforces the built artifact against that recorded brief: scale drama (largest heading >=3.5x body), signature-move trace in shipped HTML/CSS, uniform-rhythm runs. Wired into build Verify AND the QA gate battery (always-fresh, never carried).",
+      "verified": "Caught on cold-front-ac exactly what Jeff caught by eye: 13 identical <h3> on /services + 13 <h4> on home, one size, nothing featured, while signature move 3 promised a dominant bento cell that never shipped. Scoped to marketing pages only (uniform headings are correct on legal/blog). the-woodlands shows the same 9-row pattern.",
+      "owner": "main-session"
+    },
+    {
+      "id": "CONTEXT-SPIRAL-01",
+      "status": "in_progress",
+      "title": "Compaction spiral: 56/76 reads were self-re-reads",
+      "summary": "THE root cause of both the 2x wall-clock and the design regression. Build compacted 9 times (first at min 12, then every ~14 min). 56 of 76 Read calls re-read files the build authored itself (page.tsx 21x, written 34x). Rules added to build/SKILL.md. NOT YET PROVEN -- the metric to watch on the next build is compaction count, target <3.",
+      "next_step": "Run one build with the slimmed skill + context rules. Measure compaction count from the transcript (the script pattern is in DESIGN-RESET-DECISION.md). If still >3, the next lever is per-page dispatch or narrower reads.",
+      "owner": "main-session"
+    },
+    {
+      "id": "SECRET-CLEANUP-01",
+      "status": "done",
+      "title": "Removed appexport/ carrying a live Supabase PAT",
+      "summary": "A git add -A swept untracked appexport/.mcp.json (Supabase Personal Access Token) into a commit; GitHub push protection blocked it, nothing reached the remote. Commit reset, directory removed on Jeff's explicit authorisation, root .gitignore extended to cover appexport/, .mcp.json, *.env. Verified app/.env is live and richer (38 keys vs the stale export's 35); only OUTREACH_CHANNELS and OUTREACH_PRIORITY existed solely in the export, both already known-unset in the live env. NOTE: deletion is not revocation -- the token itself remains valid in Supabase, though it was never exposed off-machine.",
+      "owner": "main-session"
     }
   ],
-  "updated": "2026-08-19T02:15:00Z"
+  "updated": "2026-08-19T14:20:00Z"
 }

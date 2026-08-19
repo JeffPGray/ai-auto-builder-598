@@ -19,6 +19,25 @@ Where the 130 minutes actually went (measured from timestamp gaps in the real tr
 optimisation are NOT the time cost. The cost is the model thinking on a context so heavy it
 compacts every 14 minutes.
 
+### The sharper mechanism — measured after the reset
+
+**56 of the build's 76 `Read` calls were RE-READS of files it had authored itself.**
+`page.tsx` re-read **21x** (and written 34x), `site-data.ts` 7x, `globals.css` 5x, `schema.ts` 5x.
+A route `page.tsx` is 6-10K tokens, so ~21 whole-file re-reads is on the order of the entire 200K
+context window, spent reloading code this build already wrote.
+
+This explains the 9 compactions better than skill-file size does, and it is a *spiral*:
+context fills → compaction → the model no longer holds the code it authored → it re-reads the whole
+file to make one edit → context re-inflates → it compacts again.
+
+Fixed by four priority-ordered context rules in `build/SKILL.md` (write each page once and
+complete; never whole-file re-read your own output — use `offset`/`limit`; re-orient after
+compaction via `verify-design-intent.mjs --brief-only` (~8 lines) and a `find`, not by re-reading
+generated code; batch edits so one read serves many).
+
+⚠️ **This makes the every-service-a-page risk concrete:** more routes = more `page.tsx` = more
+re-read surface. The context rules must hold before route count goes up.
+
 ### This single fact explains BOTH symptoms at once
 
 1. **Why time doubled while tokens fell.** Cache reads are weighted ×0.1 so a bloated context looks
