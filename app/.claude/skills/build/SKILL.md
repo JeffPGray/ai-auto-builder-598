@@ -821,6 +821,33 @@ All must PASS before QA. `verify-design-intent.mjs` is the one that checks the s
 own recorded brief** — scale drama, whether each signature move actually shipped, and uniform-rhythm
 runs. `DESIGN_INTENT_CHECK=FAIL` means intent and artifact disagree; fix the artifact. A FAIL here costs seconds; the same FAIL found at QA costs a whole round.
 
+### Context discipline — the measured cause of the compaction spiral
+
+**Measured on the real cold-front-ac build: 56 of its 76 `Read` calls were RE-READS of files the
+build had authored itself.** `page.tsx` was re-read 21 times and written 34 times; `site-data.ts` 7
+times; `globals.css` and `schema.ts` 5 each. A route's `page.tsx` is 6-10K tokens, so ~21 whole-file
+re-reads is on the order of the entire context window, spent re-loading code this build already
+wrote.
+
+That is a spiral, not a cost: context fills → compaction → the model no longer holds the code it
+authored → it re-reads the whole file to make one edit → context re-inflates → it compacts again.
+Nine times in one build, first at minute 12.
+
+**The rules, in priority order:**
+
+1. **Write each route's `page.tsx` ONCE, complete.** A second `Write` to the same route means the
+   first pass shipped something you already knew was unfinished. 34 writes across 13 routes is
+   iteration that belongs *before* the write, not after it. Use § Incremental per-file check at
+   write time so the file is correct on the first pass.
+2. **Never re-read a file you authored this session to refresh your memory of it.** If you are
+   about to edit it, read only the region you are editing with `offset`/`limit` — never the whole
+   file.
+3. **To re-orient after a compaction, use the cheap artifacts, not the expensive ones:**
+   `node scripts/verify-design-intent.mjs $ARGUMENTS --brief-only` (~8 lines) for design intent,
+   and `find clients/$ARGUMENTS/site/src -name '*.tsx'` for what exists. Re-reading generated code
+   to remember what you built is the single most expensive way to answer that question.
+4. **Batch edits per file.** One read should serve every edit you make to that file, not one edit.
+
 ### After a compaction — RUN THIS, do not rely on memory
 
 Measured: a real build compacted **9 times, first at minute 12**, and every page after that was
