@@ -22,6 +22,18 @@ for f in .claude/skills/*/SKILL.md .claude/agents/*.md; do
   else no "$n calls Skill() $calls x but allowed-tools FORBIDS it"; fi
 done
 
+echo ""; echo "── 1b. AGENT frontmatter uses the right key (tools:, not allowed-tools:) ──"
+for f in .claude/agents/*.md; do
+  n=$(basename "$f")
+  if grep -q "^allowed-tools:" "$f"; then
+    no "$n uses allowed-tools: — that is the SKILL key; agents use tools: and this one is IGNORED"
+  elif grep -q "^tools:" "$f"; then
+    if grep -qE 'Skill\(skill=' "$f" && ! grep -m1 "^tools:" "$f" | grep -q "Skill"; then
+      no "$n invokes Skill() but tools: does not list Skill"
+    else ok "$n tools: declared correctly"; fi
+  else ok "$n (no tools: key — unrestricted)"; fi
+done
+
 echo ""; echo "── 2. Skills invoked actually exist on disk ──"
 for s in $(grep -rhoE 'Skill\(skill="[a-z-]+"' .claude/skills .claude/agents 2>/dev/null | sed 's/.*"\(.*\)"/\1/' | sort -u); do
   if [ -d "$HOME/.claude/skills/$s" ] || [ -d ".claude/skills/$s" ] || find "$HOME/.claude/plugins" -maxdepth 5 -type d -name "$s" 2>/dev/null | grep -q .; then

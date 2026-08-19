@@ -333,13 +333,25 @@ const GROUND_FAMILIES = {
   // could produce that: light/cream/deep/dark all cap at or below C 0.03, so the reference the
   // system points at was unreachable by the system. This family closes that gap. Contrast is
   // solved against these rungs exactly as for every other family, so it is committed, not risky.
+  // SATURATED-PANEL — white body, brand hue as full-chroma PANELS. Reshaped 2026-08-19.
+  //
+  // The previous shape (5 rungs at L 0.38->0.19, all C 0.09-0.12, one light) was built on a MISREAD
+  // of its own reference. southernlifts.com.au was cited as "full-bleed saturated brand ground";
+  // verified from its shipped CSS it is `--background: #fff`, with bg-white used 51x against
+  // bg-egyptian-blue 7x. It is a WHITE body with indigo panels laid over it, and its drama comes
+  // from the ALTERNATION — indigo slamming into white — not from the indigo. Generalising its hero
+  // to the page ground produced a mono-navy site the operator rejected on sight.
+  //
+  // Worse, that ladder could not have produced the reference's rhythm even in principle: five rungs
+  // within ~0.05 lightness of each other is a monotone descent, where the reference is a
+  // high-contrast binary. Majority of the scroll is now LIGHT; the brand hue is punctuation.
   saturated: [
-    { L: 0.380, C: 0.120 }, // 1 hero — full-chroma brand environment
-    { L: 0.330, C: 0.115 }, // 2 default background
-    { L: 0.290, C: 0.105 }, // 3 alt section
-    { L: 0.240, C: 0.095 }, // 4 recessed band
-    { L: 0.940, C: 0.020 }, // 5 light RELIEF — mandatory breather in a saturated run
-    { L: 0.190, C: 0.090 }, // 6 deepest — footer/CTA anchor
+    { L: 0.360, C: 0.115 }, // 1 hero — full-chroma brand panel (white text solved against it)
+    { L: 0.985, C: 0.006 }, // 2 PAGE BASE — effectively white, the dominant ground
+    { L: 0.950, C: 0.012 }, // 3 alt light section
+    { L: 0.300, C: 0.105 }, // 4 mid band — hero hue re-used; gradient partner of rung 1
+    { L: 0.925, C: 0.018 }, // 5 tinted light relief
+    { L: 0.160, C: 0.050 }, // 6 footer anchor
   ],
 };
 if (!GROUND_FAMILIES[groundFamilyArg]) {

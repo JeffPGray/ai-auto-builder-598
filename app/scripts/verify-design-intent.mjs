@@ -178,6 +178,26 @@ for (const f of htmlFiles) {
   }
 }
 
+/* CHECK E — GRID BREAK. impeccable and the composition rules both require at least one element per
+ * marketing page that escapes the tidy grid (a span, an offset, a deliberate overlap). Without it a
+ * page reads as stacked rows however good the palette is. Counted from shipped classes: any
+ * col-span/row-span >1, negative margin, translate, or explicit order- override. */
+const BREAK = /(col-span-[2-9]|row-span-[2-9]|-m[trblxy]?-\d|translate-[xy]-|order-[1-9]|lg:col-start|self-(start|end))/;
+for (const f of htmlFiles) {
+  const rel = f.replace(outDir + '/', '');
+  if (!MARKETING_ONLY.test(rel)) continue;
+  const page = readFileSync(f, 'utf8');
+  const breaks = [...page.matchAll(/class="([^"]+)"/g)].filter((m) => BREAK.test(m[1])).length;
+  facts[`gridBreaks_${rel.replace(/\.html$/, '')}`] = breaks;
+  if (breaks === 0) {
+    failures.push(
+      `[composition] ${rel} has ZERO grid-breaking elements — every block sits in the same tidy ` +
+      'grid. One element per page must escape it (a 2-col span, a negative-margin overlap, a ' +
+      'vertical offset). A page where every row is the same shape reads as generated no matter how ' +
+      'good the palette is.');
+  }
+}
+
 const result = { result: failures.length ? 'FAIL' : 'PASS', failures, facts };
 console.log(`DESIGN_INTENT_CHECK=${result.result}\n`);
 for (const f of failures) console.log(`  FAIL  ${f}`);

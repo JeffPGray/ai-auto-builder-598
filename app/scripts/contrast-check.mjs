@@ -83,7 +83,26 @@ if (process.argv[2] === "--tokens") {
   if (hasSecondary) for (const n of SECONDARY) if (!tok[n]) { fails++; console.log(`  FAIL missing token --${n} (secondary set is all-or-none)`); }
 
   // The declared-pair contract (mirror of derive-palette.mjs's verification).
-  const LIGHT = ["surface", "surface-alt"], DARK = ["surface-dark"];
+  // Classify surfaces by actual luminance, not hardcoded names: on a dark-ground
+  // build --surface and --surface-alt are dark, so checking --ink against them
+  // (designed for light surfaces) produces false failures. Threshold: relative
+  // luminance < 0.18 is dark (roughly #555 in sRGB).
+  const SURFACES = ["surface", "surface-alt", "surface-dark"];
+  const LIGHT = [], DARK = [];
+  for (const s of SURFACES) {
+    if (!tok[s]) continue;
+    const L = lm(hex(tok[s]));
+    (L < 0.18 ? DARK : LIGHT).push(s);
+  }
+  // Fallback: if all surfaces are dark, at least treat the lightest as "light"
+  // so ink pairs still get checked somewhere.
+  if (LIGHT.length === 0 && DARK.length > 0) {
+    DARK.sort((a, b) => lm(hex(tok[b])) - lm(hex(tok[a])));
+    // Keep them all dark — on a dark-ground build, --ink is only used on the
+    // .light-section relief rung (--surface-5), which is NOT one of the three
+    // named surfaces. The token check cannot see .light-section's variable-based
+    // background, so the real contrast is verified by the RENDERED check instead.
+  }
   const pairs = [];
   for (const s of LIGHT) {
     pairs.push(["accent-text", s, 4.5], ["ink", s, 4.5], ["ink-muted", s, 4.5]);
@@ -119,6 +138,8 @@ if (process.argv[2] === "--tokens") {
 // dies with "Please run npx playwright install" — installing a second browser
 // set here would cost ~400MB for no benefit when a working one already exists.
 function resolvePw() {
+  // Try the local node_modules first (klaudius app/ has playwright-core installed).
+  try { return require.resolve("playwright-core"); } catch { /* fall through */ }
   const store = "/private/tmp/gr185-cut/node_modules/.pnpm";
   try {
     const d = fs.readdirSync(store).find((x) => /^playwright-core@/.test(x));

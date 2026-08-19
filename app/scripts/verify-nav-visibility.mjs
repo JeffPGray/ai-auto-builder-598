@@ -41,13 +41,15 @@ import path from "node:path";
 const require = createRequire(import.meta.url);
 
 function resolvePw() {
+  // Try the local node_modules first (klaudius app/ has playwright-core installed).
+  try { return require.resolve("playwright-core"); } catch { /* fall through */ }
+  try { return require.resolve("playwright"); } catch { /* fall through */ }
   const store = "/private/tmp/gr185-cut/node_modules/.pnpm";
   try {
     const d = readdirSync(store).find((x) => /^playwright-core@/.test(x));
     if (d) return path.join(store, d, "node_modules/playwright-core/index.js");
   } catch { /* fall through */ }
-  try { return require.resolve("playwright-core"); } catch { /* fall through */ }
-  try { return require.resolve("playwright"); } catch { return null; }
+  return null;
 }
 
 let sharp;

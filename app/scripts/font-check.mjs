@@ -126,6 +126,8 @@ async function serveOut() {
   if (!existsSync(outDir)) return null;
   const server = createServer((req, res) => {
     let p = decodeURIComponent(req.url.split('?')[0]);
+    // Strip assetPrefix (/klaudius/<slug>/) so assets resolve to out/_next/...
+    p = p.replace(/^\/klaudius\/[^/]+/, '');
     let file = join(outDir, p);
     try {
       if (existsSync(file) && statSync(file).isDirectory()) file = join(file, 'index.html');

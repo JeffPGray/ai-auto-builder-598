@@ -645,6 +645,36 @@ for (const f of pages) {
   }
 }
 
+/* 16. MONOTONE GROUND RUN — the deterministic kill for the mono-navy failure (2026-08-19).
+ * A build shipped five section grounds within 0.05 OKLCH lightness of each other and every existing
+ * gate passed: the secondary was used, gradients were counted, treatments were "distinct" by hex.
+ * Distinct hexes are not distinct GROUNDS. Three consecutive sections a reader cannot tell apart is
+ * a monotone page however many unique values the CSS contains. */
+const surfHexes = [...all.matchAll(/--surface-([1-6])\s*:\s*(#[0-9a-fA-F]{6})/g)]
+  .reduce((m, x) => (m[+x[1]] = x[2].toLowerCase(), m), {});
+const lumOf = (hex) => {
+  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+};
+const rungs = [1, 2, 3, 4, 5, 6].filter((i) => surfHexes[i]).map((i) => ({ i, L: lumOf(surfHexes[i]) }));
+facts.surfaceLuminance = rungs.map((r) => ({ rung: r.i, L: Number(r.L.toFixed(3)) }));
+if (rungs.length >= 3) {
+  facts.lightRungs = rungs.filter((r) => r.L >= 0.75).length;
+  for (let i = 0; i + 2 < rungs.length; i++) {
+    const win = [rungs[i], rungs[i + 1], rungs[i + 2]];
+    const spread = Math.max(...win.map((w) => w.L)) - Math.min(...win.map((w) => w.L));
+    if (spread < 0.10) {
+      failures.push(
+        `[monotone] surface rungs ${win.map((w) => w.i).join('/')} sit within ${spread.toFixed(3)} ` +
+        'luminance of each other — three consecutive grounds a reader cannot tell apart. That is a ' +
+        'monotone page regardless of how many distinct hexes the CSS holds. Sections need real ' +
+        'lightness separation, or a white/near-white base with the brand hue as panels.');
+      break;
+    }
+  }
+}
+
 const result = { result: failures.length ? 'FAIL' : 'PASS', failures, warnings, facts };
 if (JSON_OUT) console.log(JSON.stringify(result, null, 2));
 else {

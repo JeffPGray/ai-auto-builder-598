@@ -723,7 +723,11 @@ no install step** during a build.
 
 **Use them for the interactive mechanics that are error-prone to hand-write:**
 - `sheet` → mobile nav drawer (focus trap, escape-to-close, scroll lock — all handled)
-- `dropdown-menu` → the Services nav dropdown (keyboard nav + ARIA wiring)
+- `dropdown-menu` → the Services nav dropdown (keyboard nav + ARIA wiring).
+  ⛔ **The trigger MUST remain a real `<a href="/services">`, not a bare `<button>`.** Wiring this
+  dropdown on 2026-08-19 shipped a nav whose measured hrefs were `["/","/about","/contact","/blog"]`
+  — `/services` was unreachable from primary nav for keyboard and mobile users, and QA caught it as
+  a critical. Render the anchor, and attach the dropdown as a secondary affordance on it.
 - `accordion` → FAQ (replaces hand-rolled `<details>`; gives animated height + correct roles)
 - `dialog` → anything modal, though `impeccable` bans modal-as-first-thought — exhaust inline/progressive alternatives first
 
@@ -742,9 +746,28 @@ primitive: `npx shadcn@latest add <name>` from the client's `site/` directory.
 > inherits a slate palette. shadcn supplies BEHAVIOUR; `impeccable` and `derive-palette` supply
 > every visual decision. If a rendered component still looks like stock shadcn, it is wrong.
 
+> ⛔ **Never write a `srcSet` referencing a variant file that does not exist.** `optimise-images.mjs`
+> names the LARGEST qualifying ladder rung with the plain name (`gmaps1.webp`), so when a source is
+> small enough that only one rung qualifies, **no `-640` file is ever emitted**. A build wrote
+> `srcSet="/images/gmaps1-640.webp 640w, /images/gmaps1.webp 679w"` for a 679px source and the
+> mobile truck photo rendered as a broken box. **`ls public/images/` and reference only files that
+> are actually there**, or drop the srcSet and use a single `src` with a `sizes` attribute.
+
 **Scope limit:** primitives only. Do not reach for shadcn card/button/badge to compose sections —
 that is exactly how a site becomes a recognisable template. Section composition is `impeccable`'s
 job (§ Step 1b), and the trade seed's Card-Grid Alternative still governs layout.
+
+### Step 1d — The design idea binds on EVERY route, not just the home page
+
+QA on 2026-08-19 found the DESIGN_IDEA ("Weather Authority") and its signature thermocline
+gradient present on `/` and **entirely absent from `/about` and `/contact` — those pages shipped
+zero gradients.** A concept that stops at the home page is not a design system, it is a home-page
+treatment, and subpages then read as the generic filler the operator keeps calling slop.
+
+**Before you write each route, state in one line how THIS page expresses the DESIGN_IDEA** — which
+signature move appears, on which section. Every marketing route (`/`, `/services`, `/about`,
+`/contact`, and every `/services/<slug>`) carries **at least one** of the three signature moves and
+at least one gradient or photo-ground. `richness-check.mjs` counts these per page, not per site.
 
 ### Step 2 — Typography (script + seed, never the `--design-system` font field)
 
@@ -834,6 +857,110 @@ electrical, sturdy for plumbing, organic and warmer for landscaping. If every po
 by a SAME-TOWN collision, widen with the typography domain search and stay inside the trade's
 register; never reach for a display/fashion serif on a trade site.
 
+### Canvas mode: FULL-TINT (default) vs NEUTRAL-CANVAS (the luxury lever)
+
+**Every rung above is brand-tinted, including the ones the code calls "neutral."** That is
+deliberate — FULL-TINT is the right default for most trades, where a colour-forward page reads
+warm and approachable. But it means the page's *base* — hero, body copy sections, the default
+ground a visitor sits on for most of a scroll — always carries the brand hue, never a true white
+or true dark. **Caught live 2026-08-16** (Jeff, looking at a blue-brand HVAC build): "the AC is
+cool, but I think would look more luxury with a white background and colored sections vs all blue
+variants... think Ritz-Carlton." He is describing a second, real mode this system did not yet have
+a name for:
+
+| | FULL-TINT (default) | NEUTRAL-CANVAS |
+|---|---|---|
+| `--surface` / `--surface-alt` (page base, most sections) | drawn from the tinted ladder (`--surface-1`/`-2`) | **true neutral** — `#ffffff` / near-white for a light-first brand, true near-black (`#0a0a0a`-ish, not a tinted `--surface-6`) for a dark-first one |
+| The 6-rung tinted ladder | used everywhere, is the whole rhythm system | **demoted to an accent device** — used only on a minority of sections (a stat strip, a testimonial band, the footer) as deliberate colour punctuation against the neutral base |
+| Reads as | warm, colour-forward, approachable — right for most everyday trades | restrained, premium — restraint IS the signal, same reasoning § Colour CHARACTER already gives for `none` harmony on jewellers/tailors/galleries/funeral masons |
+
+**Choosing it is a CHARACTER decision, made once, at the same point you pick harmony** — not a
+per-section toggle. Default FULL-TINT for everyday service trades. Consider NEUTRAL-CANVAS when
+the gathered content itself signals premium positioning (high-end brands serviced, decades of
+awards, a heritage/family narrative, premium pricing already implied) even inside an "ordinary"
+trade like HVAC — a colour-saturated page under-sells a business the content says is upmarket.
+**Record the choice in `status.md`** next to the harmony decision, same as CHARACTER.
+
+> 🔬 **A third mode, SATURATED-CANVAS, is evidenced but NOT YET IMPLEMENTED — flagged here rather
+> than rushed in untested (2026-08-19 Fable design-elevation review).** Direct first-hand inspection
+> of a real Awwwards-nominee trade-service site (southernlifts.com.au, an elevator/lift company —
+> the closest real comparable to this pipeline's own market) found its hero ground is the BRAND HUE
+> AT FULL SATURATION used as an environment — not FULL-TINT's low-chroma ladder, not
+> NEUTRAL-CANVAS's true-neutral base. `derive-palette.mjs`'s tinted-surface system currently has no
+> mode that produces this (its ladder deliberately caps surface chroma low). Implementing it means a
+> new derive-palette flag emitting a full-chroma surface pair (with near-white/near-black text,
+> still contrast-gate-verified) for the hero and 1-2 sections, seeded/CHARACTER-gated like the two
+> modes above. Do NOT half-implement this by hand-picking a saturated hex in a single build — it
+> needs the same arithmetic contrast/CVD guarantee the other two modes get from the real deriver
+> script. Next step: add and test the derive-palette flag properly, then document the mode here. (the engine now offers six hooks — use them)
+
+Amplitude was only half the problem. The other half was REACH: for a long time the engine offered
+four hooks, so a page could be fully compliant and still animate in two places, which is why the
+live site drew "motion is low ... i mean usage in the site".
+
+Per page, the floor is:
+- **every section below the hero** carries `data-reveal`
+- **every multi-item grid** carries `data-reveal-group` on its wrapper
+- **the hero media** carries `data-hero-media`
+- **`data-count` on every real figure** the gather produced — years trading, jobs completed, review
+  count. The attribute holds the TRUE number and the text is only replaced while animating, so a JS
+  failure leaves the authored figure in place. Never invent a statistic to animate.
+- **`data-parallax` on at least one mid-page image** if the gather returned photos. The second half
+  of a page is where motion historically died.
+
+Amplitude was lifted at the same time (rise 18-34px -> 36-64px, duration 0.55-0.85s -> 0.7-1.0s,
+stagger 0.05-0.11s -> 0.09-0.16s, parallax 8-16% -> 14-24%, plus a 0.985 scale settle). An 18px
+rise over 0.55s is below the threshold at which a visitor registers that anything moved. These are
+still seeded per business, so fleet variety and reproducibility are preserved.
+
+> ⛔ **RESTORED 2026-08-19 after being deleted in the design reset — and the deletion caused a real
+> regression.** With this section gone, a build derived a ladder where 5 of 6 rungs were navy
+> (#223D81 / #172F6F / #11265F / #081A4B / #020D3B, only surface-5 light) and shipped a mono-tone
+> blue site. That is precisely the "all blue variants" the operator rejected on 2026-08-16, and the
+> reasoning that rejected it had been deleted along with the mode.
+>
+> **Pick the canvas mode EXPLICITLY, before deriving the palette, and record it in `status.md`:**
+>
+> | mode | when | what the base is |
+> |---|---|---|
+> | **NEUTRAL-CANVAS** | premium positioning, an elevated/restrained look, OR any brand whose hue would otherwise flood the page | true white / near-white base; brand colour appears ONLY in sections, bands and accents |
+> | **FULL-TINT** | everyday approachable trades where a colour-forward page suits | tinted ladder throughout |
+> | **SATURATED** | a bold, committed brand-as-environment statement (the southernlifts pattern) | brand hue at full chroma as the ground |
+>
+> **SATURATED and FULL-TINT both flood the page with one hue. That is a deliberate, high-risk
+> choice, not a default.** If the goal is "elevated", NEUTRAL-CANVAS is almost always the right
+> answer: restraint is the signal, and colour reads as intentional punctuation against a neutral
+> base rather than as wallpaper. A mono-tone page is the opposite of elevated — it is the same
+> decision made once and applied everywhere.
+
+### Canvas mode decision rule (execute this — do not eyeball it)
+
+Inputs the pipeline already has: the brand accent's OKLCH, the trade class, the photo count from
+gather, and premium signals countable in `gathered-content.md` (`award|luxury|custom|bespoke|
+design|premium|since <year>|` a named high-end brand serviced).
+
+```
+if trade in {HVAC repair, plumbing, electrician, locksmith, drainage}   # emergency trades
+   or photos < 4:                                   -> NEUTRAL-CANVAS
+       (FULL-TINT only if the brand hue is warm, h 20-110 deg, AND the
+        content reads homey/family rather than premium)
+elif brand hue solves L <= 0.42 at C >= 0.09 with white text at 4.5:1
+     and photos >= 6
+     and (trade is aspirational or premium signals >= 2):  -> SATURATED-PANEL
+elif premium signals >= 2:                          -> NEUTRAL-CANVAS
+else:                                               -> FULL-TINT if warm hue, else NEUTRAL-CANVAS
+```
+
+**Invariant on every light mode: the page-base token sits at L >= 0.93, and at least 50% of the
+scroll rests on rungs at L >= 0.92.** DEEP and DARK stay available but require recorded,
+business-specific evidence (their own branding is dark) — never "authority" or "cold" vibes.
+
+**Record `CANVAS_MODE=<mode>` in `status.md` with its one-line reason.**
+
+> **Why the rule is code-shaped rather than advice:** the same judgement was previously left to
+> prose, and a build reasoned its way to a mono-navy page whose five section grounds sat within 0.05
+> lightness of each other. The failure was not a lack of taste — it was that nothing counted.
+
 ### Step 3 — Palette (script only, never hand-picked)
 
 ```bash
@@ -842,7 +969,14 @@ node scripts/derive-palette.mjs '<accent hex>' --harmony <type> --character <ban
 ```
 `--ground` takes **light | cream | deep | dark | saturated**.
 
-**`saturated` is the committed option and it is usually the right answer for a trade site.** It
+**`saturated` means SATURATED-PANEL: a white page body with the brand hue as full-chroma PANELS.**
+It is **NOT** a page-wide ground, and it is **NOT** the default — **NEUTRAL-CANVAS is the default
+for a trade site.** Reach for `saturated` only when the brand hue solves dark enough to carry
+white text (L <= 0.42 at C >= 0.09), gather returned 6+ real photos to stage on the white
+sections, AND the trade is aspirational (landscape design, pools, custom renovation) or the
+content shows 2+ premium signals. **Never for emergency trades** — HVAC repair, plumbing,
+emergency electrical, locksmith, drainage. A homeowner with a broken furnace is scanning for a
+phone number, not admiring an environment. It
 paints the brand hue at full chroma (C 0.09-0.12) as the ENVIRONMENT rather than as a tint — the
 southernlifts.com.au pattern the trade seeds hold up as the bar. It was added 2026-08-19 because no
 existing family could reach that reference: `dark` was near-achromatic by construction, which is
@@ -897,7 +1031,12 @@ page with muted grey rows.
 ### The bar
 
 `southernlifts.com.au` — a real Awwwards-nominated lift/elevator company, the closest live
-comparable to this pipeline's own market. Full-bleed saturated brand ground, enormous condensed
+comparable to this pipeline's own market. **Verified from its shipped CSS 2026-08-19: its page
+base is `--background: #fff` — `bg-white` appears 51 times against `bg-egyptian-blue` 7 times.
+It is a WHITE body with indigo panels laid over it, and the drama is the ALTERNATION (indigo
+slamming into white), not the indigo.** An earlier reading of this same site as a "full-bleed
+saturated ground" was wrong, and generalising its hero to the page ground produced a mono-navy
+build the operator rejected on sight. What actually carries it: enormous condensed
 display type as the primary anchor, numbered full-width service rows (not cards), named case
 stories (not a photo grid), trade motif animated into the site chrome. **A build that would read as
 visibly more timid than that page next to it has not met the bar** — name what makes it timid and

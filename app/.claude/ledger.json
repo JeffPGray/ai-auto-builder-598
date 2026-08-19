@@ -1177,14 +1177,34 @@
     },
     {
       "id": "QA-REVIEWER-SLIM-01",
-      "status": "in_progress",
+      "status": "blocked",
       "title": "Slim qa-reviewer.md by extracting orchestration bash to a script",
       "summary": "qa-reviewer.md is 836 lines / 85KB / ~22K tokens, reloaded by the QA subagent every round. Analysis: the bloat is NOT narrative (only 30 incident-dated lines) -- it is 319 lines of mechanical orchestration bash in Step 3 across 3 blocks, with just 21 lines of prose. Block 3 alone is 305 lines and needs zero model judgement. Extracted VERBATIM to scripts/qa-capture.sh ({slug} -> \"$SLUG\" the only edit); bash -n passes and every command-token class is preserved (119 -> 122 non-comment lines, the 3 extra being the script header).",
       "verified": "scripts/qa-capture.sh committed but deliberately NOT wired into qa-reviewer.md yet.",
       "blocked_reason": "Wiring it in would edit qa-reviewer.md while the slim-skill test build (pid 85249) is running, changing QA behaviour partway through and contaminating the measurement. The script is inert until referenced, so committing it now is safe.",
       "next_step": "After the test build completes and its metrics are read: replace Step 3 Call 3's 305-line bash block in qa-reviewer.md with a single `bash ../../../scripts/qa-capture.sh {slug}` call, then verify one QA round still produces all screenshots and all gate logs. Expected saving ~330 lines / ~9K tokens per QA round.",
       "owner": "main-session"
+    },
+    {
+      "id": "PIPE-FIX-01",
+      "status": "blocked",
+      "lane": "design",
+      "title": "PERMANENT pipeline fixes exposed by cold-front-ac v4 QA",
+      "summary": "QA round 1 raised 13 issues. Six are SITE defects the running qa-fix handles itself. SEVEN reveal PIPELINE bugs that will recur on every future build unless fixed at the source: (a) STALE FINGERPRINT \u2014 data/design-fingerprints.json still held the prior build's 'Bodoni Moda/Albert Sans'; my client reset cleared status.md but not the fingerprint ledger, so QA correctly flagged claim-vs-artifact drift. Reset must clear both. (b) HERO-VIDEO FALSE POSITIVE \u2014 verify-hero-video.mjs probes static HTML, but HeroVideo renders client-side via useRef/useEffect, so <video> is never in the export. The check cannot pass by construction on this template. Must probe a hydrated page. (c) /services NOT AN ANCHOR \u2014 a regression I introduced by wiring the shadcn dropdown-menu: nav renders a button, not <a href='/services'>. Keyboard/mobile users cannot reach it from primary nav. The shadcn wiring guidance must require the trigger to remain a real anchor. (d) TAIL NOT COLLAPSED \u2014 the trade-seed cap says 'max 6 uniform rows, top 3 featured, collapse the tail'. Build shipped 3 featured cards (cap WORKED) but a 12-row tail (cap did NOT bind on the tail). Seed must define what 'collapse' means concretely (grouped by category, or a 2-col compact grid, not a 12-row list). (e) DESIGN_IDEA ABSENT ON SUBPAGES \u2014 'Weather Authority' concept and the thermocline gradient appear only on home; about/contact have zero gradients. The design brief must bind per-route, not just on the home page. (f) SECONDARY INVISIBLE \u2014 derived olive-gold reads as invisible at distance; richness-check counts usage but not perceptual weight. (g) missing srcSet variant gmaps1-640.webp \u2014 optimise-images.mjs did not emit the 640w rung the markup references.",
+      "blocked_reason": "Build pid 8826 still running its fix round. All seven touch files the live build executes (verify-hero-video.mjs, trade-identities.csv, build/SKILL.md, optimise-images.mjs). Applying now corrupts the run and makes the result unattributable.",
+      "next_step": "On build exit: run /tmp/apply-deferred.sh (grid-break rule, colors.csv off trade path, qa-capture wiring), then fix (a)-(g) at source, then re-run verify-wiring.sh.",
+      "owner": "main-session"
+    },
+    {
+      "id": "SITE-FIX-01",
+      "status": "blocked",
+      "lane": "design",
+      "title": "cold-front-ac site defects (handled by the running build)",
+      "summary": "Six site-level defects from QA round 1 that qa-fix is fixing in-run: font-weight 500->400, 'top-notch' cliche in copy, missing gmaps1-640.webp, /services anchor, hero right-half empty on desktop, MobileCTA only on home. These are normal QA output, NOT a backlog.",
+      "next_step": "Fix the pipeline (PIPE-FIX-01), then rebuild once and re-measure.",
+      "owner": "unassigned",
+      "blocked_reason": "Build pid 8826 was KILLED mid-fix-round on Jeff's instruction to stop iterating a site built on a pipeline we were still repairing. The 6 site defects are not separately actionable -- they will be re-derived (or not occur) on the next build once the 7 pipeline bugs are fixed at source. Do NOT hand-patch this client's files; that is the treat-the-symptom path."
     }
   ],
-  "updated": "2026-08-19T15:02:00Z"
+  "updated": "2026-08-19T19:20:00Z"
 }

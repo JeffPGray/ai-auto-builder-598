@@ -269,7 +269,11 @@ class DesignSystemGenerator:
         landing_results = self._extract_results(search_results.get("landing", {}))
 
         best_style = self._select_best_match(style_results, reasoning.get("style_priority", []))
-        best_color = color_results[0] if color_results else {}
+        # colors.csv is NOT consulted for trade builds: colour comes from derive-palette.mjs, which
+        # is the only thing that can prove 4.5:1 and CVD separation against this client's real
+        # surfaces. A generic palette row competing with the derived one is how a build ends up
+        # arguing with itself about colour (Fable review, 2026-08-19).
+        best_color = {} if getattr(self, "_is_trade_query", False) else (color_results[0] if color_results else {})
 
         # Use typography_mood from reasoning to re-search typography with mood keywords
         typography_mood = reasoning.get("typography_mood", "")
