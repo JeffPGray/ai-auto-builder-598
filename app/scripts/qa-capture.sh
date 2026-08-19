@@ -158,6 +158,7 @@ node ../../../scripts/verify-nav-visibility.mjs out > /tmp/qa-gates-"$SLUG"/nav-
 ( cd ../../.. && node scripts/font-uniqueness-check.mjs "$SLUG" ) > /tmp/qa-gates-"$SLUG"/font-uniqueness.log 2>&1 &
 ( cd ../../.. && node scripts/verify-hero-video.mjs --slug "$SLUG" ) > /tmp/qa-gates-"$SLUG"/hero-video.log 2>&1 &
 ( cd ../../.. && node scripts/verify-design-intent.mjs "$SLUG" ) > /tmp/qa-gates-"$SLUG"/design-intent.log 2>&1 &
+( cd ../../.. && node scripts/reconcile-claims.mjs "$SLUG" ) > /tmp/qa-gates-"$SLUG"/reconcile.log 2>&1 &
 ( cd ../../.. && node scripts/verify-photos.mjs "$SLUG" ) > /tmp/qa-gates-"$SLUG"/photo.log 2>&1 &
 ( cd ../../.. && node scripts/copy-fingerprint-check.mjs "$SLUG" ) > /tmp/qa-gates-"$SLUG"/copy-fingerprint.log 2>&1 &
 

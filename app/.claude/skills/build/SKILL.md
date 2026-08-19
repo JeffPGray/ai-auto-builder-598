@@ -1095,8 +1095,9 @@ node scripts/contrast-check.mjs --tokens clients/$ARGUMENTS/site/src/app/globals
 node scripts/contrast-check.mjs clients/$ARGUMENTS/site/out
 node scripts/richness-check.mjs clients/$ARGUMENTS/site
 node scripts/verify-design-intent.mjs $ARGUMENTS
+node scripts/reconcile-claims.mjs $ARGUMENTS
 ```
-All must PASS before QA. `verify-design-intent.mjs` is the one that checks the site against **your
+All must PASS before QA. `reconcile-claims.mjs` is the one that checks your own `status.md` claims against the gates that adjudicate them — a build once recorded `HERO_VIDEO=OK` while the playback gate printed FAIL, and shipped. A self-report that contradicts its own gate is a hard fail now, in both directions. `verify-design-intent.mjs` is the one that checks the site against **your
 own recorded brief** — scale drama, whether each signature move actually shipped, and uniform-rhythm
 runs. `DESIGN_INTENT_CHECK=FAIL` means intent and artifact disagree; fix the artifact. A FAIL here costs seconds; the same FAIL found at QA costs a whole round.
 

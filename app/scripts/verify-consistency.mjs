@@ -807,6 +807,32 @@ function checkContractDrift() {
       copies.push({ file: short(d.path), line: h.line, heading: h.text, items, stated: [...new Set(stated)] });
     });
   }
+  // A contract is also SIZED from outside its own section — CLAUDE.md's QA loop tells the
+  // orchestrator how many booleans to expect without holding a copy of the list. Those references
+  // drift independently, and a paragraph that says "all 6 are FALSE" three lines above "the 5
+  // booleans" is contradicting itself where nobody is looking for a contract at all.
+  for (const d of docs) {
+    d.lines.forEach((raw, i) => {
+      if (!/hard-?blocker contract/i.test(raw)) return;
+      const win = d.lines.slice(i, i + 8);
+      const sizes = new Map();
+      win.forEach((l, k) => {
+        for (const m of l.matchAll(/\b(?:all|these|the)\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:are\s+)?(?:of\s+(?:them|these)\s+)?(?:check|checks|booleans?|items?|FALSE)/gi)) {
+          const n = toNum(m[1]);
+          if (n && !sizes.has(n)) sizes.set(n, { line: i + k + 1, text: l.trim().slice(0, 190) });
+        }
+      });
+      if (sizes.size < 2) return;
+      add({
+        kind: 'contract-drift',
+        confidence: 'high',
+        subject: `the hard-blocker contract is sized as ${[...sizes.keys()].sort().join(' and ')} in the same paragraph`,
+        sides: [...sizes.entries()].map(([n, v]) => ({ file: short(d.path), line: v.line, claim: `${n} items`, text: v.text })),
+        why: 'One passage gives two sizes for the same contract. Whichever the orchestrator acts on, one item is either graded against nothing or demanded from a report that never carries it.',
+      });
+    });
+  }
+
   if (!copies.length) return;
 
   // 6a. a copy whose enumerated item count disagrees with its own stated count
