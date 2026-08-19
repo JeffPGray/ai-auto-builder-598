@@ -164,7 +164,11 @@ die() {
   # rest of the script initialises that variable.
   local _die_root; _die_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
   local _client_slug; _client_slug="$(basename "$WATCH_DIR")"
-  if [ -f "$_die_root/scripts/detect-resume-stage.mjs" ]; then
+  # WATCH_DIR defaults to bare "clients" (arg 5 is optional per the usage string), which makes
+  # basename yield "clients" itself, not a real slug (code-review finding, 2026-08-19) — only run
+  # detection when WATCH_DIR is actually scoped to one client (clients/<slug>), which is what every
+  # real dispatch (single-shot or staged) passes as arg 5.
+  if [[ "$WATCH_DIR" == clients/* ]] && [ -f "$_die_root/scripts/detect-resume-stage.mjs" ]; then
     echo "--- resume-stage detection ---"
     (cd "$_die_root" && node scripts/detect-resume-stage.mjs "$_client_slug" 2>&1) || echo "  (resume-stage detection failed — fall back to manual salvage above)"
   fi

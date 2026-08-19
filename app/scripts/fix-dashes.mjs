@@ -44,8 +44,41 @@ function walk(dir) {
 
 // Strip comments to a same-length blank mask so indices still line up with the real source,
 // without touching the source itself — comments are never reader-visible copy.
+//
+// A single regex (`/\/\*...\*\/|\/\/[^\n]*/`) is NOT safe here (code-review finding, 2026-08-19):
+// it has no string-literal awareness, so `href="https://example.com"` gets its `//` read as a line
+// comment start, masking everything after it on that line — including a real reader-visible dash
+// later on the same line, which then silently survives unfixed. This is a proper single-pass
+// scanner that tracks whether we're inside a '/"/` string (respecting `\`-escapes) and only treats
+// `//` or `/* */` as a comment start OUTSIDE any string.
 function maskComments(text) {
-  return text.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (m) => ' '.repeat(m.length));
+  let out = '';
+  let i = 0;
+  let inString = null; // one of ' " ` or null
+  while (i < text.length) {
+    const ch = text[i];
+    if (inString) {
+      out += ch;
+      if (ch === '\\') { out += text[i + 1] ?? ''; i += 2; continue; } // escaped char, never a terminator
+      if (ch === inString) inString = null;
+      i++; continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') { inString = ch; out += ch; i++; continue; }
+    if (ch === '/' && text[i + 1] === '/') {
+      const end = text.indexOf('\n', i);
+      const stop = end === -1 ? text.length : end;
+      out += ' '.repeat(stop - i);
+      i = stop; continue;
+    }
+    if (ch === '/' && text[i + 1] === '*') {
+      const end = text.indexOf('*/', i + 2);
+      const stop = end === -1 ? text.length : end + 2;
+      out += ' '.repeat(stop - i);
+      i = stop; continue;
+    }
+    out += ch; i++;
+  }
+  return out;
 }
 
 const EM = '—';
@@ -65,7 +98,6 @@ for (const file of files) {
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     const isDash = ch === EM || ch === EN;
-    const isCode = mask[i] === ' ' && (text[i] === EM || text[i] === EN) ? mask[i] !== text[i] : false;
     // mask[i] is a space wherever a comment was stripped; if the real char is a dash AND the
     // mask position is blanked, this dash lives inside a comment — leave it untouched.
     const inComment = mask[i] !== text[i] && mask[i] === ' ';
