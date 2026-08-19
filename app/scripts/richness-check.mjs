@@ -675,6 +675,38 @@ if (rungs.length >= 3) {
   }
 }
 
+/* 17. SHADCN PRIMITIVES IGNORED (2026-08-19). The template vendors accordion/dialog/sheet/
+ * dropdown-menu into every client, and build/SKILL.md says to use them for FAQ, mobile nav and the
+ * services dropdown. A real build scaffolded all four, imported NONE, and hand-rolled a 211-line
+ * SiteNav plus a native <details> FAQ instead -- and that hand-rolled nav shipped the Services item
+ * as a <button>, so /services was unreachable from primary nav for keyboard and mobile users. The
+ * instruction was prose; prose loses. This counts what actually shipped. */
+const uiDir = join(siteDir, 'src', 'app', '_components', 'ui');
+if (existsSync(uiDir)) {
+  const available = readdirSync(uiDir).filter((f) => f.endsWith('.tsx')).map((f) => f.replace('.tsx', ''));
+  const srcFiles = existsSync(join(siteDir, 'src')) ? walk(join(siteDir, 'src')).filter((f) => /\.tsx?$/.test(f)) : [];
+  const srcText = srcFiles.map((f) => readFileSync(f, 'utf8')).join('\n');
+  const imported = available.filter((c) => new RegExp(`_components/ui/${c}`).test(srcText));
+  facts.shadcnAvailable = available.length;
+  facts.shadcnImported = imported;
+  const handRolledFaq = /<details/.test(srcText) && available.includes('accordion');
+  const handRolledNav = /aria-expanded|useState\([^)]*\)[\s\S]{0,400}menu/i.test(srcText)
+    && (available.includes('dropdown-menu') || available.includes('sheet'));
+  if (imported.length === 0 && available.length > 0) {
+    failures.push(
+      `[primitives] ${available.length} shadcn primitives are vendored in _components/ui/ ` +
+      `(${available.join(', ')}) and NOT ONE is imported anywhere in src/. The build hand-rolled ` +
+      'its own interactive widgets instead — which is how a nav shipped with Services as a <button> ' +
+      'and /services unreachable from primary nav. Use the primitives for FAQ (accordion), mobile ' +
+      'nav (sheet) and the services dropdown (dropdown-menu), restyled onto the derived tokens.');
+  } else if (handRolledFaq) {
+    warnings.push('[primitives] a native <details> FAQ shipped while accordion.tsx sits vendored and unused.');
+  }
+  if (handRolledNav && !imported.includes('dropdown-menu') && !imported.includes('sheet')) {
+    warnings.push('[primitives] nav appears hand-rolled (useState/aria-expanded) while sheet/dropdown-menu are vendored.');
+  }
+}
+
 const result = { result: failures.length ? 'FAIL' : 'PASS', failures, warnings, facts };
 if (JSON_OUT) console.log(JSON.stringify(result, null, 2));
 else {

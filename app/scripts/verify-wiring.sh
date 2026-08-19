@@ -89,6 +89,17 @@ chk "qa-fix has post-compaction reload"  "grep -q 'brief-only' .claude/skills/qa
 for m in fix-dashes fix-img-dims ship-scan verify-design-intent; do
   chk "fixer exists: $m.mjs"             "test -f scripts/$m.mjs"; done
 
+echo ""; echo "── 7c. design gates that catch what prose could not ──"
+chk "monotone-ground gate exists"        "grep -q 'MONOTONE GROUND RUN' scripts/richness-check.mjs"
+chk "monotone gate catches mono-navy"    "node scripts/richness-check.mjs clients/cold-front-ac/site 2>&1 | grep -q '\[monotone\]'"
+chk "shadcn-ignored gate exists"         "grep -q 'SHADCN PRIMITIVES' scripts/richness-check.mjs"
+chk "shadcn gate catches non-use"        "node scripts/richness-check.mjs clients/cold-front-ac/site 2>&1 | grep -q '\[primitives\]'"
+chk "canvas decision rule is executable" "grep -q 'CANVAS_MODE=' .claude/skills/build/SKILL.md"
+chk "NEUTRAL-CANVAS is the trade default" "grep -q 'NEUTRAL-CANVAS is the default' .claude/skills/build/SKILL.md"
+chk "saturated no longer 'usually right'" "! grep -q 'usually the right answer for a trade site' .claude/skills/build/SKILL.md"
+chk "reset script clears fingerprints"   "grep -q 'design-fingerprints' scripts/reset-client-design.mjs"
+chk "canonical qa-serve strips prefix"   "grep -q 'klaudius' scripts/qa-serve.mjs"
+
 echo ""; echo "── 8. no dangling references to deleted sections ──"
 chk "no dead § refs"                     "! grep -rqE '§ (Visual richness|Composition|Colour roles|Ground|Trade personality|Photo art direction|Section treatments|Design manifest|Typography variation)' .claude/skills/*/SKILL.md .claude/agents/*.md CLAUDE.md scripts/*.mjs"
 chk "Bodoni not a code example"          "! grep -q 'Bodoni_Moda' .claude/skills/build/SKILL.md"
