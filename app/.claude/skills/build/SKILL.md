@@ -1282,6 +1282,28 @@ that straddles the boundary, or a gradient that resolves into the next ground �
 display weight for headlines and the sans at 400 for body — do not level them to the same weight and
 size class, which throws away the pairing that was chosen for the trade.
 
+**6. No 4+ identical siblings anywhere on the page (generalizes the nav-dropdown ban above to ALL
+page content — 2026-08-19 Fable design-elevation review).** The nav-dropdown rule already bans "a
+same-sized icon-card grid" for the Services dropdown specifically, citing four converged design
+reviews. That reasoning was never wrong for the rest of the page — it just never got generalized,
+and cold-front-ac shipped 5 byte-identical review cards and 4 byte-identical stat cards as a direct
+result. `richness-check.mjs` now hard-fails this pattern deterministically (§ IDENTICAL SIBLING
+COMPONENTS), but the fix belongs here first: **in any group of 4+ similar components, make one
+structurally dominant** — spans two columns, carries a photo the others lack, sits at display-scale
+type, or is the open/expanded state — or don't use a card grid for that section at all. Named
+alternatives by section type:
+- **Reviews/testimonials** — one display-scale featured quote (real customer, real name) plus
+  smaller supporting quotes around it, or distribute quotes as pull-quotes through the page instead
+  of banding them into one card row.
+- **Services** — a bento layout with one dominant cell (the highest-value or most-differentiating
+  service), or full-width ledger rows (icon + name + one-line description, left-aligned, divided by
+  hairlines) instead of a card grid.
+- **FAQ** — the first item shown open with its answer visible (not all collapsed identically), or a
+  two-column split (question index left, answer content right) instead of a stacked accordion where
+  every row looks the same at rest.
+- **Stats/trust numbers** — vary the type scale across the set (one number genuinely bigger than the
+  rest) rather than four equal-sized figures in equal-sized boxes.
+
 **6. Photography needs varied crops.** A grid of six identically-cropped 4:3 photos is a contact
 sheet. Mix one tall portrait crop, one wide establishing shot, and let one image be significantly
 larger than its neighbours — the same "density and interaction, not palette size" principle the

@@ -559,6 +559,69 @@ if (home) {
   }
 }
 
+/* 15. IDENTICAL SIBLING COMPONENTS — the cold-front-ac defect (2026-08-19 Fable design-elevation
+ * review). Every other check here counts a per-page or per-site AGGREGATE (gradients, photo
+ * grounds, section treatments) — none of them can see WITHIN-page monotony. cold-front-ac shipped
+ * 5 review cards and 5 FAQ items each with a byte-identical class string and zero structural
+ * variant, and every existing gate passed clean (richness's own aggregate counts were satisfied
+ * elsewhere on the page). 4+ identical siblings with no dominant/featured one is the single most
+ * recognisable AI-page tell there is — this is the deterministic half of that fix; the guidance
+ * half (named alternatives per section type — featured quote, bento, ledger rows) lives in
+ * build/SKILL.md's composition guidance.
+ *
+ * CALIBRATED against two real builds before shipping: first pass matched on any rounded/bg- class
+ * and false-positived on every repeated nav link and mobile-menu item (36 hits across
+ * the-woodlands-plumbing-and-air, none real) — tightened to require a real boundary (border or
+ * shadow, not bare rounded/bg-). Also excluded <input>/<textarea>/<select>/<option>/<label> (a
+ * form's fields SHOULD share a class — real false positive on a 4-field contact form). Final pass:
+ * cold-front-ac correctly flags exactly its 2 known defects (5 review cards, 4 stat cards);
+ * the-woodlands-plumbing-and-air (2026-08-16, the pipeline's own quality floor) correctly flags 2
+ * real ones of its own (a 9-item service list, a 9-item blog list) — consistent with Jeff's own
+ * read that even the floor build isn't clean on every axis. */
+function tokenOverlap(a, b) {
+  const setA = new Set(a);
+  const inter = b.filter((t) => setA.has(t)).length;
+  return inter / Math.max(a.length, b.length, 1);
+}
+const STRUCTURAL_VARIANT = /(col-span|row-span|order-|lg:col|md:col|scale-1|text-(2|3|4)xl|aspect-)/;
+for (const f of pages) {
+  const page = readFileSync(f, 'utf8');
+  const counts = new Map();
+  for (const m of page.matchAll(/<(\w+)[^>]*?class="([^"]{60,400})"/g)) {
+    const tag = m[1];
+    const cls = m[2];
+    // <input>/<textarea>/<select> siblings sharing a class is correct UX (a form's fields SHOULD
+    // look identical), not the AI-slop pattern — excluded after calibrating against a real build's
+    // 4 identical contact-form inputs, a genuine false positive.
+    if (/^(input|textarea|select|option|label)$/i.test(tag)) continue;
+    // Component-scale only — must look like a card/panel with a real boundary (border or shadow;
+    // NOT bare `rounded`/`bg-` alone, which nav links, pills and menu items also carry, and which
+    // false-positived on every nav's repeated link classes when first calibrated against a real
+    // build). Padding of p-3 or more is still required to exclude compact chips/badges.
+    if (!/(border|shadow)/.test(cls) || !/p[xy]?-[3-9]/.test(cls)) continue;
+    counts.set(cls, (counts.get(cls) || 0) + 1);
+  }
+  const keys = [...counts.keys()];
+  for (const [cls, n] of counts) {
+    if (n < 4) continue;
+    const toks = cls.split(/\s+/);
+    // A deliberate variant = a near-identical sibling class (>=70% shared tokens) that ALSO
+    // carries a structural modifier (span/order/scale/larger-type/aspect) — i.e. one card is
+    // genuinely different in shape, not just present at a different array index.
+    const hasVariant = keys.some((o) => o !== cls
+      && tokenOverlap(toks, o.split(/\s+/)) >= 0.7
+      && STRUCTURAL_VARIANT.test(o));
+    if (!hasVariant) {
+      failures.push(
+        `[repetition] ${n}x byte-identical component class on ${f.replace(outDir + '/', '')} with ` +
+        `no structural variant sibling ("${cls.slice(0, 80)}${cls.length > 80 ? '…' : ''}"). 4+ ` +
+        'identical cards with nothing dominant is the single most recognisable AI-page tell — make ' +
+        'one card structurally different (span/photo/scale/open state) or use a non-card layout ' +
+        'for this section (featured quote + supporting quotes, bento, full-width ledger rows).');
+    }
+  }
+}
+
 const result = { result: failures.length ? 'FAIL' : 'PASS', failures, warnings, facts };
 if (JSON_OUT) console.log(JSON.stringify(result, null, 2));
 else {
