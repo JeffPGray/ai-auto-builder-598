@@ -136,6 +136,15 @@ class DesignSystemGenerator:
     # nothing else matched at all.
     _BASELINE_COMPLIANCE_STYLES = {"accessible & ethical", "inclusive design"}
 
+    # Styles whose "Best For" is fashion / luxury / editorial / portfolio. BM25 happily matches
+    # these to a trade query on a shared word -- measured 2026-08-19: an HVAC query matched
+    # "Exaggerated Minimalism" (Best For: fashion, architecture, portfolios, luxury brands,
+    # editorial) on the word "bold", and the build adopted it wholesale. A boiler-repair company
+    # is not a fashion house. Demoted (not deleted) for Trade Service categories: still selectable
+    # if the trade's own seed row names that direction, never selectable by keyword accident.
+    _OFF_REGISTER_FOR_TRADE = ("fashion", "luxury", "editorial", "portfolio", "gallery",
+                               "haute", "couture", "boutique")
+
     def _select_best_match(self, results: list, priority_keywords: list) -> dict:
         """Select best matching result based on priority keywords."""
         if not results:
@@ -145,6 +154,14 @@ class DesignSystemGenerator:
                          if r.get("Style Category", "").strip().lower() not in self._BASELINE_COMPLIANCE_STYLES]
         if non_baseline:
             results = non_baseline
+
+        # Trade queries: demote off-register (fashion/luxury/editorial) styles behind anything else.
+        if getattr(self, "_is_trade_query", False):
+            on_register = [r for r in results
+                           if not any(w in r.get("Best For", "").lower()
+                                      for w in self._OFF_REGISTER_FOR_TRADE)]
+            if on_register:
+                results = on_register
         # else: every candidate was a baseline style -- fall through and use them rather than
         # returning nothing, but this should be rare enough to be worth noticing if it happens.
 
@@ -228,6 +245,7 @@ class DesignSystemGenerator:
             category = product_results[0].get("Product Type", "General")
 
         # Step 2: Get reasoning rules for this category
+        self._is_trade_query = category.startswith("Trade Service")
         reasoning = self._apply_reasoning(category, {})
         style_priority = reasoning.get("style_priority", [])
 

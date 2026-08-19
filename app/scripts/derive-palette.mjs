@@ -314,17 +314,36 @@ const GROUND_FAMILIES = {
     { L: 0.880, C: 0.016 }, // 5 light RELIEF — breaks a long dark run
     { L: 0.120, C: 0.022 }, // 6 deepest, richest — footer/CTA anchor
   ],
+  // Chroma raised 0.016-0.022 -> 0.038-0.055 on 2026-08-19. At these ceilings the ladder was
+  // near-ACHROMATIC by construction, so a dark build rendered as literal grey-on-black and the
+  // operator's verdict was "no colour theory, why black". Chroma reads weaker as lightness falls,
+  // so a dark ground needs MORE chroma than a light one to carry the same amount of hue, not less.
+  // Values are still gamut-clamped downstream, so this raises the ceiling without risking sRGB.
   dark: [
-    { L: 0.180, C: 0.022 },
-    { L: 0.150, C: 0.020 },
-    { L: 0.120, C: 0.018 },
-    { L: 0.095, C: 0.016 },
-    { L: 0.920, C: 0.014 }, // relief
-    { L: 0.060, C: 0.018 }, // deepest
+    { L: 0.180, C: 0.055 },
+    { L: 0.150, C: 0.050 },
+    { L: 0.120, C: 0.045 },
+    { L: 0.095, C: 0.040 },
+    { L: 0.920, C: 0.016 }, // relief (light rung — keep low, high chroma at high L goes garish)
+    { L: 0.060, C: 0.038 }, // deepest
+  ],
+  // SATURATED — the brand hue as an ENVIRONMENT, not as a tint (added 2026-08-19).
+  // The pipeline's own trade-identities.csv holds up southernlifts.com.au as the bar and describes
+  // its ground as "the hue at full chroma as an environment" (~C 0.09-0.13). No existing family
+  // could produce that: light/cream/deep/dark all cap at or below C 0.03, so the reference the
+  // system points at was unreachable by the system. This family closes that gap. Contrast is
+  // solved against these rungs exactly as for every other family, so it is committed, not risky.
+  saturated: [
+    { L: 0.380, C: 0.120 }, // 1 hero — full-chroma brand environment
+    { L: 0.330, C: 0.115 }, // 2 default background
+    { L: 0.290, C: 0.105 }, // 3 alt section
+    { L: 0.240, C: 0.095 }, // 4 recessed band
+    { L: 0.940, C: 0.020 }, // 5 light RELIEF — mandatory breather in a saturated run
+    { L: 0.190, C: 0.090 }, // 6 deepest — footer/CTA anchor
   ],
 };
 if (!GROUND_FAMILIES[groundFamilyArg]) {
-  console.error(`bad --ground: ${groundFamilyArg} (want light|cream|deep|dark)`);
+  console.error(`bad --ground: ${groundFamilyArg} (want light|cream|deep|dark|saturated)`);
   process.exit(2);
 }
 const ladderSpec = GROUND_FAMILIES[groundFamilyArg];

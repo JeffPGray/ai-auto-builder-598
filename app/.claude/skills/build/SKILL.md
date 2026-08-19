@@ -679,6 +679,41 @@ Returns the trade's real art direction from `data/trade-identities.csv` (design 
 archetype, signature motif, material direction, card-grid alternative). **Use it.** The output is
 the artifact — a consult that was never written down cannot be distinguished from one that never ran.
 
+### Step 1b — COMPOSITION BRAIN: invoke `impeccable` (MANDATORY, 2026-08-19)
+
+`/ui-ux-pro-max` is a lookup table. It returns a style name, a palette family, a font pairing and a
+section order — it has **no capacity to judge whether any of that suits this business**, and it
+proved that by matching "Exaggerated Minimalism (Best For: fashion, architecture, luxury, editorial)"
+to an HVAC contractor on the word "bold". Sections, elements and styling are exactly what it cannot
+reason about, and that is what keeps reading as slop.
+
+**So invoke a real design brain for composition, before writing any TSX:**
+
+```
+Skill(skill="impeccable", args="shape — a marketing site for {BUSINESS}, a {TRADE} in {TOWN}. Register: brand. Ground: {GROUND}. Brand accent {HEX}. DESIGN_IDEA: {DESIGN_IDEA}. Sections planned: {SECTION LIST}. Give me the compositional spec: layout pattern per section, where hierarchy breaks, what is featured vs secondary, and what to avoid.")
+```
+
+Hold its output as binding for **layout and composition**. It carries the bans this pipeline keeps
+violating, by name:
+- **"Identical card grids — same-sized cards with icon + heading + text, repeated endlessly"** — the
+  exact defect that shipped 16 uniform service rows.
+- Side-stripe borders, gradient text, glassmorphism-as-default, the hero-metric template,
+  modal-as-first-thought.
+- A real **colour strategy** axis (Restrained → Committed → Full palette → Drenched) — pick one and
+  commit; a timid middle is what produced grey-on-black.
+- The **category-reflex check**: if someone could guess the palette from the category alone
+  ("trade → navy", "HVAC → blue", "contractor → dark"), that is the training-data reflex, and you
+  must rework it until the answer is not obvious from the trade. Run it at both altitudes.
+
+**Precedence:** `impeccable` owns layout, composition, hierarchy and colour STRATEGY.
+`derive-palette.mjs` still owns the actual hex values (only it proves 4.5:1 and CVD separation).
+`/ui-ux-pro-max` is demoted to a retrieval library — typography rows, trade seeds, section order.
+Where `impeccable` and `ui-ux-pro-max` disagree on composition, **`impeccable` wins.**
+
+> Why this was missing: `build/SKILL.md`'s frontmatter forbade the `Skill` tool entirely until
+> 2026-08-19, so no build could ever invoke `impeccable`, `taste-skill`, `anti-ai-slop` or anything
+> else. The pipeline was architecturally locked to the lookup table.
+
 ### Step 2 — Typography (script + seed, never the `--design-system` font field)
 
 ```bash
@@ -702,11 +737,16 @@ there is no third-party request, no FOUT, and nothing that can go missing:
 
 ```tsx
 // src/app/layout.tsx
-import { Bodoni_Moda, Space_Grotesk } from "next/font/google";
+// NOTE: these two families are a MECHANISM example only — they are deliberately NOT a
+// recommendation, and you must substitute the pairing the consult returned. Bodoni Moda used to
+// sit here and on 2026-08-19 a build that had been forced off its correct font reached for the
+// example instead and shipped a high-fashion didone on a Texas HVAC contractor. Rules lose to
+// examples, so this example is now a neutral workhorse pairing.
+import { Source_Serif_4, Inter_Tight } from "next/font/google";
 
-const display = Bodoni_Moda({ subsets: ["latin"], display: "swap",
+const display = Source_Serif_4({ subsets: ["latin"], display: "swap",
   weight: ["400", "600", "700"], variable: "--font-display-src" });
-const body = Space_Grotesk({ subsets: ["latin"], display: "swap",
+const body = Inter_Tight({ subsets: ["latin"], display: "swap",
   weight: ["300", "400", "500", "700"], variable: "--font-body-src" });
 
 // ...
@@ -734,10 +774,10 @@ returns the declared stack whether or not the face ever loaded, so the script wi
 rendered glyphs instead. Do not declare the build done until it prints `FONT_CHECK=PASS`.
 
 ### How to pick fonts
-1. Skip the `--design-system` font recommendation — go straight to typography domain search: `python3 .claude/skills/ui-ux-pro-max/scripts/search.py "INDUSTRY KEYWORDS" --domain typography -n 5`
+1. **START from the `--design-system` font recommendation — it is usually right and overriding it is what broke a real build.** Measured 2026-08-19: the consult returned Literata / Schibsted Grotesk for an HVAC contractor (the exact pairing on the operator's preferred build); this instruction told the builder to discard it, the global no-reuse rule then rejected the fallback, and the build shipped Bodoni Moda — a Vogue didone — on an HVAC company. Take the consult's pairing unless it is BANNED below or collides with a SAME-TOWN build. Only if one of those applies, widen with: `python3 .claude/skills/ui-ux-pro-max/scripts/search.py "INDUSTRY KEYWORDS" --domain typography -n 5` and pick by seed from that shortlist.
 2. Pick a pairing with serif/slab heading + sans body
 3. Check both fonts against the banned lists below
-4. **Uniqueness rule**: pass `--heading-font "<Family Name>" --body-font "<Family Name>" --town "<city>"` into the § Convergence check's `design-ledger.mjs check`/`record` calls below (once ground/formula/harmony/character are also decided) — don't invent a second, separate invocation. The ledger checks font-name reuse deterministically across full build history: `FONT_LEDGER=REUSE` on a heading-font match is a hard stop (never reuse the same heading font as another site, no exceptions); a same-town body-font match prints `FONT_LEDGER=WARN` (don't reuse the body font for neighbouring-town clients either, but it isn't a hard stop yet). This replaces the old "scan 3-4 recent client `globals.css` files" ad hoc skim — the ledger already has the full history, so there's nothing left for a manual scan to add.
+4. **Uniqueness rule**: pass `--heading-font "<Family Name>" --body-font "<Family Name>" --town "<city>"` into the § Convergence check's `design-ledger.mjs check`/`record` calls below (once ground/formula/harmony/character are also decided) — don't invent a second, separate invocation. The ledger checks font-name reuse deterministically across full build history: `FONT_LEDGER=REUSE` fires only on a **SAME-TOWN** heading-font collision and is a hard stop there (neighbouring owners can see each other's sites). A cross-town match prints `FONT_LEDGER=INFO` and is **NOT** a failure — keep the font. Scoped 2026-08-19: the rule used to be global, which rejected the consult's correct pairing and pushed a build onto the skill's own code example (a Vogue didone on an HVAC contractor). A same-town body-font match prints `FONT_LEDGER=WARN` (don't reuse the body font for neighbouring-town clients either, but it isn't a hard stop yet). This replaces the old "scan 3-4 recent client `globals.css` files" ad hoc skim — the ledger already has the full history, so there's nothing left for a manual scan to add.
 
 ### Banned fonts (never use in any position)
 Inter, Geist, Roboto, Arial, system-ui, sans-serif, Barlow, DM Sans, Poppins, Open Sans, Montserrat, Raleway, Nunito, Syne, Plus Jakarta Sans, Familjen Grotesk, Karla, Manrope, Bricolage Grotesque

@@ -161,15 +161,38 @@ if (mode === 'check') {
   // Heading-font reuse: hard FAIL, immediately, no calibration period — build/SKILL.md already
   // makes "never reuse the same heading font as another site" mandatory prose, and this is a
   // plain string-equality measurement with nothing to tune.
+  //
+  // ⚠️ SCOPED TO SAME TOWN, 2026-08-19 — this rule previously applied GLOBALLY and that was the
+  // proven cause of a real absurdity. Measured on cold-front-ac: the design consult correctly
+  // returned Literata/Schibsted Grotesk (the exact pairing on the operator's preferred build,
+  // the-woodlands-plumbing-and-air). Woodlands already held Literata, so the global rule hard-
+  // rejected the CORRECT answer. The builder fell back to the skill's flat font list and picked
+  // Bodoni Moda — a high-fashion didone, on a Texas HVAC contractor — because Bodoni_Moda is the
+  // literal font-loading CODE EXAMPLE in build/SKILL.md, and rules lose to examples.
+  //
+  // With a ~15-font pool, 3 fingerprint records and a permanent global no-reuse rule, degradation
+  // to absurd fonts was arithmetically guaranteed within a handful of builds. It arrived on build 4.
+  //
+  // Uniqueness only has value where a prospect could actually SEE both sites. A Woodlands plumber
+  // and an Oklahoma City demolition firm sharing Literata is invisible to everyone; forcing them
+  // apart burns the font pool and pushes builds toward whatever example text is nearest. So the
+  // hard FAIL now requires a same-town collision. Cross-town reuse is reported as INFO only.
   if (fp.headingFont) {
-    const collision = fontRecent.find(
+    const sameFont = fontRecent.filter(
       (r) => r.headingFont && normFont(r.headingFont) === normFont(fp.headingFont)
     );
-    if (collision) {
+    const sameTown = fp.town
+      ? sameFont.find((r) => r.town && normFont(r.town) === normFont(fp.town))
+      : null;
+    if (sameTown) {
       console.log(
-        `FONT_LEDGER=REUSE — heading font "${fp.headingFont}" collides with ${collision.slug}'s heading font "${collision.headingFont}". Never reuse a heading font (build/SKILL.md § How to pick fonts) — pick a different shortlist entry.`
+        `FONT_LEDGER=REUSE — heading font "${fp.headingFont}" collides with ${sameTown.slug}'s heading font in the SAME TOWN (${fp.town}). Neighbouring owners can see each other's sites — pick a different shortlist entry.`
       );
       fontFail = true;
+    } else if (sameFont.length) {
+      console.log(
+        `FONT_LEDGER=INFO — heading font "${fp.headingFont}" is also used by ${sameFont.map((r) => r.slug).join(', ')}, but in a different town. NOT a failure: no prospect sees both sites, and forcing a re-pick here is what produced a fashion didone on an HVAC contractor on 2026-08-19. Keep the font the consult chose.`
+      );
     }
   }
 
