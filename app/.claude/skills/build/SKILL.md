@@ -33,6 +33,33 @@ confident you remember it. `grep -n "^#"` this file to find the right heading, t
 `offset`/`limit` for just that section — never the whole 2,600+ line file. This is the same narrow-
 read discipline as above, applied to the skill's own instructions instead of generated code.
 
+## How to read this file (precedence — settled 2026-08-19 after five real failures)
+
+This file has grown by accretion and its rules have, more than once, contradicted each other. When
+that happened the model followed **whichever instruction sat nearest the work**, and the unenforced
+one beat the enforced one. Three measured examples: a line saying `saturated` "is usually the right
+answer" sat 15 lines below a table naming NEUTRAL-CANVAS as the default, and produced a mono-navy
+site; a "skip the consult's font" instruction beat the precedence table that assigned typography to
+the consult, and shipped a Vogue fashion didone on an HVAC contractor; a code example using
+`Bodoni_Moda` beat the prose telling the model not to use display serifs. **Examples beat rules, and
+proximity beats correctness.** So precedence is now explicit:
+
+1. **A rule with a NAMED GATE outranks a rule without one.** If two instructions conflict and one is
+   enforced by a script (`richness-check.mjs`, `verify-design-intent.mjs`, `contrast-check.mjs`,
+   `design-ledger.mjs`, `font-check.mjs`, `ship-scan.mjs`), the enforced one wins — regardless of
+   which appears later in this file or nearer to what you are doing.
+2. **A NUMBER outranks an adjective.** "≥ 3.5× body size" beats "large". Where a rule states both,
+   the number is the rule and the adjective is commentary.
+3. **A code example is a MECHANISM demonstration, never a recommendation.** Substitute the values
+   this client's consult returned. If an example's literal values would violate a rule in this file,
+   the rule wins and the example is a bug — say so.
+4. **If you can satisfy a rule while its gate still fails, the rule text is wrong.** Do not
+   gesture at compliance. Record the discrepancy in `status.md` so the rule gets fixed.
+5. **Silence is not permission.** If a step's instruction cannot execute — a skill you are told to
+   invoke is not in `allowed-tools`, a script flag does not exist, a referenced file is missing —
+   **stop and report it**. Five separate instructions in this pipeline were unexecutable for weeks
+   and failed silently, because nothing errors when an instruction simply cannot run.
+
 ## Pre-build checks (MANDATORY - do these before writing any code)
 
 ### 0. Retrofit guard (CMS / booking system)

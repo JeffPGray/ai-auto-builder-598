@@ -102,7 +102,9 @@ chk "canonical qa-serve strips prefix"   "grep -q 'klaudius' scripts/qa-serve.mj
 
 echo ""; echo "── 8. no dangling references to deleted sections ──"
 chk "no dead § refs"                     "! grep -rqE '§ (Visual richness|Composition|Colour roles|Ground|Trade personality|Photo art direction|Section treatments|Design manifest|Typography variation)' .claude/skills/*/SKILL.md .claude/agents/*.md CLAUDE.md scripts/*.mjs"
-chk "Bodoni not a code example"          "! grep -q 'Bodoni_Moda' .claude/skills/build/SKILL.md"
+# Precise: Bodoni must not appear as an IMPORT/code example. Mentioning it in the historical
+# explanation of why it was removed is correct and must not fail this check.
+chk "Bodoni not a code example"          "! grep -qE '^\\s*(import|const).*Bodoni_Moda' .claude/skills/build/SKILL.md"
 chk "consult typography not skipped"     "! grep -q 'Skip the .--design-system. font' .claude/skills/build/SKILL.md"
 
 echo ""; printf "  ═══ %d passed, %d FAILED ═══\n\n" "$P" "$F"
