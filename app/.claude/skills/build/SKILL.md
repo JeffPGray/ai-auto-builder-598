@@ -68,6 +68,17 @@ for m in cms.md cms-in-progress booking.md booking-in-progress; do test -f clien
 ```
 If it prints any STOP, **do not rebuild.** This client's site has (or is mid-way through getting) a self-serve CMS (`/cms`) and/or a booking system (`/booking`); the rebuild below starts with `rm -rf clients/$ARGUMENTS/site`, which would destroy that wiring and orphan the owner's saved CMS edits in Vercel Blob. Edit the existing site in place instead (see the relevant skill's Maintenance section).
 
+### 0.4 Re-designing an existing client? Reset its design state FIRST
+
+If `clients/$ARGUMENTS/site` already exists and you are doing a fresh DESIGN pass (not a resume):
+```bash
+node scripts/reset-client-design.mjs $ARGUMENTS --yes
+```
+It clears `site/`, the design lines in `status.md`, AND this slug's row in
+`data/design-fingerprints.json` — keeping gather, images and docs. A hand reset that clears
+status.md but leaves the fingerprint stale makes the ledger LIE: QA then raises a CRITICAL
+claim-vs-artifact drift against a record that is simply out of date (measured 2026-08-19).
+
 ### 0.5 Reachability (only when `OUTREACH_ENABLED=true`)
 Confirm at least one channel in `OUTREACH_PRIORITY` is viable for this client — `email` needs an `email`, `whatsapp`/`sms` need a mobile `phone`. Check the Supabase row AND `gathered-content.md` (gather often finds an email late — if so, write it to the client row now). If no enabled channel is viable and the client has no `facebook`/`instagram` for the manual-DM lane: **STOP — do not build.** Record "on hold: no enabled outreach channel is viable" in status.md and the client's `notes`, leave status at `gathered`, and alert via `bash scripts/notify.sh`. Do NOT mark `unreachable` — the client may have a contact method on a channel the operator simply hasn't enabled (an email under a whatsapp-only install, a phone under an email-only one), and the lead becomes workable the moment they enable it. A site you cannot send is a wasted build.
 
@@ -1066,6 +1077,15 @@ display type as the primary anchor, numbered full-width service rows (not cards)
 stories (not a photo grid), trade motif animated into the site chrome. **A build that would read as
 visibly more timid than that page next to it has not met the bar** — name what makes it timid and
 fix that specific thing.
+
+### Step 4b — Favicon (script, not prose)
+
+```bash
+node scripts/generate-favicon.mjs $ARGUMENTS
+```
+This script exists because the favicon rule was prose and got silently skipped on a real build
+(2026-08-17: shipped the scaffold's stale `favicon.ico`, no `app/icon.png`). A rule you have to
+remember every time is not a gate; a script that runs every time is.
 
 ### Step 5 — Verify (scripts, before handing to QA)
 
