@@ -168,6 +168,7 @@ fi
 # carried or fresh.
 ( cd ../../.. && node scripts/font-uniqueness-check.mjs {slug} ) > /tmp/qa-gates-{slug}/font-uniqueness.log 2>&1 &
 ( cd ../../.. && node scripts/verify-hero-video.mjs --slug {slug} ) > /tmp/qa-gates-{slug}/hero-video.log 2>&1 &
+( cd ../../.. && node scripts/verify-design-intent.mjs {slug} ) > /tmp/qa-gates-{slug}/design-intent.log 2>&1 &
 ( cd ../../.. && node scripts/verify-photos.mjs {slug} ) > /tmp/qa-gates-{slug}/photo.log 2>&1 &
 ( cd ../../.. && node scripts/copy-fingerprint-check.mjs {slug} ) > /tmp/qa-gates-{slug}/copy-fingerprint.log 2>&1 &
 
@@ -397,7 +398,7 @@ npx playwright-cli -s=qa-{slug}-desktop eval "JSON.stringify(Array.from(document
 # every screenshot phase above (home + subpages, desktop + mobile) has been running concurrently
 # with these 11 checks the whole time instead of waiting until now to even start them.
 wait
-for f in font-check font-uniqueness contrast token hero-video photo copy-fingerprint reviews nav-visibility; do
+for f in font-check font-uniqueness contrast token hero-video photo copy-fingerprint reviews nav-visibility design-intent; do
   echo "--- $f ---"; cat "/tmp/qa-gates-{slug}/$f.log"
 done
 rm -rf "/tmp/qa-gates-{slug}"
@@ -668,6 +669,7 @@ Then check every item below, **on every page**:
 
 - [ ] **Marquee animation speed.** If the site has a marquee/ticker strip, grep globals.css: `grep -n 'animation: marquee' clients/{slug}/site/src/app/globals.css`. The duration must be in the 18–28 second range for a 2x-duplicated track. Anything 35s+ feels broken and stationary; anything under 12s is dizzying. Flag if outside 18–28s.
 
+- [ ] **Design intent vs artifact (hard FAIL) — read the `DESIGN_INTENT_CHECK=` line printed by `verify-design-intent.mjs` in Step 3.** It verifies the build against **its own recorded brief** in `status.md`: scale drama (largest heading >=3.5x body), whether each recorded signature move left any trace in the shipped HTML/CSS, and uniform-rhythm runs (6+ identical-class headings on a marketing page with nothing featured). `FAIL` is CRITICAL. This exists because a build recorded three signature moves and a dominant element, shipped none of them visibly, and passed every other gate — a rule satisfiable by writing a sentence is not a rule. Do NOT accept "the move is there conceptually"; the check reads the artifact. Fix the artifact, never the status.md wording.
 - [ ] **Nav link visibility at fresh load, scroll=0 (hard FAIL) — read the `NAV_VISIBILITY_CHECK=` line printed by `verify-nav-visibility.mjs` in Step 3.** `FAIL` is CRITICAL: a nav link's real, pixel-sampled backdrop makes it unreadable on first load, before any scroll. Unlike `CONTRAST_CHECK` above (which reads the DOM ancestor chain), this samples actual rendered pixels — the only reliable method for a `position: fixed` nav whose true visual backdrop is whatever page content is scrolled underneath it, not its DOM parent. Do NOT overrule a FAIL because `CONTRAST_CHECK=PASS` on the same element — that check structurally cannot see this failure mode (verified: a real invisible-nav bug reproduced 0 failures on `CONTRAST_CHECK` and was only caught by this check). `SKIP` means no `[data-nav]` element with links was found — not this template, not a finding.
 
 - [ ] **No gap above the navbar after scrolling.** If the navbar is `fixed` with a top offset (e.g. `top-[34px]`), any element rendered above it (an info strip with phone/hours/etc.) MUST also be fixed/sticky — otherwise it scrolls away in normal flow and leaves an empty gap exposing the page background. Test this explicitly: look at the very top of `qa-mid.webp` and `qa-bottom.webp` (the post-scroll screenshots). If you can see body content / hero background showing through above the navbar, flag as critical. Also grep the source: if `fixed top-[Npx]` (any positive offset) appears on the navbar, find the element rendered immediately above it in JSX and confirm it also has `fixed`/`sticky` positioning. A bare `<div className="bg-...">` above a `fixed top-[34px]` navbar is the bug signature.

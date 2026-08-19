@@ -655,58 +655,37 @@ responsibility, and a fabricated claim about a real business is the worst thing 
 If the sub-agent fails or returns something you would not send, **write the articles yourself**. A
 lost 5 minutes is not a reason to ship prose you have not vouched for.
 
-## Font
-Do NOT use Inter, Geist, or system-ui (the Next.js defaults) - they scream "template". Remove any Inter/Geist imports from layout.tsx. **Read "How to LOAD the fonts" below before you write a single line of `globals.css`** — the loading mechanism is where this step silently fails. NEVER use `style={{ fontFamily: "system-ui, sans-serif" }}` or any inline fontFamily override - let globals.css cascade to all elements.
+## Design (HARD RULES — measured, never described)
 
-> 🚨 **`font-800` / `font-900` / `font-700` are NOT real Tailwind v3 classes — caught live on a real
-> build, 52 occurrences across every page, every heading silently rendering at the browser default
-> weight instead of the designed one.** This section and § Trade personality both describe heading
-> weight numerically ("weight >=800") because that's how typography specs work — but numeric weight
-> **in a Tailwind `className`** needs the NAMED utility, not the number as a class suffix:
-> `font-thin`(100) `font-extralight`(200) `font-light`(300) `font-normal`(400) `font-medium`(500)
-> `font-semibold`(600) `font-bold`(700) `font-extrabold`(800) `font-black`(900). So "weight >=800"
-> means `font-extrabold` or `font-black` in a className — never `font-800`/`font-900`. This is a
-> DIFFERENT axis from `next/font/google`'s own `weight: ["400","700","900"]` array (that one
-> correctly takes numeric strings — it's a font-loading argument, not a Tailwind class, and is not
-> what broke). Verify after any heading-weight change: `grep -c 'font-[0-9]00"' src/app -r` must be
-> `0`, and `grep -c '\.font-[0-9]00{' out/_next/static/chunks/*.css` (the compiled artefact) must
-> also be `0` — a source grep alone can look clean while the compiled CSS still has no rule for it.
+**This section is deliberately short, and that is a design decision with evidence behind it.** On
+2026-08-19 a real build was measured end to end: it **compacted 9 times, first at minute 12, then
+every ~14 minutes**. Every page written after minute 12 was authored from a *summary* of the design
+brief rather than the brief itself, and the result read generic despite passing every gate. The old
+design guidance was ~1,000 lines of prose describing how a good page should *feel*. Prose that
+describes a feeling is (a) large enough to force the compaction that destroys it, and (b)
+satisfiable by a token gesture — "use a signature motif" is satisfied by one faint divider line.
 
-### The font test: "Would a business owner think a human designer picked this?"
-Before committing to any pairing, ask: would anyone guess AI picked this? If maybe, pick again.
+**So every rule here states a NUMBER or names a SCRIPT. If a rule cannot be measured, it does not
+belong in this file.** The full history lives in git (`git log -- .claude/skills/build/SKILL.md`)
+and in `DESIGN-RESET-DECISION.md`.
 
-### Mandatory: pick ONE typography formula, trade-masked (not always serif+sans)
+### Step 1 — Consult (script, mandatory, before any TSX)
 
-**Corrected 2026-08-16 — this section used to contradict § Trade personality below it.** It said
-every site MUST pair serif/slab heading + sans body; the trade-personality rule then correctly
-FORBIDS a heavy trade from taking a serif and requires a grotesque instead — which is not serif or
-slab at all. The rule and the example disagreed, and every build followed the rule, which is why
-heavy trades kept shipping soft editorial serifs anyway. One formula, wearing different fonts per
-client, is not variety — it is the same font-pairing bug the palette ladder had before `--ground`
-existed, just in a different axis.
+```bash
+python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<industry> <style keywords from gathered content>" --design-system -p "$ARGUMENTS" \
+  | tee "clients/$ARGUMENTS/data/design-system.md"
+```
+Returns the trade's real art direction from `data/trade-identities.csv` (design ideas, hero
+archetype, signature motif, material direction, card-grid alternative). **Use it.** The output is
+the artifact — a consult that was never written down cannot be distinguished from one that never ran.
 
-**Five named formulas.** Every one still bans two sans-serifs together with no contrast (flat, reads
-AI-generated) — the contrast requirement survives, it just now has more than one valid shape:
+### Step 2 — Typography (script + seed, never the `--design-system` font field)
 
-1. **Display serif + humanist/geometric sans body.** The original formula. Soft trades — food,
-   salons/spas, clinics, boutique retail, premium/DTC.
-2. **Slab + sans.** Home services, general trades — a slab reads sturdy without the "wonky editorial"
-   softness a high-contrast serif carries.
-3. **Condensed/extended grotesque heading at weight >=800 + neutral grotesque body (400).** Heavy
-   trades — demolition, excavation, roofing, concrete, towing, automotive, fabrication. Needs
-   tightened tracking and all-caps or small-caps discipline on the heading to avoid reading generic;
-   headings stay >=28px so a condensed face never goes illegible.
-4. **Serif display + serif text, strong size/weight contrast (>=2.5x).** Heritage, law, editorial,
-   established/legacy positioning. Only safe with a workhorse text serif (Source Serif, Literata
-   text cuts) — two decorative serifs together is illegible, not distinctive.
-5. **Any of 1–3, plus a mono accent confined to eyebrows/stat figures/nav labels only, never body.**
-   Fabrication, tech-adjacent trades, anything wanting a technical/precise register.
-
-**Pick the formula from the same evidence + seed logic as § Ground** — trade masks the field (heavy
-trades: formula 3, never 1 or 4's soft serifs; soft trades: 1 or 2; heritage/legacy: 4), then seed
-from the business name for variety within the allowed set. Record `TYPOGRAPHY_FORMULA=<n>` in
-`status.md` next to `GROUND=`. Deviating from the trade mask is fine — deviation is allowed, silence
-is not — but say why.
+```bash
+python3 .claude/skills/ui-ux-pro-max/scripts/search.py "INDUSTRY KEYWORDS" --domain typography -n 5
+```
+Pick from the 5 **by business-name seed**, not by top match — the picker is deterministic, so
+top-match gives every business in a trade the same fonts. Serif/sans contrast required.
 
 ### How to LOAD the fonts — MANDATORY, and the one that breaks silently
 **NEVER put `@import url('https://fonts.googleapis.com/...')` in `globals.css`.** Turbopack (the
@@ -772,8 +751,92 @@ Space Grotesk, Figtree, Outfit — only acceptable when paired with a genuinely 
 ### Good heading fonts (distinctive, not yet overused by AI)
 Bitter, Fraunces, Literata, Bodoni Moda, Zilla Slab, Vollkorn, Crimson Pro, Cormorant Garamond, Spectral, Eczar, Newsreader, Libre Caslon Display, Petrona, Brygada 1918, Instrument Serif
 
+### Step 3 — Palette (script only, never hand-picked)
+
+```bash
+node scripts/derive-palette.mjs '<accent hex>' --harmony <type> --character <band> \
+  --ground <family> --ground-hue <deg>
+```
+The brand accent is theirs and is **never** overridden. Every other colour comes from the deriver,
+because only it proves 4.5:1 and CVD separation against this client's real surfaces.
+
+### Step 4 — Uniqueness (script, before writing TSX)
+
+```bash
+node scripts/design-ledger.mjs check $ARGUMENTS \
+  --ground <family> --ground-hue <deg> --formula <1-5> --harmony <type> --character <band> \
+  --heading-font "<Family Name>" --body-font "<Family Name>" --town "<city>"
+```
+`DESIGN_LEDGER=TWIN` → re-pick (max 2 forced re-picks, then proceed and write `TWIN_ACCEPTED:
+<reason>`). **`FONT_LEDGER=REUSE` is a hard stop with no allowance** — the heading font collides
+name-for-name with a recent build; pick another. Record with `design-ledger.mjs record` (same flags)
+once final.
+
+### The hard rules
+
+Every line is a number. `richness-check.mjs` enforces the ✅ rows and **fails the build**; the ⏳
+rows are stated here as binding and are being moved into the script — until then QA grades them.
+
+| # | Rule | Threshold | Enforced |
+|---|---|---|---|
+| 1 | Scale drama — largest heading vs body | **≥ 3.5×** computed px | ⏳ |
+| 2 | Grid break — elements differing from siblings by span/offset/translate | **≥ 1** per page | ⏳ |
+| 3 | Dominant element — the one named in DESIGN_IDEA | **≥ 1.5×** a sibling's rendered area | ⏳ |
+| 4 | Signature motif — the one named in DESIGN_IDEA | **≥ 3** appearances in built HTML | ⏳ |
+| 5 | Gradients | **≥ 4**, each ≥ 15% perceptual delta between stops | ✅ |
+| 6 | Grain opacity | **0.12 – 0.20** | ✅ |
+| 7 | Distinct section treatments | **≥ 4** | ✅ |
+| 8 | Photo-grounded sections (photo behind 80–88% wash) | **≥ 2** | ✅ |
+| 9 | `--secondary` usage | **≥ 10** references | ✅ |
+| 10 | Identical siblings — 4+ same-class cards/panels with no structural variant | **0** allowed | ✅ |
+| 11 | Uniform-rhythm run — 4+ visually identical blocks with nothing breaking them | **0** allowed | ⏳ |
+| 12 | Every `<img>` carries width+height | **100%** | ✅ |
+
+### Ground: commit, do not hedge
+
+Pick light **or** dark/saturated and commit to it hard. Both produce award-tier trade sites; a
+timid version of either reads the same as no choice at all. Record the choice and its reason in
+`status.md`. The one banned outcome is the safe middle: a light page with grey cards, or a dark
+page with muted grey rows.
+
+### The bar
+
+`southernlifts.com.au` — a real Awwwards-nominated lift/elevator company, the closest live
+comparable to this pipeline's own market. Full-bleed saturated brand ground, enormous condensed
+display type as the primary anchor, numbered full-width service rows (not cards), named case
+stories (not a photo grid), trade motif animated into the site chrome. **A build that would read as
+visibly more timid than that page next to it has not met the bar** — name what makes it timid and
+fix that specific thing.
+
+### Step 5 — Verify (scripts, before handing to QA)
+
+```bash
+node scripts/font-check.mjs clients/$ARGUMENTS/site
+node scripts/contrast-check.mjs --tokens clients/$ARGUMENTS/site/src/app/globals.css
+node scripts/contrast-check.mjs clients/$ARGUMENTS/site/out
+node scripts/richness-check.mjs clients/$ARGUMENTS/site
+node scripts/verify-design-intent.mjs $ARGUMENTS
+```
+All must PASS before QA. `verify-design-intent.mjs` is the one that checks the site against **your
+own recorded brief** — scale drama, whether each signature move actually shipped, and uniform-rhythm
+runs. `DESIGN_INTENT_CHECK=FAIL` means intent and artifact disagree; fix the artifact. A FAIL here costs seconds; the same FAIL found at QA costs a whole round.
+
+### After a compaction — RUN THIS, do not rely on memory
+
+Measured: a real build compacted **9 times, first at minute 12**, and every page after that was
+written from a summary of the design brief rather than the brief. That is the measured cause of
+generic output — the build cliff-notes its own notes.
+
+**Immediately after any compaction, run:**
+```bash
+node scripts/verify-design-intent.mjs $ARGUMENTS --brief-only
+```
+It prints DESIGN_IDEA, the hero archetype, the ground, and the 3 signature moves back into context
+in ~8 lines. A skill instruction survives compaction; your memory of a brief does not. Do not
+substitute "I remember the design idea" for running it — that substitution is the defect.
+
 ## Design rules
-- Use the colour palette from `/ui-ux-pro-max` - never pick colours arbitrarily. **Brand-colour override**: if gathered-content.md's `## Brand` block has a `primary` colour, use it as the site **accent hue** so the site matches the business's real identity — but the accent NEVER goes on the page as one hex doing every job. Run it through § Colour roles below, which derives a compliant value per job from the same hue. No banned combos (e.g. purple-on-white). `/ui-ux-pro-max` still drives the overall system.
+- Use the colour palette from `/ui-ux-pro-max` - never pick colours arbitrarily. **Brand-colour override**: if gathered-content.md's `## Brand` block has a `primary` colour, use it as the site **accent hue** so the site matches the business's real identity — but the accent NEVER goes on the page as one hex doing every job. Run it through § Design (HARD RULES) below, which derives a compliant value per job from the same hue. No banned combos (e.g. purple-on-white). `/ui-ux-pro-max` still drives the overall system.
 - Hero section with pt-20 for fixed navbar clearance
 - **A fixed navbar must never be able to end up with NO background.** Own the solid
   state in the component's own React state (`useState` + a `scroll` listener in
@@ -832,425 +895,6 @@ this code; the condensed form below is not enough context to debug it if somethi
 Use the **NAV's** surface colour for both `html` background and `theme-color`, never the page's.
 
 ---
-## Colour: choose CHARACTER first, harmony second
-
-⚠️ **Corrected 2026-08-16 against the `color-expert` skill** (meodai's 171-file colour-science
-reference, now installed at `~/.claude/skills/color-expert`). An earlier version of this section
-said "pick the harmony deliberately, default analogous for trades". That is better than taking the
-default, but it is still **hue-first**, and hue-first is the weak heuristic:
-
-> "Complementary, triadic, tetradic intervals are weak predictors of mood, legibility, or
-> accessibility on their own. Every hue plane has a different shape in perceptual space."
-> "Organize by character (pale/muted/deep/vivid/dark), not hue — hue is usually a weaker predictor
-> of emotional response than chroma and lightness."
-> "Hue didn't matter. A pale or muted or dark palette — no matter what hue — people responded to
-> it as calm."
-
-**So decide CHARACTER from the business, then let harmony pick the hue inside it.**
-
-| Character | Chroma / lightness | Fits |
-|---|---|---|
-| **Deep** | dark, HIGH chroma | demolition, excavation, roofing, automotive, security — weight and capability |
-| **Vivid** | high chroma, any lightness | emergency/24-7 trades, kids, food, sports — urgency and energy |
-| **Muted** | medium lightness, low chroma | clinics, law, accounting, funeral, wellness — calm and trust |
-| **Pale** | high lightness, low chroma | salons, spas, boutique retail, interiors — airy and premium |
-| **Dark** | low lightness, low-medium chroma | luxury, bespoke fabrication, high-end services — restraint |
-
-The character must hold across the WHOLE palette. A deep accent beside a pale secondary reads as
-two different sites, which is what a mismatched harmony produces and why it then goes unused.
-
-**Then run the deriver with a harmony that stays inside that character** — the canonical, complete
-invocation (all five decision flags together) lives at § Convergence check below, once ground/
-ground-hue/formula are also decided; don't invent a partial call here. (Corrected 2026-08-19 —
-Fable consult: this example previously showed `--light`/`--dark`, which § Colour roles below
-explicitly forbids passing by default since it opts out of the derived tinted-neutral ladder
-entirely. Two sections gave contradictory example commands; this is the one that was wrong.)
-
-**`--character` is the flag that decides whether the site looks diverse or "all brown".**
-Harmony picks the secondary's HUE; character places its lightness and chroma. Without it the
-secondary inherits the ACCENT's character, so a vivid brand colour makes every derived option
-vivid too — which is why one business produced either brass (reads mono) or electric cyan
-`#00C5D9` (reads like a toy), with nothing usable between them.
-
-Measured on Mike's Bobcat Service, brand `#FF8D13`:
-
-| harmony | `vivid` (old default) | **`deep`** |
-|---|---|---|
-| `split` | `#00C5D9` electric cyan | **`#005861` deep teal** |
-| `triadic` | `#2CC9AE` mint | `#005B4D` deep green |
-| `analogous` | `#D1A93F` brass | `#614900` deep bronze |
-
-`#005861` is genuinely a different colour from the orange — not a tint, not brown — while
-being serious enough for demolition and grounded enough to sit on the warm surface ladder
-without fighting it. **That is the combination to reach for: a real second hue, placed in the
-site's character band.**
-
-The brand accent is never re-characterised — it is their identity and stays as gathered.
-Character governs the SECONDARY and the surfaces around it.
-
-Mike's Bobcat Service is **Deep** — heavy demolition work. The default complementary harmony gave
-`#52baf7`, an electric blue: correct arithmetic, wrong character, and the builder silently declined
-to use it anywhere, so the site shipped mono. Analogous inside the same character gives `#D1A93F`,
-a warm brass that sits beside construction photography instead of fighting it.
-
-**Apply 60/30/10** (also from `color-expert`): 60% dominant surface, 30% secondary, 10% accent —
-"one colour dominates to prevent three equally-sized gorillas fighting". That ratio is also the
-answer to "how much secondary is enough": roughly a third of the coloured surface area, not a
-token gesture.
-
-**Invoke the skill for the actual choice.** `Skill(skill="color-expert")` at the design step, once
-per build — it carries APCA guidance, token-graph structure, and perceptual-ramp technique that
-this file only summarises. Do NOT bulk-load its `references/`: 212,000 words is a real cost at 50
-builds a day. The 4,200-word SKILL.md answers most questions; individual references load on demand.
-
-**Record the CHARACTER and the harmony in `status.md`**, so QA can judge the choice rather than
-re-derive it.
-
-## Ground: WHICH hue tints the neutral ladder, and WHICH lightness family (mandatory since 2026-08-16)
-
-**This is the fix for "every site is the same white page with a rotated accent."** Measured across
-two shipped clients: the neutral ladder was identical to three decimal places — because the ladder's
-tint hue was hard-wired to the accent hue and its lightness family was a hardcoded constant. A
-plumber's gold accent and a demolition contractor's orange accent both produced the exact same warm
-cream-to-brown page, just relabelled. `derive-palette.mjs` now exposes both as independent choices
-(`--ground-hue` and `--ground`), but the SCRIPT ONLY EXECUTES what you tell it — this section is
-where the choice actually gets made, and skipping it silently reproduces the old behaviour (ground
-defaults to the accent's own hue, family defaults to `light`).
-
-### `--ground-hue`: evidence first, never a rotation
-
-**Do not derive the ground tint from the accent by default.** Rank evidence in this order and use
-the first that exists:
-
-1. **The client's own live website**, if one exists (compete/rescue mode). One `npx playwright-cli`
-   `eval` reading computed `background-color` on a few real sections is exact and free — this is a
-   real business's own colour decision, already made.
-2. **A second colour from the logo itself.** `brand-logo.py colours` returns a `dominant` list, not
-   just one hex — read past the first entry instead of discarding it.
-3. **A colour recurring across ≥2 gathered photos** (vehicle livery, signage, uniforms) — Read the
-   photos yourself (you already do this for § PHOTO VISION GATE) and note any colour that repeats.
-   One photo's colour is lighting noise; a colour appearing on the van AND the uniform is real.
-4. **No real second colour anywhere.** Do not fall back to the accent hue by default — that
-   silently reintroduces the bug this section exists to fix. Instead pick a hue **seeded from the
-   business name** (same deterministic-per-business, varied-across-fleet mechanism the font picker
-   already uses), constrained to a **cool-or-neutral arc (180°–260°)** when the accent itself is
-   warm (0°–100°), and to a **warm-or-neutral arc** when the accent is cool. The constraint is not
-   arbitrary: a warm accent on a warm ground is where "always brown" comes from, so the fallback's
-   only job is to not repeat that specific failure while still being reproducible and non-uniform.
-
-```bash
-# Evidence found (their site's real background is navy):
-node scripts/derive-palette.mjs '#FFC80E' --harmony split --character deep --ground-hue '#1B2040'
-
-# No evidence — seeded fallback, warm accent (~88deg) forces the ground into the cool/neutral arc:
-node scripts/derive-palette.mjs '#FFC80E' --harmony split --character deep --ground-hue 210
-```
-
-### `--ground`: the lightness family
-
-Four families: `light` (the original — every site defaults here if you pass nothing), `cream`
-(compressed light end, higher chroma — a warm editorial page, chosen deliberately, not arrived at
-by accident), `deep` (mid-dark dominant ground, light relief bands), `dark` (near-black dominant
-ground, more range than deep). **Every family still passes the exact same contrast machinery** —
-`solveL` and the WCAG verification run identically regardless of family, so accessibility is never
-the trade-off for choosing a non-light ground.
-
-**What changes on `deep`/`dark`:** the semantic meaning of `--ink` vs `--on-dark` inverts in
-practice. On `light`, most of the page uses `--ink` on light rungs and `--on-dark` is the exception
-(footer, CTA bands). On `deep`/`dark`, most of the page IS a dark rung, so **`--on-dark` becomes the
-default body-text token** and `--ink` is reserved for the light relief rung (surface-5 in that
-family). Get this backwards and body copy is unreadable against its own ground.
-
-**Long-form routes stay light-family regardless of the site's ground.** `/blog/*`, `/privacy`,
-`/terms` run 700–950 words; light-on-dark at that length is a real readability regression, not a
-stylistic choice. On a `deep`/`dark` build, author those specific routes against the `light` rungs
-even though the rest of the site uses `deep`/`dark` — pass `--ground light` a second time for just
-the tokens those routes need, or hand-place them on the family's relief rung.
-
-**Photos need a plate on dark grounds.** An image with no border blooms against a near-black
-surface. Add a 1px `--surface-4`-toned border or a subtle plate behind photos when `--ground` is
-`deep` or `dark`.
-
-**Which family suits which trade is judgement, not a lookup table** — a fixed trade→family mapping
-would just be a different way of driving down the middle. Use the same evidence ladder as the hue
-(their real site's actual mood, their signage) and let CHARACTER (above) narrow the field: `deep`/
-`dark` character trades are the natural candidates for `deep`/`dark` ground; `pale`/`muted` suit
-`light`/`cream`. Deviating from that is fine — deviation is allowed, silence is not — but say why in
-`status.md`.
-
-**Record `GROUND=<family>` and the ground-hue source in `status.md`**, next to the character and
-harmony record. QA reads it to know which rungs are the "default" text ground before judging
-readability.
-
-### 🚨 Convergence check (mandatory, once all four decisions above are made, before ANY TSX)
-
-Every axis above — ground family, ground hue, typography formula, harmony, character — is now
-decided, and so is the font pairing from § How to pick fonts. Before writing a single `page.tsx`,
-check the choice against the last builds — this same call also carries the font-uniqueness check
-(§ How to pick fonts step 4), so don't invent a second, separate invocation.
-
-**This is also the point to run the ONE canonical `derive-palette.mjs` call** that produces the
-`:root` block you actually paste into `globals.css` — every decision it needs is now made, so this
-is the single complete invocation; § Colour character and § Colour roles above both point here
-rather than giving their own (previously contradictory) partial examples:
-```bash
-node scripts/derive-palette.mjs '<accent hex>' --harmony <type> --character <band> \
-  --ground <family> --ground-hue <deg>
-```
-
-Then run the ledger check:
-
-```bash
-node scripts/design-ledger.mjs check $ARGUMENTS \
-  --ground <family> --ground-hue <deg> --formula <1-5> --harmony <type> --character <band> \
-  --heading-font "<Family Name>" --body-font "<Family Name>" --town "<city>"
-```
-
-**`DESIGN_LEDGER=TWIN` means this exact combination reads as the same site as a recent build** —
-pick a different option from the trade-masked set (a different ground family, a different
-typography formula, or a materially different ground hue) and check again. Up to 2 forced re-picks;
-if still a twin on the 3rd attempt, proceed anyway and write `TWIN_ACCEPTED: <reason>` in
-`status.md` rather than looping forever — the ledger is a steer, not a hard wall.
-
-**`FONT_LEDGER=REUSE` is a separate, hard stop — no forced-re-pick allowance, no "proceed after 3
-attempts."** It means the heading font collides, name-for-name, with a font already claimed by
-another recent build. Pick a different heading font from the shortlist and check again; this axis
-has no calibration period because the underlying rule is already mandatory prose (never reuse a
-heading font) and the fix is free at this point (zero TSX written yet). `FONT_LEDGER=WARN` (a
-same-town body-font match) is not a hard stop — note it in `status.md` and prefer a different body
-font if practical, same posture as a `TWIN_ACCEPTED` deviation.
-
-**Why this runs HERE and not after the site is built:** a twin (or a font collision) caught before
-any code exists costs one more `node` call to re-check. Caught after `/build` finishes it costs a
-full rebuild — and this pipeline's own measured cost is 86% output-token generation, so anything
-that risks a rebuild directly fights the wall-clock target. Never skip straight to writing TSX "to
-save time" — that is the one sequence that turns a free check into an expensive one.
-`font-uniqueness-check.mjs` (part of the QA battery) re-verifies both the font pairing and this
-uniqueness rule against the shipped artefact after `/build`, so a discrepancy still gets caught —
-but catching it there costs a rebuild, whereas catching it here costs nothing.
-
-`DESIGN_LEDGER=CLEAR` and `FONT_LEDGER=CLEAR` (or accepted after 3 attempts): run the record call
-once the build is genuinely finishing, not before — recording before the site is confirmed to
-actually use these choices would poison the ledger with a decision that was never built:
-
-```bash
-node scripts/design-ledger.mjs record $ARGUMENTS \
-  --ground <family> --ground-hue <deg> --formula <1-5> --harmony <type> --character <band> \
-  --heading-font "<Family Name>" --body-font "<Family Name>" --town "<city>"
-```
-
-### 🚨 Design manifest (mandatory, immediately after convergence, still before ANY TSX)
-
-Added 2026-08-18 after a real build (aot-mechanical) shipped flat and generic despite the ground/
-typography/harmony/character decisions above all being made correctly — the failure wasn't a bad
-decision, it was that richness and motion were never planned as concrete commitments before writing
-started, so under any time pressure (a watchdog kill, a long session) they were the first things
-silently dropped. A decision that exists only as intent in a long session's context is exactly what
-compaction (§ top of this file) discards first; a decision written to `status.md` survives a kill, a
-resume, or a compacted re-read.
-
-Before writing `globals.css` or any `page.tsx`, write a `## Design manifest` section to `status.md`
-answering these five questions concretely — this costs a few hundred output tokens, not a
-meaningful fraction of the build:
-
-```
-## Design manifest
-
-- Photo-grounded sections (need 2+, richness-check hard-fails under 2): which TWO+ sections,
-  using which specific photo from data/images/, at what wash opacity.
-- Gradient plan (need 4+ declarations, richness-check hard-fails under 4): hero scrim + which
-  section transition(s) + which card/panel wash(es), all `in oklch`.
-- Section treatments (need 4 distinct — light, alt-light, dark, image/gradient-backed): which
-  section gets which.
-- Hero video: read back the `HERO_VIDEO=` line § Setup already wrote — confirm here which
-  `<HeroVideo>` form this build uses.
-
-Grain target: <opacity, per § Visual richness's ladder>.
-```
-
-This is a plan, not a promise — if a section's real content genuinely can't support a photo ground
-once you're looking at the actual page, deviate and say so in the same status.md section (deviation
-is allowed, silence is not, same rule as everywhere else in this file). The point is that richness
-is DECIDED before the first `<section>` is typed, not discovered as a gap by QA forty minutes
-later — the HARD-BLOCKER CONTRACT
-below is what QA grades the finished site against; this manifest is what makes clearing it the
-default outcome of writing the site once, not a second pass.
-
-## Trade personality — the design must LOOK like the trade
-
-An independent design audit of a live build, 2026-08-16, returned this verdict and it is the most
-useful sentence written about this engine:
-
-> "A clean, competent, **completely anonymous** small-business template wearing a coffee-shop
-> typeface. Nothing about the design says *demolition*. Swap the copy and photos and it could sell
-> candles, physiotherapy, or estate law."
-
-The build had shipped **Fraunces** — a soft, high-contrast editorial serif, the font of bakeries and
-DTC skincare — as the display face for a company that demolishes swimming pools, and had sanded the
-client's loud safety-orange logo down into "burnt caramel". Every mechanical gate passed.
-
-**RULE — typeface class by trade.** Heavy trades (demolition, excavation, roofing, concrete, towing,
-automotive, fabrication) take a **condensed or extended grotesque, or a slab**, at weight >=800.
-They must NOT take a high-contrast "wonky" editorial serif (Fraunces, Recoleta, Canela and
-relatives). Soft trades (salons, spas, clinics, florists) invert this. Record the class and the
-reason in `status.md`.
-
-**RULE — honour the logo's colour.** If the client logo has a dominant saturated colour, the site's
-primary accent must be recognisably that colour, not a tasteful reinterpretation of it. A logo that
-visibly disagrees with the CTA in the same header bar is a defect, not a palette choice.
-
-**RULE — no verbatim repetition across surfaces.** No sentence may appear word-for-word in more than
-one place on a page (the audit found the hero subhead repeated in the footer and the services intro).
-
-**RULE — stat strips carry externally meaningful numbers only.** Years trading, jobs completed, tons
-hauled, response time, review score. **"9 Services offered" and "7+ Towns served" are banned** —
-nobody hires a demolition contractor because he offers nine services, and it reads instantly as
-generated scaffolding. Fewer than three real stats means show two, never pad.
-
-**RULE — an image may hold at most ONE role per site** (hero | service card | gallery | blog cover).
-The audit found 4 of 6 "Recent Work" photos were the same files used on service cards and blog
-covers, i.e. stock presented as portfolio to a 30-year local operator's prospects. A repeated
-filename across roles is a build failure.
-
-**RULE — "our work" means client photos.** A section labelled recent work/projects may contain only
-client-supplied imagery. Fewer than 4 available means one featured project block, or drop the
-section. Every gallery image gets a caption: service + neighbourhood.
-
-**RULE — galleries render a complete rectangle.** If the item count does not fill the last row,
-change the column count or crop the set. More than one empty cell reads as a bug, and the audit
-found exactly that: a 4-column grid with 6 items leaving a dead field.
-
-**RULE — call-first businesses show the phone at display scale** (>= H2) at least once per page. The
-number IS the CTA for a trade audience. **This means ONE CTA object, not a pair** — a display-scale
-phone link plus a plain text secondary link (e.g. "or send a message ↓"). A solid accent button next
-to a `border-2` ghost-outline button is the single most common AI-landing-page tell there is; if the
-phone is the CTA, nothing should be visually competing with it for primacy. Caught live 2026-08-18
-(Fable design-lift sweep): the identical solid-pill + ghost-outline two-button pair appeared in
-every hero and every closing band across every shipped client, silently contradicting this rule the
-whole time it existed — a rule with no gate checking for the pattern it forbids doesn't stop it.
-
-**RULE — banned CTA headlines**: "Ready to get started?", "Get in touch today", "Let's work
-together". Reference the trade or the owner instead — "Got something that needs to come down?"
-
-**RULE — no single section-opener formula repeated across the page.** Caught live 2026-08-18
-(Fable design-lift sweep): every section on every shipped client opened with the identical anatomy
-— uppercase `text-sm font-semibold tracking-widest` eyebrow, then `<h2>`, then a muted paragraph —
-18 instances on one build, 11 on another. Two prospects comparing sites see identical section
-skeletons wearing different words; it is as fleet-wide a tell as the CTA-pair one above. Rotate
-across at least 3 of these per page, chosen by section content rather than applied in fixed order:
-(a) the eyebrow+h2+paragraph formula, used sparingly, not as the default; (b) an oversized section
-numeral (`01`, `02`…) beside the heading instead of an eyebrow; (c) a side-rail label — a short
-vertical or inline tag running along the section's edge rather than centered above the heading; (d)
-an inline-accent headline where the emphasized word carries the accent color directly, no separate
-eyebrow line; (e) for a photo-grounded section, a caption-style opener sitting over or beside the
-image rather than a stacked eyebrow/heading block. Record which openers were used per section in
-`status.md` so a future build can check against it, the same way font/palette uniqueness is tracked.
-
-**RULE — services are not a uniform icon-chip grid; ground them in real photography when it
-exists.** Caught live 2026-08-18 (Fable design-lift sweep): both shipped clients rendered every
-service as an identically-sized card — small generic SVG icon, name, one-to-two sentence blurb —
-while real gathered photos for those same services never reached the section. Uniform icon cards
-with no imagery is as recognizable an AI-landing-page tell as the icon-grid nav dropdown banned
-above, and for the same reason: it is the first thing anyone builds without thinking about it.
-Check each service entry in `site-data.ts` for a distinct `image` field (not the hero photo or
-another service's photo reused). If distinct photos exist for at least half the services: build
-photo-grounded tiles (gathered image + the heavy colour-wash treatment from § Section treatments
-below) sized so at least one tile visibly breaks the grid (spans two columns, or sits taller) rather
-than every tile matching. If no distinct photography exists: do not fall back to icon chips either —
-use the typographic numbered-list treatment (see the nav-dropdown "no distinct imagery" case above)
-adapted to full-width rows instead of a dropdown panel, one row per service, no icon, no card
-background.
-
-**RULE — the footer is not the generic three-column template.** Caught live 2026-08-18 (Fable
-design-lift sweep): despite `SiteFooter` being marked "deliberately NOT templated" (§ above), both
-shipped clients independently converged on the same default anyway — logo+blurb column, a "Quick
-Links"/"Pages" link column, a contact/hours column, plus a © + Privacy/Terms sub-bar. That
-convergence without a template means the model's own unprompted default IS this pattern, so it has
-to be named and forbidden explicitly, not left to "don't templatize it" alone. Build a
-contact-dominant footer instead: the phone number at display scale (matching § call-first businesses
-above), the service area written as a short prose line rather than a bulleted list, and a single
-link row (not a labeled column) for the handful of real nav destinations. Generic column headers
-("Quick Links", "Pages", "Resources") are themselves a tell — if a link row is needed, it needs no
-header at all.
-
-**RULE — link labels are verbs + object, <=3 words.** Not "View selective interior demolition
-details". And icons must be literal for the trade: a pool outline for pool removal, not a generic
-wave; a broken branch for storm cleanup, not a weather-app cloud.
-
-**RULE — one photographic treatment across all imagery.** Stock and client phone photos must be
-graded to cohere. A portrait-orientation source may never fill a landscape container wider than 2:1.
-
-## Section treatments: photo grounds, overlays and texture (the missing "ingredients")
-
-Operator, 2026-08-16: *"I don't see photos with color overlay in section backgrounds, that's like
-ghosted in — you know where the background is 80% or 85% opacity over a photo. I don't see textures
-in sections as needed."* He is right, and it is the single biggest reason a page reads flat even
-with a good palette: **every section is a flat fill.** Six surface rungs give you six flat colours.
-
-**At least TWO sections per page must be PHOTO-GROUNDED**, using a gathered photo behind a heavy
-colour wash so the image reads as texture rather than as a picture:
-
-```html
-<section class="relative isolate overflow-hidden grain-dark">
-  <img src="/images/work2.webp" alt="" aria-hidden="true"
-       class="absolute inset-0 -z-10 h-full w-full object-cover" width="1200" height="800" />
-  <!-- 80-88% wash. Below ~78% the copy fights the photo; above ~92% the photo is wasted. -->
-  <div class="absolute inset-0 -z-10 bg-[--surface-6]/85"></div>
-  …content…
-</section>
-```
-
-Rules that make this work rather than look muddy:
-- **Wash opacity 80-88%.** Contrast is still governed by `contrast-check.mjs`, which composites the
-  alpha — so the wash must be dark enough to carry `--on-dark` text at 4.5:1. Verify, do not guess.
-- **`aria-hidden` + empty `alt`.** It is texture, not content; a screen reader must not announce it.
-- **Use a WORK photo, not the hero.** Reusing the hero image as a background reads as running out of
-  material.
-- **Pair it with `grain-dark`.** Photo + wash + grain is what gives the "ghosted in" depth; photo +
-  wash alone still looks like a flat overlay.
-- **Never put a photo ground behind a form or a dense table.** Legibility beats atmosphere.
-
-**And every flat section still carries `.grain` / `.grain-dark`** at 0.12 / 0.16. A page where only
-one or two sections have texture reads as inconsistent rather than restrained.
-
-## Typography variation — pick by SEED, not by top match
-
-The type pool is 65 pairings and **the picker is deterministic**, so every demolition contractor in
-the fleet ships Fraunces / Albert Sans. Verified 2026-08-16: three different phrasings of the same
-industry returned the same pairing twice. That is the "same font every time" the operator sees, and
-it is a fleet-level tell — two prospects who compare their sites see the same typeface.
-
-**Take the top 3-5 matching pairings and choose among them by SEED**, the same way `<Motion />`
-derives its character from the business name:
-
-```bash
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<industry> <keywords>" --domain typography -n 5
-```
-
-Then pick deterministically from that shortlist using the business name — same business always gets
-the same fonts (builds stay reproducible), different businesses in the same trade get different
-ones. **Every candidate on the shortlist is already trade-appropriate**, so this buys variety at no
-cost to fit. Record the shortlist and the chosen pair in `status.md` so QA can see it was a choice.
-
-If a trade returns fewer than 3 credible pairings, widen the query (add tone words: "bold",
-"editorial", "utilitarian", "premium") rather than accepting the single top hit.
-
-## Hero archetype and section transitions — also pick by SEED (2026-08-19 Fable design-elevation
-review, B5)
-
-Same problem as typography, same fix. `trade-identities.csv`'s "Hero Archetype Fit" and "Section
-Transition Style" fields each name 2-3 real options for the trade (e.g. HVAC: full-bleed work-photo
-/ stat-anchored / type-as-hero). Without a deliberate pick, the model defaults to whichever is
-listed or described first — every business in that trade gets the same structural skeleton in
-different colours, which is the fleet-level tell all over again, one level up from fonts.
-
-Pick deterministically from the trade row's own options using the business name (same seed source
-as typography — same business always gets the same archetype on a rebuild, different businesses in
-the same trade get structurally different pages, not just re-hued ones). Record the choice as part
-of DESIGN_IDEA's "Hero archetype:" line (§ Design system step above) — it is not a separate record,
-it is what that line is for. Two real prospects in the same trade comparing sites should see
-different structural skeletons, not the same layout in a different accent colour.
-
 ## ⛔ HARD-BLOCKER CONTRACT (mandatory — the QA gate below grades against this exact text)
 
 **Your output is auto-FAILED by an independent judge if any of these are TRUE.** This is the exact
@@ -1274,7 +918,7 @@ FALSE, not merely to look good to yourself.
    thresholds) — TRUE if any of: fewer than 4 gradient declarations shipped; fewer than 2
    photo-grounded sections (a gathered photo behind an 80-88% wash); grain opacity below the
    visible threshold (~0.10 light / ~0.14 dark). This is the item a build clears by following the
-   § Design manifest checkpoint BEFORE writing TSX, not by patching it in after — catching it here
+   § Design (HARD RULES) checkpoint BEFORE writing TSX, not by patching it in after — catching it here
    costs nothing, catching it in QA costs a full re-review because a richness fix touches
    `globals.css`/`_components/`, which are escalation triggers.
 
@@ -1291,259 +935,6 @@ or Opus cost — this is a prompt-only change, prevention instead of catch-and-r
 That matters here specifically because output-token generation is 86% of this pipeline's wall-clock
 (measured 2026-08-16) — a fix that adds ~zero output tokens is the only kind of design fix that does
 not fight the 35-minute build-time target.
-
-## Composition: the difference between a 7 and a 10
-
-The gates below make a page *correct and rich*. They cannot make it *striking*, and a build that
-satisfies every one of them can still read as competent-but-safe — which is what the operator meant
-by "design needs a big lift too". These are the compositional moves that separate the two, measured
-against what a 7/10 build actually shipped.
-
-**1. ONE dominant scale contrast per page.** The design consult returns a headline scale like
-`clamp(3rem, 10vw, 12rem)` for a reason: a hero headline that is merely large reads as a template,
-one that is *enormous* reads as art direction. The 7/10 build shipped headlines at ordinary sizes
-and dropped the clamp. If the consult hands you a scale, USE IT — on the hero, and once more
-somewhere below the fold (a stat figure, a pull quote, a section number).
-
-**2. Break the grid exactly once per page.** Everything else can be a tidy 3-up. One element should
-escape it: a photo that bleeds off the right edge, a card offset vertically from its rowmates, a
-quote that overhangs its container. A page where every row is the same shape reads as generated no
-matter how good the palette is.
-
-**3. Asymmetry in the hero.** Centred hero + centred subhead + two centred buttons is the single
-most recognisable AI-site signature. Push the headline to a 7/12 column, let the media take the
-remainder, and let them overlap slightly.
-
-**4. Section transitions, not just section colours.** Six surface rungs give you grounds; what
-makes them feel authored is how they MEET. Use an angled or curved divider, an overlapping card
-that straddles the boundary, or a gradient that resolves into the next ground — at least once.
-
-**5. Type pairing must actually contrast.** The consult returns a serif/sans pair. Use the serif at
-display weight for headlines and the sans at 400 for body — do not level them to the same weight and
-size class, which throws away the pairing that was chosen for the trade.
-
-**6. No 4+ identical siblings anywhere on the page (generalizes the nav-dropdown ban above to ALL
-page content — 2026-08-19 Fable design-elevation review).** The nav-dropdown rule already bans "a
-same-sized icon-card grid" for the Services dropdown specifically, citing four converged design
-reviews. That reasoning was never wrong for the rest of the page — it just never got generalized,
-and cold-front-ac shipped 5 byte-identical review cards and 4 byte-identical stat cards as a direct
-result. `richness-check.mjs` now hard-fails this pattern deterministically (§ IDENTICAL SIBLING
-COMPONENTS), but the fix belongs here first: **in any group of 4+ similar components, make one
-structurally dominant** — spans two columns, carries a photo the others lack, sits at display-scale
-type, or is the open/expanded state — or don't use a card grid for that section at all. Named
-alternatives by section type:
-- **Reviews/testimonials** — one display-scale featured quote (real customer, real name) plus
-  smaller supporting quotes around it, or distribute quotes as pull-quotes through the page instead
-  of banding them into one card row.
-- **Services** — a bento layout with one dominant cell (the highest-value or most-differentiating
-  service), or full-width ledger rows (icon + name + one-line description, left-aligned, divided by
-  hairlines) instead of a card grid.
-- **FAQ** — the first item shown open with its answer visible (not all collapsed identically), or a
-  two-column split (question index left, answer content right) instead of a stacked accordion where
-  every row looks the same at rest.
-- **Stats/trust numbers** — vary the type scale across the set (one number genuinely bigger than the
-  rest) rather than four equal-sized figures in equal-sized boxes.
-
-**6. Photography needs varied crops.** A grid of six identically-cropped 4:3 photos is a contact
-sheet. Mix one tall portrait crop, one wide establishing shot, and let one image be significantly
-larger than its neighbours — the same "density and interaction, not palette size" principle the
-colour reference applies to hue.
-
-**7. Numbers deserve emphasis.** Real figures from `gathered-content.md` (years trading, jobs done,
-review count) carry `data-count` and should be set at display scale in the accent or secondary, not
-as body text. A "30+ years" set at 16px is a wasted proof point.
-
-⚠️ **None of this licenses inventing content.** Every one of these is a treatment of facts already
-in `gathered-content.md`. If the gather is thin, the answer is a shorter page, not a padded one.
-
-## Visual richness (MANDATORY — the design system must reach the page)
-
-**Gated by `node scripts/richness-check.mjs clients/$ARGUMENTS/site`, which runs in QA and FAILS the
-build.** Prose here is not enough — that is the whole lesson of the build this section came from.
-
-Measured on the live demolition-okc build, 2026-08-16. Every skill RAN and every existing gate
-PASSED — contrast was 934/934, ship-scan clean, PageSpeed desktop 100/100/100. The operator's verdict
-on seeing it was **"2 out of 10"**, and he was right, because correctness and richness are different
-questions and nothing was asking the second one:
-
-| what the system produced | what reached the page |
-|---|---|
-| 38 palette tokens, incl. a derived complementary `--secondary: #52baf7` | **used 0 times** |
-| a gradient system | **1 gradient** on the whole site (the hero scrim) |
-| a `.grain` texture overlay | shipped at **opacity 0.05** — below human perception |
-| 6 sections | **3 distinct** background treatments, all neutral |
-
-Nothing was broken. The build painted a rich system with four crayons.
-
-### Section rhythm comes from the SURFACE LADDER, not from more hues
-
-`derive-palette.mjs` now emits `--surface-1` through `--surface-6`: six brand-tinted grounds walking
-LIGHTNESS while holding chroma fixed and low, at the brand hue.
-
-This exists because the palette previously offered three surfaces, and three is not enough to
-compose rhythm from. The measured result was 6 sections / 3 treatments / all neutral, and the
-operator's "i dont see section backgroudns". **The build was not being lazy — it had run out of
-surfaces.**
-
-Straight from the colour-science reference, and it is the answer for a mono-brand client too:
-
-> "Tight constraint, then variation — variety comes from **density and interaction, not palette
-> size**." / "**Lightness variation at fixed chroma** — depth and atmosphere without losing palette
-> identity (use OKLCH)."
-
-So you never need to invent a second hue to make a page feel rich. You build the ladder.
-
-**Compose a long page from at least four rungs**, and never place two adjacent sections on the same
-one:
-
-| Rung | Use |
-|---|---|
-| `--surface-1` | hero / first section — the lightest ground |
-| `--surface-2` | default page background |
-| `--surface-3` | alternating section, card grounds |
-| `--surface-4` | recessed band — quotes, stat strips |
-| `--surface-5` | mid-dark band, to break a long light run |
-| `--surface-6` | deepest ground — footer, final CTA |
-
-`--surface`, `--surface-alt` and `--surface-dark` remain as aliases so existing markup keeps
-working; prefer the numbered rungs on new work.
-
-Contrast still governs everything on top: `contrast-check.mjs` runs against whatever you place, and
-`--ink` / `--on-dark` are the solved text colours for the light and dark ends of the ladder.
-
-### Canvas mode: FULL-TINT (default) vs NEUTRAL-CANVAS (the luxury lever)
-
-**Every rung above is brand-tinted, including the ones the code calls "neutral."** That is
-deliberate — FULL-TINT is the right default for most trades, where a colour-forward page reads
-warm and approachable. But it means the page's *base* — hero, body copy sections, the default
-ground a visitor sits on for most of a scroll — always carries the brand hue, never a true white
-or true dark. **Caught live 2026-08-16** (Jeff, looking at a blue-brand HVAC build): "the AC is
-cool, but I think would look more luxury with a white background and colored sections vs all blue
-variants... think Ritz-Carlton." He is describing a second, real mode this system did not yet have
-a name for:
-
-| | FULL-TINT (default) | NEUTRAL-CANVAS |
-|---|---|---|
-| `--surface` / `--surface-alt` (page base, most sections) | drawn from the tinted ladder (`--surface-1`/`-2`) | **true neutral** — `#ffffff` / near-white for a light-first brand, true near-black (`#0a0a0a`-ish, not a tinted `--surface-6`) for a dark-first one |
-| The 6-rung tinted ladder | used everywhere, is the whole rhythm system | **demoted to an accent device** — used only on a minority of sections (a stat strip, a testimonial band, the footer) as deliberate colour punctuation against the neutral base |
-| Reads as | warm, colour-forward, approachable — right for most everyday trades | restrained, premium — restraint IS the signal, same reasoning § Colour CHARACTER already gives for `none` harmony on jewellers/tailors/galleries/funeral masons |
-
-**Choosing it is a CHARACTER decision, made once, at the same point you pick harmony** — not a
-per-section toggle. Default FULL-TINT for everyday service trades. Consider NEUTRAL-CANVAS when
-the gathered content itself signals premium positioning (high-end brands serviced, decades of
-awards, a heritage/family narrative, premium pricing already implied) even inside an "ordinary"
-trade like HVAC — a colour-saturated page under-sells a business the content says is upmarket.
-**Record the choice in `status.md`** next to the harmony decision, same as CHARACTER.
-
-> 🔬 **A third mode, SATURATED-CANVAS, is evidenced but NOT YET IMPLEMENTED — flagged here rather
-> than rushed in untested (2026-08-19 Fable design-elevation review).** Direct first-hand inspection
-> of a real Awwwards-nominee trade-service site (southernlifts.com.au, an elevator/lift company —
-> the closest real comparable to this pipeline's own market) found its hero ground is the BRAND HUE
-> AT FULL SATURATION used as an environment — not FULL-TINT's low-chroma ladder, not
-> NEUTRAL-CANVAS's true-neutral base. `derive-palette.mjs`'s tinted-surface system currently has no
-> mode that produces this (its ladder deliberately caps surface chroma low). Implementing it means a
-> new derive-palette flag emitting a full-chroma surface pair (with near-white/near-black text,
-> still contrast-gate-verified) for the hero and 1-2 sections, seeded/CHARACTER-gated like the two
-> modes above. Do NOT half-implement this by hand-picking a saturated hex in a single build — it
-> needs the same arithmetic contrast/CVD guarantee the other two modes get from the real deriver
-> script. Next step: add and test the derive-palette flag properly, then document the mode here. (the engine now offers six hooks — use them)
-
-Amplitude was only half the problem. The other half was REACH: for a long time the engine offered
-four hooks, so a page could be fully compliant and still animate in two places, which is why the
-live site drew "motion is low ... i mean usage in the site".
-
-Per page, the floor is:
-- **every section below the hero** carries `data-reveal`
-- **every multi-item grid** carries `data-reveal-group` on its wrapper
-- **the hero media** carries `data-hero-media`
-- **`data-count` on every real figure** the gather produced — years trading, jobs completed, review
-  count. The attribute holds the TRUE number and the text is only replaced while animating, so a JS
-  failure leaves the authored figure in place. Never invent a statistic to animate.
-- **`data-parallax` on at least one mid-page image** if the gather returned photos. The second half
-  of a page is where motion historically died.
-
-Amplitude was lifted at the same time (rise 18-34px -> 36-64px, duration 0.55-0.85s -> 0.7-1.0s,
-stagger 0.05-0.11s -> 0.09-0.16s, parallax 8-16% -> 14-24%, plus a 0.985 scale settle). An 18px
-rise over 0.55s is below the threshold at which a visitor registers that anything moved. These are
-still seeded per business, so fleet variety and reproducibility are preserved.
-
-### The floors
-
-1. **Use the secondary.** `derive-palette.mjs` computes `--secondary` precisely so a page has a
-   second hue. Deploy it on eyebrows, stat figures, icon strokes, dividers, link hovers, or one
-   section wash. Never on body text — it is derived for contrast in *accent* roles, and
-   `contrast-check.mjs` still governs anything textual.
-2. **Four gradient declarations minimum** (promoted 2026-08-18 to match `richness-check.mjs`'s hard
-   FAIL threshold — a build that follows a "two" floor now fails QA on instructions it obeyed),
-   built from tokens rather than hand-picked hex: a hero scrim, at least one section transition,
-   and at least one card or panel wash. A page of flat fills reads as stacked slabs.
-3. **Grain must be visible**: ~0.10-0.14 on light surfaces, ~0.14-0.20 on dark. Shipping an
-   invisible texture costs the same to render and buys nothing, while *looking* finished.
-4. **Four distinct section treatments** across a long page — light, alt-light, dark, and one
-   image- or gradient-backed. Alternating two neutrals is a stripe, not rhythm.
-5. **Stagger the grids.** `data-reveal-group` on every multi-item wrapper (service cards, photo
-   grids, review cards, FAQ lists). Whole-section fades read as a slideshow; stagger reads as craft.
-
-**HyperUI is deleted from this pipeline (2026-08-19) — see § Verify's note further below for the
-full reasoning.** Every section here is authored directly against the design system, richness
-rules, and composition guidance in this file, with no external component library involved.
-
-## Photo art direction (mandatory) — the real ceiling on "premium"
-
-**Scraped Google Maps/Facebook photos are inconsistent raw material — customer-uploaded, uneven
-light, no art direction.** Award-tier sites art-direct their photography; this pipeline cannot
-commission new photography, but it CAN treat what it has the way a designer would. Right now it
-doesn't: every photo across every measured client ships as a bare `<img>` in a plain rounded
-rectangle — literally `aspect-[X/Y] overflow-hidden rounded-lg` and nothing else. Even the hero's own
-overlay is `bg-surface-6/75` — a **uniform** darkening scrim, which is the specific pattern this
-section bans.
-
-**Every hero-weight and section-anchor photo (not every incidental thumbnail) must commit to ONE of
-three treatments**, tied to the derived palette so it varies per client automatically instead of
-being one more thing every site does identically:
-
-**1. Duotone / tonal grade** — grayscale the photo, then blend a brand token over it:
-```css
-/* globals.css */
-.photo-duotone { position: relative; }
-.photo-duotone img { filter: grayscale(1) contrast(1.08); }
-.photo-duotone::after {
-  content: ""; position: absolute; inset: 0;
-  background: var(--accent);       /* or --secondary for a second family of photos */
-  mix-blend-mode: color;           /* luminosity also works — try both, pick what holds the subject */
-  opacity: 0.7;
-}
-```
-
-**2. Graphic containment** — break the plain rectangle with a shape or a brand-coloured plate offset
-behind the image, instead of a uniform `rounded-lg`:
-```tsx
-<div className="relative">
-  <div className="absolute inset-0 translate-x-3 translate-y-3 rounded-lg bg-accent/25" aria-hidden />
-  <div className="relative aspect-[4/5] overflow-hidden rounded-lg" data-photo-treatment="contained">
-    <img ... />
-  </div>
-</div>
-```
-An asymmetric `clip-path` polygon is the other valid form of this — either way the point is the same:
-the photo is no longer a plain rectangle floating on the page.
-
-**3. Directional scrim** — for text-over-photo (hero, section dividers): a gradient, never a flat
-overlay. `bg-surface-6/75` uniformly darkening the whole frame is the exact defect; the fix is a
-gradient that's strongest where the text sits and clear elsewhere:
-```tsx
-<div className="absolute inset-0 bg-gradient-to-t from-surface-6/90 via-surface-6/30 to-transparent" aria-hidden />
-```
-
-**Mark every treated photo** with `data-photo-treatment="duotone|contained|scrim"` on the wrapper —
-this is what the gate below checks, and it is far more reliable than trying to infer treatment from
-arbitrary Tailwind class soup. An untreated incidental thumbnail (a small icon-adjacent image, not a
-hero or section-anchor photo) does not need the attribute — treating every single image would read
-as heavy-handed, not designed.
-
-**Gate:** `richness-check.mjs` fails a build whose hero-weight photos carry zero `data-photo-treatment`
-attributes anywhere in the site. Deviation is allowed (a genuinely strong photo can stand alone) —
-document which photo and why in `status.md` if you deliberately leave one untreated.
 
 ## Images: WebP + responsive variants are STANDARD (never ship a source photo)
 
@@ -1598,260 +989,15 @@ So the script emits `640/1024/1600/1920` WebP variants, and **the TSX must use t
 `noindex`, which spec builds are deliberately. It resolves to ~100 when `/seo` lifts the noindex at
 conversion. Performance, Accessibility and Best Practices have no such excuse and should be 95+.
 
-## Precedence when the design consult and the colour system disagree
-
-Two systems now hand you colour, and they will conflict. The order is settled (Jeff, 2026-08-16:
-"but color theory should probably win i think") and it is not a tie-break — each owns what it is
-actually good at:
-
-| Decision | Owner | Why |
-|---|---|---|
-| **The brand accent itself** | the business's real logo colour | identity. Never overridden, never re-characterised. |
-| **Every other colour** — secondary, surfaces, text, semantics | `derive-palette.mjs` + `color-expert` | it solves for CONTRAST and CVD arithmetically and is verified by `contrast-check.mjs`. A recommendation cannot promise 4.5:1 against this client's actual surfaces; the deriver proves it. |
-| **Layout pattern, section order, STYLE, KEY EFFECTS** | `/ui-ux-pro-max` | it holds 161 product types and reasoning rules for exactly this. |
-| **Typography pairing** | `/ui-ux-pro-max` typography *domain search* (shortlist) + build-skill trade-mask + seed | its domain-search shortlist is matched by trade and mood; § How to pick fonts below then applies the trade-mask/banned-list/uniqueness filters and picks by seed. **Not** the `--design-system` call's own font recommendation directly — see § How to pick fonts, which explicitly skips that field (fixed 2026-08-19, this row previously contradicted that section). |
-
-So on Mike's Bobcat the consult returned "Industrial grey + safety orange (#64748B / #94A3B8 / CTA
-#F97316)". Overriding that with the client's real `#FF8D13` and a derived deep-teal secondary is
-**correct** — it is their brand, and the derived pair is contrast- and CVD-verified against the
-actual surfaces, which a generic palette cannot be.
-
-**But dropping the STYLE and KEY EFFECTS was not correct**, and that is the distinction. The same
-consult returned `clamp(3rem, 10vw, 12rem)`, `font-weight: 900`, `letter-spacing: -0.05em` under
-"Exaggerated Minimalism", and the build silently ignored all of it. That is the difference between
-a page that commits to a look and one that is merely tidy.
-
-**Deviating is allowed; silence is not.** Any recommendation you do not apply must be named in
-`status.md` with a reason. `richness-check.mjs` fails the build on an undocumented drop, and a
-colour deviation justified by this precedence table is a one-line note, not an argument.
-
-## Colour roles (mandatory — derive, don't validate)
-
-**Every accent that ever touches text is DERIVED by `scripts/derive-palette.mjs`, never picked
-and then checked.** The failure this kills was measured, not imagined: three consecutive builds
-shipped a mid-tone saturated accent (blue #10a0e0, gold #ca8a04, green #6ab42f) as link text on
-white AND as a fill under white text, at 2.5-2.9:1 — and none of them *looked* broken, because
-blue-on-white reads as tasteful link styling. A mid-tone saturated colour essentially never clears
-4.5:1 against white in either direction; that is arithmetic, and no reviewer catches arithmetic in
-a screenshot. So the compliant values are computed up front and the raw accent is barred from
-text jobs entirely.
-
-Run it once per build, from the repo root, with the accent hue (brand `primary` if gathered,
-else the `/ui-ux-pro-max` primary) and the harmony chosen from the industry table below. **Use the
-one canonical, complete invocation at § Convergence check** (carrying `--character`/`--ground`/
-`--ground-hue` alongside `--harmony`) to produce the `:root` block you paste — not a bare
-`--harmony`-only call. (Corrected 2026-08-19 — Fable consult: this section previously showed a
-bare `--harmony`-only example and told you to paste ITS output, which silently re-derives with
-`character=vivid, ground=light, ground-hue=accent` — exactly the defaults § Ground exists to
-override. The design-ledger convergence check records the *decision*, not which flags the
-paste-producing call actually carried, so this drift was invisible to every other gate.)
-
-**Do NOT pass `--light`/`--dark` by default.** With no surface flags the script DERIVES the
-surfaces from the brand hue at very low chroma (page C 0.006, card C 0.010, dark section
-C 0.014 in OKLCH) — tinted paper instead of stock grey. A warm gold brand on a cold grey-white
-is one of the clearest generated-vs-designed tells this pipeline can ship; the tint band is
-chosen so it reads as temperature, never as a colour cast (above ~0.015 at L≥0.95 a surface
-reads "stained"; below ~0.004 sRGB rounding erases the tint entirely). Use the emitted
-`--surface`, `--surface-alt`, `--surface-dark`, `--ink`, `--ink-muted`, `--on-dark`,
-`--on-dark-muted` as THE site neutrals — never introduce a freehand grey or a `#ffffff` page
-background alongside them. The flags remain ONLY for the rare build whose design genuinely
-needs a specific surface (e.g. pure white product cards): pass them and every text role re-solves
-against what you passed. It prints a `:root` block — paste it into `globals.css` verbatim and
-mirror the values into `tailwind.config.ts` like any palette colour. It must end
-`PALETTE_DERIVE=PASS`; a FAIL means an override surface is wrong (e.g. a mid-grey as "light").
-
-**Choosing `--harmony` — by industry and gathered tone, never a coin flip.** The secondary hue
-is a named relationship on the OKLCH hue wheel, executed deterministically by the script. Pick
-the row that matches the trade, then let the TONE of `gathered-content.md` override one step
-toward calm (bold choice → its calmer neighbour) if the business reads heritage/family/quiet,
-or one step toward bold if it reads loud/modern/performance:
-
-| Trade family | `--harmony` | Why |
-|---|---|---|
-| Care, trust and quiet authority: funeral homes, medical/GP, accounting, law, physio | `analogous` | Adjacent hues carry no tension; the palette says calm competence. Never complementary — a funeral home does not want colour drama. |
-| Home services: plumbing, electrical, locksmith, cleaning, HVAC | `split` | Contrast enough to look confident, without complementary's vibration. The default when unsure. |
-| Outdoor and land: landscaping, gardening, tree surgery, fencing, pools | `split` or `analogous-warm` | A green brand's split partner is a berry/crimson (garden colours); its literal OKLCH complement is violet, which reads generated, so complementary is wrong for green brands specifically. |
-| Food and hospitality: cafés, restaurants, bakeries, catering | `analogous-warm` | Appetite lives in the warm arc; a cool secondary next to food photography kills it. |
-| High energy: gyms, auto performance, demolition, martial arts | `complementary` | Maximum hue tension is the point. Best from blue/orange or red/teal brands. |
-| Children and play: children's dentists, nurseries, party services, tutors | `triadic` | Three-hue playfulness without random rainbow; the script caps secondary chroma so it stays grown-up. |
-| Premium/heritage: jewellers, tailors, galleries, funeral masons | `analogous` or `none` | Restraint IS the luxury signal; `none` (single hue + tinted neutrals) is legitimate here and only here. |
-
-Record the row you used (one line in `data/status.md`: `harmony=split (home services)`), so the
-choice is auditable. The script also tie-breaks the two possible rotations of
-analogous/split/triadic away from violet (280–330°, the AI-slop band) and away from the error
-anchor (27°) — that logic is documented in the script header, not repeated here.
-
-The derivation keeps the brand HUE exactly and moves only lightness, in OKLCH, so the darkened
-gold is still unmistakably that gold — this is invisible to a reader and is NOT flattening the
-design. What it forbids is one hex doing three jobs:
-
-| Token | Job | Rule |
-|---|---|---|
-| `--accent` | decorative: borders, icon strokes, glows, plates, rules, focus rings | **NEVER text, never a surface under text.** The brand value untouched — this is where full brand brightness lives. |
-| `--accent-text` | accent-coloured words on light surfaces (links, eyebrows, price, stats) | use INSTEAD of `--accent` wherever text is accent-coloured |
-| `--accent-text-dark` | accent-coloured words on dark sections | same, for dark surfaces |
-| `--accent-fill` + `--on-accent-fill` | deep accent surface + its text: solid CTAs, chat bubble, badges | the pair travels together |
-| `--accent-fill-bright` + `--on-accent-bright` | the brand value as a block + a deep same-hue ink | the OTHER pair. **Never white text on the bright fill** — that is the exact measured failure. |
-| `--secondary` / `--secondary-text` / `--secondary-fill` + `--on-secondary-fill` | the harmony hue: secondary buttons, tags, alternating section accents, chart second series | same laws as the accent family — `--secondary` is decorative-only, the fill pair travels together. Use it so the site has a REAL two-hue scheme; a one-hue site with grey everything else is the template look. |
-| `--surface` / `--surface-alt` / `--surface-dark` | page, card/section, dark-section backgrounds | the site's ONLY neutral surfaces — brand-tinted, see above |
-| `--ink` / `--ink-muted` / `--on-dark` / `--on-dark-muted` | body text, muted text, and their dark-section counterparts | the ONLY neutral text colours. `--ink-muted` is solved ≥4.5 on both light surfaces — never write a freehand grey again. |
-| `--success`/`-text`/`-text-dark`/`-surface`, same for `warning` `error` `info` | form validation, toasts, booking confirmations, stock/availability badges | anchored to convention hues (error stays red, always). `--X` is icon/border strength (≥3:1), `--X-text` passes on the light surfaces AND on `--X-surface`. |
-
-**Semantic collision rule.** If the brand hue sits within 20° of a semantic anchor the script
-reports `SEMANTIC COLLISION` (a red-branded business collides with error; gold with warning;
-green with success; blue with info). The semantic KEEPS its convention hue — a teal "error" to
-dodge a red brand would be worse, because users read state by colour before words — and
-separates by lightness (the colliding `--X-text` solves to 6.0:1, measurably darker than
-`--accent-text`'s 4.6) and by FORM: on a collision, that semantic never ships as bare coloured
-text. It always appears in the full semantic pattern — icon + `--X-surface` tint + `--X`
-border — and that pattern is barred from any brand/marketing use, so the shape alone
-disambiguates. (Colour is never the only indicator anyway, WCAG 1.4.1; on a collision that
-rule is the answer, not belt-and-braces.)
-
-**Ground/secondary separation.** `derive-palette.mjs` also prints `⚠️ GROUND/SECONDARY TOO CLOSE`
-when the ground-hue (§ Ground above) and the harmony-derived secondary land within 60° of each
-other — added 2026-08-16 after a real build (ground-hue 210, split-harmony secondary at 178,
-only 32° apart) drew the operator verdict "color theory seems a bit off". Both are correct in
-isolation — the ground-hue fallback rule and the harmony rotation off the accent have never known
-about each other — but a ground and a secondary that close read as one muddy neutral family
-instead of a deliberate two-hue scheme, even though nothing is technically wrong. If you see this
-warning, change the harmony type (moves the secondary) or the `--ground-hue` (moves the ladder)
-and re-run before treating the palette as final; the script does not auto-correct this because
-either change needs its own contrast/CVD re-check.
-
-Pairs never mix: `--on-accent-bright` on `--accent-fill` is unchecked and not allowed (same for
-the secondary pair). Set
-`--chat-accent: var(--accent-fill); --chat-on-accent: var(--on-accent-fill);` so the chat widget
-inherits a compliant pair automatically. Muted/secondary text colours are not exempt: any
-non-derived colour used as text must itself be checked against its real surface — the backstop
-gate in § Verify computes every rendered element, so a freehand 4.4:1 grey will fail the build.
-Additionally, `node scripts/contrast-check.mjs --tokens src/app/globals.css` audits the token
-set STATICALLY — it fails if any derived token is missing from `:root` or any declared pair
-no longer passes, which catches tokens that only render on interaction (error states, toasts)
-and can't be caught from a screenshot of a resting page. Run it right after pasting the palette;
-it must print `TOKEN_CHECK=PASS`.
-
 ## Anti-slop rules (from frontend-design)
 - **Copy passes the `anti-ai-slop` skill before it ships.** Invoke `Skill(skill="anti-ai-slop")` in ENFORCE mode (job A) once before writing any visitor-facing string, and run its `eval.md` checklist over the finished `page.tsx` copy. Every headline, eyebrow, service description, About paragraph, FAQ answer and CTA is in scope; component names, class names and comments are not. It kills the 10 AI fingerprints, ~30 named slop patterns and 80+ banned phrases — the writing-quality equivalent of the `/ui-ux-pro-max` mandate above, and skipping it produces the same "an AI spat this out" tell. The dash ban below is one of its rules, restated here because it is the one that ships most.
 - NEVER use em dashes (`—`) or en dashes (`–`) anywhere a reader sees them (body copy, hero, eyebrow labels, service descriptions) — they're a recognisable AI-output fingerprint. Use commas, full stops, colons, or parentheses. Time ranges use a hyphen `-` (e.g. `Mon-Fri 07:30-17:00`). Dashes are acceptable only inside JSX comments or technical strings the user never reads.
 - NEVER use purple/violet gradients on white backgrounds - the #1 AI slop tell
 - NEVER use predictable, cookie-cutter layouts - break visual monotony with asymmetry and variety
 - DO use dominant colours with sharp accents, not timid evenly-distributed palettes
-- DO add atmosphere: the § Texture, depth & iconography pass below is the concrete, mandatory form of this rule
+- DO add atmosphere: the § Design (HARD RULES) pass below is the concrete, mandatory form of this rule
 
 (Font bans and the serif/sans-contrast + ui-ux-pro-max mandates live in the Font and Pre-build sections above.)
-
-## Texture, depth & iconography (mandatory — the anti-flat pass)
-
-Flat colour blocks with hard edges between them, one icon repeated across every service card, and
-un-framed photo rectangles are the three loudest "AI template" tells after fonts. Every build ships
-the three treatments below. The whole pass is CSS/SVG only — no image assets, no new network
-requests, roughly 1KB of CSS plus ~0.3KB per inline icon (measured +6.3KB across a full four-route
-site) — and every colour in it derives from the `/ui-ux-pro-max` palette variables in `:root`.
-Never hardcode a hue in a treatment, and never pick a motif that reads as one industry (leaves for
-everyone is a landscaping tell on a barber's site). Vary the expression per client — grain
-strength, glow hue and corner, plate colour — so two sites in the same town don't share a
-fingerprint. Restraint wins: the failure mode is a site that looks *decorated* rather than
-*designed*, and uniform maximal decoration is a worse tell than flatness.
-
-**1. Grain on every flat section.** Every solid-colour section carries an SVG-noise overlay via a
-`::after` data URI (~340 bytes, feTurbulence). The section needs `relative overflow-hidden`.
-
-> ⚠️ **Opacity raised 2026-08-16 — the old numbers shipped an invisible texture.** This said ~0.05
-> light / ~0.08-0.10 dark, the build followed it exactly, and the live result measured 0.05/0.09
-> with the operator reporting "i dont see ... textures". Below roughly 0.08 the noise is under the
-> perceptual floor on a flat fill: it renders, it costs the same, and nobody sees it — which is
-> worse than shipping none, because the page *looks* finished. Light **0.10-0.14**, dark
-> **0.14-0.20**. `richness-check.mjs` fails a build under 0.08.
-
-```css
-.grain::after, .grain-dark::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0.12;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-.grain-dark::after { opacity: 0.16; }
-```
-
-**2. Depth on dark sections: a corner-pooled accent glow.** A dark block reads as a flat colour
-switch until something pools light in it. One low-alpha radial of the palette accent, in a corner:
-
-```css
-.glow::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(80% 65% at 85% -5%, rgba(ACCENT_RGB, 0.18), transparent 60%);
-}
-```
-
-The glow MUST pool in a corner the section's text does not occupy (usually top-right, since text is
-left-aligned). This was measured, not guessed: on a real build a glow peaking under the text zone
-dropped a passing muted eyebrow from 5.03:1 to 4.45:1 — an AA fail introduced by the decoration
-itself. After adding it, re-measure the smallest/lowest-contrast text in that section against
-**rendered pixels** at the glow peak.
-
-**3. One icon per service, drawn from the service's actual name.** Never repeat a single glyph
-across the service cards — eight cards sharing one leaf is the sameness a scanning eye catches
-first. In `_components/Icons.tsx`, draw one 24x24 stroke icon per named service (consistent family:
-`fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"`),
-derived from what the service IS — pickets for fencing, a droplet over spray arcs for irrigation,
-shears for a barber, a pan for a caterer. Export a name-keyed `ServiceIcon` lookup with a fallback
-so site-data stays plain strings. Sit each icon on a low-opacity accent chip so cards anchor on
-colour, not bare glyphs (`.icon-chip { display:inline-flex; height:2.6rem; width:2.6rem;
-align-items:center; justify-content:center; background: rgba(ACCENT_RGB, 0.12); }`, ~0.3 alpha on
-dark sections). A repeated decorative *bullet* in a checklist is fine; repeated service-card
-identity icons are not.
-
-**4. Frame editorial photos.** Standalone photos (intro, about, beside process steps) get a quiet
-offset plate instead of sitting as bare rectangles:
-
-```css
-.frame-plate { position: relative; }
-.frame-plate::before { content: ""; position: absolute; inset: 0.75rem -0.75rem -0.75rem 0.75rem;
-  background: rgba(ACCENT_RGB, 0.18); pointer-events: none; }
-.frame-plate > * { position: relative; }
-```
-
-```tsx
-<div className="frame-plate aspect-[4/3] rounded-sm">
-  <div className="h-full w-full overflow-hidden rounded-sm"><img ... /></div>
-</div>
-```
-
-On dark sections use a lighter palette tone for the plate (e.g. the muted/sage tone at ~0.26).
-Gallery grids stay unframed — plating every cell of a grid is busy, not designed. No drop-shadow
-soup: the plate IS the depth.
-
-**Contrast gate for this pass:** any overlay, tint or glow under text changes the effective
-background. The treatments draw from `--accent` (decorative — the one place the raw brand value
-belongs), but at low alpha over a surface they shift that surface's luminance, so § Verify's
-`contrast-check.mjs` run is what proves the treated result; it composites alpha layers from the
-rendered page. For the glow specifically also confirm against rendered pixels (screenshot
-sampling) at the glow peak — ancestor-walk background resolution has produced false failures on
-these sites before. Nothing below 4.5:1 ships.
-
-### Skill wiring for this pass (all gated non-interactive)
-
-Consult these skills where they genuinely help; the recipe above is the deterministic floor that
-ships even when a skill adds nothing. This pipeline is headless: NEVER use any skill's interactive
-steps (theme pickers, showcase PDFs, AskUserQuestion), and never let one emit runtime JS, metered
-API calls, or raster assets into the site.
-
-- `algorithmic-art` — character for the texture: vary the noise recipe per client (baseFrequency,
-  octaves, tile size, seeded by the slug) so grain isn't one global fingerprint. Output MUST be a
-  static SVG data URI in CSS; its p5.js/.html/.js deliverables are banned from the site.
-- `theme-factory` — judgement for deriving surface-treatment strength (grain opacity, glow hue and
-  alpha, plate tone) from the client palette. Its 10 preset themes and choose-a-theme flow are
-  banned: palette authority stays with `/ui-ux-pro-max` + the client's own brand colour.
-- `design-system` / `ui-styling` — token discipline: every treatment colour references the `:root`
-  palette variables; no orphan hexes in treatment CSS.
-- `canvas-design` — composition judgement for photo framing and section balance; expressed as the
-  CSS plate/caption treatment, never as a generated raster.
-- `web-asset-generator` — favicon and og:image sizing from a real gathered logo only. Note honestly:
-  it does NOT draw service icons (it resizes logos and renders text images) — service icons are
-  hand-drawn per rule 3. Skip its interactive question step; take sizes/HTML-tag guidance only.
-- `taste-skill` — the judgement pass: after the build, hold the rendered desktop + mobile
-  screenshots against it. If any treatment reads as uniform decoration rather than something a
-  designer chose for THIS business, dial that treatment down before QA. Its motion defaults do not
-  apply (the Motion component owns animation).
 
 ## Design quality (IMPORTANT - avoid template look)
 The site must look bespoke and hand-crafted, not like an AI-generated template:
@@ -2011,7 +1157,7 @@ import SiteChat from "./_components/SiteChat";
 ```
 
 Set `--chat-accent: var(--accent-fill)` and `--chat-on-accent: var(--on-accent-fill)`
-in `globals.css` (the derived pair from § Colour roles), so the bubble matches the
+in `globals.css` (the derived pair from § Design (HARD RULES)), so the bubble matches the
 palette AND is compliant by construction — the raw accent with white text is the
 measured 2.9:1 failure.
 
@@ -2383,7 +1529,7 @@ node scripts/font-check.mjs clients/$ARGUMENTS/site
 
 It must print `FONT_CHECK=PASS`. A `FAIL` means the site is rendering in Georgia/Helvetica no matter how correct `globals.css` looks — fix the loading mechanism, rebuild, re-run. Do not hand a `FONT_CHECK=FAIL` build to QA.
 
-**Then assert every rendered text element clears WCAG** — the computed backstop behind § Colour
+**Then assert every rendered text element clears WCAG** — the computed backstop behind § Design (HARD RULES)
 roles. Because the palette is derived, this should be proving a property that is already true; a
 FAIL means a freehand colour bypassed the role tokens (or an overlay/glow shifted a surface) and
 the build does not ship until it passes. From the repo root:

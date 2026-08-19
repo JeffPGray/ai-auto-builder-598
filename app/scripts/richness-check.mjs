@@ -201,7 +201,7 @@ if (home) {
       `[photo] ${imgCount} photo(s) on the home page and ZERO carry data-photo-treatment. Every ` +
       'image ships as a bare rectangle — scraped raw material presented as-is reads as pasted, not ' +
       'art-directed. Give the hero and at least one section-anchor photo a duotone, graphic-' +
-      'containment, or directional-scrim treatment (see § Photo art direction).');
+      'containment, or directional-scrim treatment (see § Design (HARD RULES)).');
   }
 
   /* 4c. HERO MOTION. Measured 2026-08-16: `data-reveal` is correctly banned from the hero (it

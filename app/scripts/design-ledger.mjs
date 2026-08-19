@@ -28,7 +28,7 @@
  * A twin caught before a single TSX file is written costs nothing to fix — the build skill just
  * picks a different masked option and calls `check` again. A twin caught after the site is written
  * costs a full rebuild. So: call this once the design decisions (ground, formula, harmony,
- * character) are made in § Colour / § Ground / § Mandatory typography formula, BEFORE any page.tsx
+ * character) are made in § Colour / § Design (HARD RULES) / § Design (HARD RULES), BEFORE any page.tsx
  * exists. There is no `--regen` mode here on purpose — regenerating already-written code is a
  * /qa-fix concern, not this script's.
  *

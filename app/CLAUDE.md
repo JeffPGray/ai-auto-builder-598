@@ -387,7 +387,7 @@ Run follow-ups first, then the pipeline. Keep looping.
     - **You review everything that comes back against `anti-ai-slop`'s eval before committing it**
       anywhere. Delegating the writing does not delegate the judgement.
     - Never delegate `page.tsx` itself, `globals.css`, the shared chrome, or anything under
-      § Visual richness. (c)'s prose comes back as text, not markup — you write every `.tsx` file
+      § Design (HARD RULES). (c)'s prose comes back as text, not markup — you write every `.tsx` file
       that exists. If you catch yourself reaching for a second sub-agent, or letting this one touch
       a component/layout/style decision, stop — that is the line.
 11. **NEVER skip QA.** Every site MUST go through the QA loop (qa-reviewer agent) before deploying — no exceptions, however rushed the run or simple the site. Deploying a broken site to a real business owner wastes the lead.

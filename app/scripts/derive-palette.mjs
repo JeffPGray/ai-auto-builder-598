@@ -81,7 +81,7 @@
  *     triadic         ±120°, same tie-break — for playful multi-colour designs
  *     none            no secondary emitted (single-hue design, deliberate only)
  *   WHICH harmony suits WHICH trade is the build skill's decision (see
- *   build/SKILL.md § Colour roles — the industry table); this script only
+ *   build/SKILL.md § Design (HARD RULES) — the industry table); this script only
  *   executes the named relationship, deterministically.
  *   Secondary chroma is capped at min(brandC × 0.85, 0.13): a support colour
  *   at full brand chroma competes instead of supporting — two sirens, no song.
