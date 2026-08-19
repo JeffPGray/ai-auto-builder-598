@@ -455,7 +455,7 @@ The template also ships three components you do NOT write yourself — `Motion.t
   - Either way: desktop gets a chevron and `onMouseEnter`/`onMouseLeave` (or `onFocus` for keyboard) panel; mobile gets an expandable inline group (button + chevron toggling `max-h-0`/`max-h-[Npx]`, not a second-level route) listing the same links, no photo panel on mobile (screen too narrow for the split). Keep the category list itself in `site-data.ts` (e.g. `SERVICE_CATEGORIES`) so `SiteNav`, the `/services` overview cross-links, and each dedicated page draw from one array rather than three hand-maintained lists. Never gradient text on the service name, never a side-stripe accent border on the active row, never glassmorphism on the panel — all separately banned by `impeccable`.
 - **Every page exports its own `metadata`** — a distinct `title` and `description` naming that page's subject plus the town. Four pages sharing one title is the same SEO failure as one page.
 - **Exactly one `<h1>` per page**, specific to that page ("Landscaping services in Frisco", not the business name repeated).
-- **Every page is a real page.** No route may be a thin stub or a redirect to a homepage anchor. A route that exists must clear its threshold above; if it cannot, fold the content into a sibling page and **do not create the route at all** — a 404 is more honest than a 60-word placeholder. Record the drop and the counts in `status.md`. **Working floor: any marketing page under ~120 rendered words is a stub** — QA hard-fails on that number, so treat it as the line, not a guideline.
+- **Every page is a real page.** No route may be a thin stub or a redirect to a homepage anchor. A route that exists must clear its threshold above; if it cannot, WRITE the missing content — per § Per-service pages every named service gets a page, and deleting the route is explicitly the wrong fix — a 404 is more honest than a 60-word placeholder. Record the drop and the counts in `status.md`. **Working floor: any marketing page under ~120 rendered words is a stub** — QA hard-fails on that number, so treat it as the line, not a guideline.
 - **Cross-link between pages** in body copy, not just in the nav — the services page links to contact, the about page links to services. Orphan pages reachable only from the nav read as filler.
 - **`/privacy` and `/terms` ship on every build** and both live in the footer or sub-footer, never in the main nav. They are not marketing pages and the ~120-word stub floor is not the test for them; § Legal pages is.
 - **Every page still obeys every rule in this skill** — photos woven through, no anchor-nav cliché, contrast, mobile CTA, the anti-slop pass. A polished home page in front of three thin subpages is worse than an honest one-pager.
@@ -899,10 +899,10 @@ electrical, sturdy for plumbing, organic and warmer for landscaping. If every po
 by a SAME-TOWN collision, widen with the typography domain search and stay inside the trade's
 register; never reach for a display/fashion serif on a trade site.
 
-### Canvas mode: FULL-TINT (default) vs NEUTRAL-CANVAS (the luxury lever)
+### Canvas mode: NEUTRAL-CANVAS (default for trade sites) vs FULL-TINT vs SATURATED-PANEL
 
 **Every rung above is brand-tinted, including the ones the code calls "neutral."** That is
-deliberate — FULL-TINT is the right default for most trades, where a colour-forward page reads
+deliberate — but FULL-TINT is NOT the default (corrected 2026-08-19; NEUTRAL-CANVAS is, per the decision rule below). FULL-TINT suits everyday trades with a warm brand hue, where a colour-forward page reads
 warm and approachable. But it means the page's *base* — hero, body copy sections, the default
 ground a visitor sits on for most of a scroll — always carries the brand hue, never a true white
 or true dark. **Caught live 2026-08-16** (Jeff, looking at a blue-brand HVAC build): "the AC is
@@ -910,14 +910,14 @@ cool, but I think would look more luxury with a white background and colored sec
 variants... think Ritz-Carlton." He is describing a second, real mode this system did not yet have
 a name for:
 
-| | FULL-TINT (default) | NEUTRAL-CANVAS |
+| | FULL-TINT (the exception) | NEUTRAL-CANVAS (the trade default) |
 |---|---|---|
 | `--surface` / `--surface-alt` (page base, most sections) | drawn from the tinted ladder (`--surface-1`/`-2`) | **true neutral** — `#ffffff` / near-white for a light-first brand, true near-black (`#0a0a0a`-ish, not a tinted `--surface-6`) for a dark-first one |
 | The 6-rung tinted ladder | used everywhere, is the whole rhythm system | **demoted to an accent device** — used only on a minority of sections (a stat strip, a testimonial band, the footer) as deliberate colour punctuation against the neutral base |
 | Reads as | warm, colour-forward, approachable — right for most everyday trades | restrained, premium — restraint IS the signal, same reasoning § Design (HARD RULES) already gives for `none` harmony on jewellers/tailors/galleries/funeral masons |
 
 **Choosing it is a CHARACTER decision, made once, at the same point you pick harmony** — not a
-per-section toggle. Default FULL-TINT for everyday service trades. Consider NEUTRAL-CANVAS when
+per-section toggle. **NEUTRAL-CANVAS is the default for a trade site** (see the executable decision rule below, which routes every emergency trade and any build with <4 photos to it). FULL-TINT is the deliberate exception for everyday trades with warm brand hues and homey content. Consider NEUTRAL-CANVAS when
 the gathered content itself signals premium positioning (high-end brands serviced, decades of
 awards, a heritage/family narrative, premium pricing already implied) even inside an "ordinary"
 trade like HVAC — a colour-saturated page under-sells a business the content says is upmarket.
@@ -1026,7 +1026,7 @@ node scripts/design-ledger.mjs check $ARGUMENTS \
   --heading-font "<Family Name>" --body-font "<Family Name>" --town "<city>"
 ```
 `DESIGN_LEDGER=TWIN` → re-pick (max 2 forced re-picks, then proceed and write `TWIN_ACCEPTED:
-<reason>`). **`FONT_LEDGER=REUSE` is a hard stop with no allowance** — the heading font collides
+<reason>`). **`FONT_LEDGER=REUSE` is a hard stop — but it fires ONLY on a SAME-TOWN collision** (cross-town prints INFO and you keep the font) — the heading font collides
 name-for-name with a recent build; pick another. Record with `design-ledger.mjs record` (same flags)
 once final.
 
@@ -1042,13 +1042,13 @@ rows are stated here as binding and are being moved into the script — until th
 | 3 | Dominant element — the one named in DESIGN_IDEA | **≥ 1.5×** a sibling's rendered area | ⏳ |
 | 4 | Signature motif — the one named in DESIGN_IDEA | **≥ 3** appearances in built HTML | ⏳ |
 | 5 | Gradients | **≥ 4**, each ≥ 15% perceptual delta between stops | ✅ |
-| 6 | Grain opacity | **0.12 – 0.20** | ⚠️ script fails only below **0.08**, no upper bound — drift |
-| 7 | Distinct section treatments | **≥ 4** | ⚠️ script fails below **3**, and only when ≥5 sections — drift |
+| 6 | Grain opacity | **0.12 – 0.20** | ✅ enforced as the 0.12–0.20 band, upper bound added 2026-08-19 |
+| 7 | Distinct section treatments | **≥ 4** | ✅ enforced at <4, the ≥5-section precondition dropped 2026-08-19 |
 | 8 | Photo-grounded sections (photo behind 80–88% wash) | **≥ 2** | ✅ |
-| 9 | `--secondary` usage | **≥ 10** references | ⚠️ script fails only at **0**, warns under 3 — drift |
+| 9 | `--secondary` usage | **≥ 10** references | ✅ enforced at <10 (tightened 2026-08-19) |
 | 10 | Identical siblings — 4+ same-class cards/panels with no structural variant | **0** allowed | ✅ |
 | 11 | Uniform-rhythm run — 4+ visually identical blocks with nothing breaking them | **0** allowed | ✅ verify-design-intent CHECK D |
-| 12 | Every `<img>` carries width+height | **100%** | ⚠️ script WARNS only, never fails — drift |
+| 12 | Every `<img>` carries width+height | **100%** | ✅ promoted to a hard failure 2026-08-19 |
 
 
 > ⚠️ **The ⚠️ rows are DRIFT, found by audit 2026-08-19: the table states the intended threshold and
@@ -1349,7 +1349,7 @@ site in the fleet animates with byte-identical numbers, which is the motion
 equivalent of every site shipping in Inter. Same seed always gives the same motion,
 so builds stay reproducible.
 
-Then mark elements. These four attributes are the entire API:
+Then mark elements. These attributes are the entire API (the table below lists all of them — the engine has grown past the original four):
 
 | Attribute | Put it on | Effect |
 |---|---|---|
@@ -1862,10 +1862,7 @@ ratio: white-on-gold at 2.9:1 looks like a handsome button, which is exactly how
 shipped it. Do not hand a `CONTRAST_CHECK=FAIL` build to QA.
 
 Keep going — FONT_CHECK/TOKEN_CHECK/CONTRAST_CHECK passing is necessary but not sufficient; the
-marker that tells QA it can skip re-running gets written once ALL eight Verify checks (these three
-plus the five shift-left checks below) have passed, not after just these three (see after the
-5-check batch below — writing it here would have been wrong, since a FAIL further down still needs
-a real fix-and-rebuild before anything can be trusted stale-free).
+marker that tells QA it can skip re-running gets written once ALL SIX Verify checks (font, token, contrast, richness, reviews, nav-visibility — the two HyperUI gates were deleted 2026-08-19).
 
 **Then assert the motion and chat pieces reached the artefact**, for the same reason
 — all three fail silently and all three are things the recurring fee is sold on:

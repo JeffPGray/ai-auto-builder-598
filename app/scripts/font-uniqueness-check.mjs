@@ -205,9 +205,27 @@ if (own) {
   }
 }
 
-// ── Heading-font reuse against the last 8 OTHER records — hard FAIL ──
+// ── Heading-font reuse — hard FAIL ONLY on a SAME-TOWN collision ──
+//
+// SCOPED 2026-08-19 to match design-ledger.mjs, which was scoped earlier the same day. The two
+// gates adjudicate ONE defect and had drifted apart: design-ledger fires REUSE only same-town and
+// prints INFO cross-town ("NOT a failure — keep the font"), while this file still hard-FAILed on
+// any collision with the last 8 builds regardless of town — and its own error text cited the
+// section that says the opposite. A build that correctly KEPT the consult's cross-town pairing was
+// therefore passed at build time and hard-FAILed at QA, told to swap fonts. That forced re-pick is
+// precisely what pushed a build onto Bodoni Moda, a Vogue fashion didone, on a Texas HVAC
+// contractor. Uniqueness only has value where a prospect could see both sites.
+const ownTown = (own && own.town) || null;
 if (extractedHeading) {
-  const collision = priorsWithHeadingClaim.find((r) => normFont(r.headingFont) === normFont(extractedHeading));
+  const sameFont = priorsWithHeadingClaim.filter((r) => normFont(r.headingFont) === normFont(extractedHeading));
+  const collision = ownTown
+    ? sameFont.find((r) => r.town && normFont(r.town) === normFont(ownTown))
+    : null;
+  if (!collision && sameFont.length) {
+    console.log(
+      `FONT_UNIQUENESS_INFO — heading font "${extractedHeading}" is also used by ${sameFont.map((r) => r.slug).join(', ')}, but in a different town. NOT a failure: no prospect sees both sites, and forcing a re-pick here is what produced a fashion didone on an HVAC contractor (2026-08-19).`
+    );
+  }
   if (collision) {
     console.log(
       `FONT_UNIQUENESS_CHECK=FAIL — shipped heading font "${extractedHeading}" collides with ${collision.slug}'s heading font "${collision.headingFont}". Never reuse a heading font (build/SKILL.md § How to pick fonts) — swap the import in layout.tsx for a different shortlist entry.`
