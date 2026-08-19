@@ -226,12 +226,34 @@ net, and it runs as part of the deterministic battery on every round regardless 
 
 **Escalation triggers — any ONE of these forces a FULL, unscoped round (same as round 1), no
 exceptions:**
-   - the diff touches `globals.css`, `layout.tsx`, `tailwind.config.ts`, `next.config.mjs`, or
-     anything under `_components/` (including `blog-data.ts`, `site-data.ts`)
+   - the diff touches `globals.css`, `layout.tsx`, `tailwind.config.ts`, `next.config.mjs`,
+     `site-data.ts`, or `blog-data.ts` — these are imported by every route (or, for blog-data.ts,
+     every blog route) by construction, so there is no narrower real footprint to compute
+   - the diff touches any OTHER file under `_components/` **whose real import graph is more than
+     one route** (measured, 2026-08-19 Fable review — see below), OR the import graph could not be
+     computed
    - the diff touches any `public/` file referenced from more than one route
    - any deterministic gate (font/font-uniqueness/contrast/token/photo/ship-scan/richness/HyperUI-usage/HyperUI-transplant/copy-fingerprint) FAILed
    - the reviewer tagged any critical SYSTEMIC
    - the real diff touches a route the reviewer's scoped review did NOT cover
+
+**Import-graph-scoped escalation for `_components/` files (2026-08-19 Fable review).** The old rule
+treated every `_components/` touch as automatically systemic — but a component like `HeroVideo.tsx`
+renders on exactly one route (`/`), and a real build's round 2 paid for an 11-route full re-review
+(measured: ~11+ minutes of screenshot capture alone) to fix a one-route autoplay bug in it. Before
+treating a `_components/` diff as an automatic full-round trigger, compute its REAL import set —
+same "orchestrator's own measurement, never self-report" discipline as the shasum diff itself:
+```bash
+for f in $TOUCHED_COMPONENT_FILES; do
+  name=$(basename "$f" .tsx)
+  grep -rl "\b${name}\b" clients/{slug}/site/src/app --include='*.tsx' | grep -v "_components/${name}.tsx"
+done
+```
+If every touched `_components/` file's import set is exactly the routes already in `TOUCHED_ROUTES`
+(or a subset), it is NOT an escalation trigger — add its importing routes to the scoped review set
+instead of forcing a full round. If the grep fails, times out, or returns nothing (can't confirm
+zero importers is suspicious, not reassuring), fall back to the original full-escalation behaviour
+— an unprovable import graph is exactly the "could not be computed" case above.
 
 **If no trigger fires, scope round 2+:**
 
@@ -308,16 +330,37 @@ Run follow-ups first, then the pipeline. Keep looping.
 
     **Exception 1 — QA.** After `/build`, spawn the `qa-reviewer` agent (see QA Loop above) so the site gets reviewed by fresh eyes with no build context.
 
-    **Exception 2 — blog article PROSE only (added 2026-08-16, on Jeff's approval).** Once the five article topics are fixed and `gathered-content.md` is written, you may spawn **one** sub-agent to draft the article prose into `blog-data.ts` **concurrently** with your own page writing.
+    **Exception 2 — non-design PROSE surfaces only (blog added 2026-08-16; widened 2026-08-19,
+    both on Jeff's approval).** Once the five blog article topics are fixed and
+    `gathered-content.md` is written, you may spawn **one** sub-agent to draft, concurrently with
+    your own page writing: (a) the five blog articles into `blog-data.ts`, (b) the privacy/terms
+    page prose (they render through one frozen, non-bespoke template — no layout or component
+    decision to make), and (c) — where § Per-service pages fires — the per-service body prose,
+    returned to you as plain text blocks that **you** place into the `page.tsx` **you** write; the
+    sub-agent never touches a `.tsx` file directly for (c).
 
-    *Why this is allowed when the rest is not.* Measured on a 14-route build: 47.8 of 55.8 minutes was token generation, and roughly 4,000 words of it is blog prose that touches **no design surface at all** — no palette, no layout, no motion, no components. Rule 10 exists so the site has one accountable author whose design decisions stay coherent across pages; article prose cannot cause design drift, so the reason does not apply to it. It is a genuine concurrency win because the sub-agent's generation is a separate concurrent call.
+    *Why this is allowed when the rest is not.* Measured on a 14-route build: 47.8 of 55.8 minutes
+    was token generation, and roughly 4,000 words of it is blog prose that touches **no design
+    surface at all** — no palette, no layout, no motion, no components. Rule 10 exists so the site
+    has one accountable author whose design decisions stay coherent across pages; none of (a)/(b)/(c)
+    can cause design drift by the same reasoning that already cleared blog prose, so widening to
+    these three surfaces is not a new exception, it's the same one applied to its full scope. It
+    remains a genuine concurrency win because the sub-agent's generation is a separate concurrent
+    call, and it moves more of the ~93-minute generation-phase floor onto a lane already proven safe.
 
     *The bounds, and they are not optional:*
-    - **One** sub-agent, not one per article.
-    - **You** choose the topics first (§ Per-service pages coupling in the build skill) — the sub-agent does not decide what the blog is about.
-    - Attach `gathered-content.md` and carry the **three-bucket truth rule** into its prompt verbatim. An invented claim about a real business is the worst output this pipeline can produce, and a sub-agent has less context to notice it, not more.
-    - **You review what comes back against `anti-ai-slop`'s eval before committing it** to `blog-data.ts`. Delegating the writing does not delegate the judgement.
-    - Never delegate `page.tsx`, `globals.css`, the shared chrome, or anything under § Visual richness. If you catch yourself reaching for a second sub-agent, stop — that is the line.
+    - **One** sub-agent for all of (a)/(b)/(c) combined, not one per surface or one per article.
+    - **You** choose the blog topics and, for (c), the specific facts/claims each service page will
+      make — the sub-agent drafts prose against your decisions, it does not make them.
+    - Attach `gathered-content.md` and carry the **three-bucket truth rule** into its prompt
+      verbatim. An invented claim about a real business is the worst output this pipeline can
+      produce, and a sub-agent has less context to notice it, not more.
+    - **You review everything that comes back against `anti-ai-slop`'s eval before committing it**
+      anywhere. Delegating the writing does not delegate the judgement.
+    - Never delegate `page.tsx` itself, `globals.css`, the shared chrome, or anything under
+      § Visual richness. (c)'s prose comes back as text, not markup — you write every `.tsx` file
+      that exists. If you catch yourself reaching for a second sub-agent, or letting this one touch
+      a component/layout/style decision, stop — that is the line.
 11. **NEVER skip QA.** Every site MUST go through the QA loop (qa-reviewer agent) before deploying — no exceptions, however rushed the run or simple the site. Deploying a broken site to a real business owner wastes the lead.
 12. **NEVER send test/debug messages to real clients.** No test emails, test SMS, test anything to client email addresses or phone numbers. Ever. If you need to test SMTP/IMAP, send to your own `${EMAIL_ADDRESS}` (it loops back to your inbox). For SMS tests, send to `${TEST_PHONE}` (your personal mobile). A client receiving "test" from you is unprofessional and wastes the lead.
 

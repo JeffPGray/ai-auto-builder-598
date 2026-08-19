@@ -107,8 +107,13 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 # stream. Added 2026-08-19 for Jeff's request to track real tokens/time on a dispatch, rather than
 # the etime/cputime proxies used all night. Opt-in, not default, because it only pays off on a
 # clean finish — a watchdog-killed run still yields a 0-byte log either way, same as today.
+# DISPATCH_MODEL / DISPATCH_EFFORT (opt-in via env, default unchanged — opus/high, the setting
+# every stage used before 2026-08-19). Parameterised so a staged dispatch (scripts/dispatch-staged.sh)
+# can run gather and mechanical qa-fix rounds at a cheaper tier while design/build stays opus/high —
+# per the 2026-08-19 Fable review: effort is a real per-turn reasoning-token multiplier, and gather
+# is mostly checklist-shaped tool-driving, not the design-judgment surface that tier exists to protect.
 env -u CLAUDECODE -u CLAUDE_CODE CLAUDE_WORKER_CHILD=1 \
-  claude -p --permission-mode dontAsk --model opus --effort high --strict-mcp-config \
+  claude -p --permission-mode dontAsk --model "${DISPATCH_MODEL:-opus}" --effort "${DISPATCH_EFFORT:-high}" --strict-mcp-config \
   ${DISPATCH_OUTPUT_FORMAT:+--output-format "$DISPATCH_OUTPUT_FORMAT"} \
   "$(cat "$PROMPT_FILE")" > "$LOG" 2>&1 &
 CHILD=$!
@@ -147,6 +152,21 @@ die() {
   if [ "$rc" -eq 4 ]; then
     echo "  ⚠️ CEILING kill: if the run had reached /deploy or later, VERIFY external side"
     echo "  effects (GHL contact/tags, Vercel alias) before re-dispatching — do not assume clean."
+  fi
+  # P1 (2026-08-19 Fable review): a killed dispatch used to mean re-deriving by hand which stages
+  # had actually completed before re-dispatching from scratch — that manual reconstruction is what
+  # turned three kills tonight into ~3h15m of dead wall-clock. Auto-detect the resumable stage from
+  # the checkpoint artifacts (gathered-content.md / design-system.md / VERIFY_GATES_OK_AT /
+  # qa-report.md) so re-dispatching starts from the real boundary, not from zero.
+  # Computed locally, not via the script-global REPO_ROOT_ABS: that variable is assigned AFTER
+  # the watchdog loop that calls die() (see the post-exit sweep further down), so it is still
+  # unset the first time die() actually fires. die() needs its own root, independent of when the
+  # rest of the script initialises that variable.
+  local _die_root; _die_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  local _client_slug; _client_slug="$(basename "$WATCH_DIR")"
+  if [ -f "$_die_root/scripts/detect-resume-stage.mjs" ]; then
+    echo "--- resume-stage detection ---"
+    (cd "$_die_root" && node scripts/detect-resume-stage.mjs "$_client_slug" 2>&1) || echo "  (resume-stage detection failed — fall back to manual salvage above)"
   fi
   kill $pids 2>/dev/null; sleep 2; kill -9 $pids 2>/dev/null
   exit "$rc"
