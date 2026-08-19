@@ -215,10 +215,13 @@ async function loadFromUrl(base) {
   const routes = { '/': home };
   const sm = await get('/sitemap.xml');
   if (sm) {
-    for (const m of sm.matchAll(/<loc>([^<]+)<\/loc>/g)) {
-      const p = new URL(m[1]).pathname.replace(/\/$/, '') || '/';
-      if (!routes[p]) { const h = await get(p); if (h) routes[p] = h; }
-    }
+    // Sitemap routes are independent fetches with no ordering dependency (Fable consult,
+    // 2026-08-19) — fetch the whole set concurrently instead of one page at a time.
+    const paths = [...sm.matchAll(/<loc>([^<]+)<\/loc>/g)]
+      .map((m) => new URL(m[1]).pathname.replace(/\/$/, '') || '/')
+      .filter((p) => !routes[p]);
+    const pages = await Promise.all(paths.map((p) => get(p)));
+    paths.forEach((p, i) => { if (pages[i]) routes[p] = pages[i]; });
   }
   const cache = {};
   for (const n of ['llms.txt', 'robots.txt', 'sitemap.xml']) cache[n] = await get('/' + n);
@@ -478,7 +481,7 @@ if (!robots) {
   let cur = null;
   for (const raw of robots.split('\n')) {
     const line = raw.trim();
-    const ua = /^user-agent:\s*(.+)$/i.exec ? line.match(/^user-agent:\s*(.+)$/i) : null;
+    const ua = line.match(/^user-agent:\s*(.+)$/i);
     if (ua) {
       if (!cur || cur.rules.length) { cur = { agents: [], rules: [] }; groups.push(cur); }
       cur.agents.push(ua[1].trim());

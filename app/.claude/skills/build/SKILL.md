@@ -26,6 +26,13 @@ the content is what you just wrote; (c) if you genuinely lost track of overall s
 compaction, `status.md` and the file list (`find clients/$ARGUMENTS/site/src -type f`) are
 cheaper ways to reorient than re-reading generated code.
 
+**Also re-read this SKILL.md's OWN section for your current stage after a compaction — narrow, not
+whole.** A compaction can summarize away the exact rule you were mid-way through applying (a font
+pairing constraint, a colour-precedence rule, a specific check's threshold) while leaving you
+confident you remember it. `grep -n "^#"` this file to find the right heading, then `Read` with
+`offset`/`limit` for just that section — never the whole 2,600+ line file. This is the same narrow-
+read discipline as above, applied to the skill's own instructions instead of generated code.
+
 ## Pre-build checks (MANDATORY - do these before writing any code)
 
 ### 0. Retrofit guard (CMS / booking system)
@@ -2578,6 +2585,22 @@ payload fails here instead of passing a naive grep.
 
 What it does NOT prove, and must never be reported as proving: that any answer engine will cite the site.
 There is no artefact-level test for a citation.
+
+**First, mechanically auto-fix the two defect classes that never need a model turn (Fable consult,
+2026-08-19).** Missing `<img>` width/height and banned em/en-dashes are the two most common single
+findings across real QA reports, and both are purely mechanical — the fix is "read the real pixel
+size" and "substitute punctuation", never a design or copy judgement call. Fixing them with a script
+before richness-check even runs means richness-check has nothing to flag and QA never spends a round
+on either:
+```bash
+node scripts/fix-img-dims.mjs $ARGUMENTS
+node scripts/fix-dashes.mjs $ARGUMENTS
+```
+`fix-img-dims.mjs` only fixes `<img>` tags with a literal `/images/...` string src — it reports
+(never guesses at) anything with a dynamic/interpolated src, which needs your own judgement.
+`fix-dashes.mjs` only substitutes punctuation (comma for a spaced em-dash, hyphen otherwise/for a
+digit range) — it never rewrites a sentence, so if the resulting prose reads awkwardly, that's worth
+a manual pass, but the mechanical defect itself is already closed. Both skip JSX/JS comments.
 
 **Then run richness and HyperUI verification HERE, not only at QA (Fable consult, 2026-08-19 —
 shift-left).** These three used to run for the first time in QA, meaning a FAIL there cost a whole
