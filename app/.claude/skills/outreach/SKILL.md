@@ -2,7 +2,7 @@
 name: outreach
 description: Send initial outreach via the operator's priority-ordered channels (email, WhatsApp, SMS), cascading on per-recipient failures
 argument-hint: [business-name]
-allowed-tools: Bash(python3 *), Bash(node *), Bash(*/outreach-notify-simple.sh *), Bash(*/notify.sh *), Read, Write
+allowed-tools: Bash(python3 *), Bash(node *), Bash(*/outreach-notify-simple.sh *), Bash(*/notify.sh *), Read, Write, Skill
 ---
 
 # Send Outreach for $ARGUMENTS

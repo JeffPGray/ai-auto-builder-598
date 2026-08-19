@@ -3,7 +3,7 @@ name: seo
 description: One-shot go-live SEO + AEO/GEO (answer-engine) optimisation for a deployed client site — canonical host, metadata, icons, entity-graph structured data, answer-shaped Q&A, llms.txt, retrieval-crawler access, sitemap/robots, instant search-engine submission, and a handover checklist. Works on Vercel, Cloudflare Pages, and Netlify.
 argument-hint: [business-name] [live-domain]
 effort: medium
-allowed-tools: Bash(npx *), Bash(npm *), Bash(node *), Bash(bash *), Bash(python3 *), Bash(cd *), Bash(cp *), Bash(mv *), Bash(mkdir *), Bash(rm *), Bash(cat *), Bash(grep *), Bash(test *), Bash(curl *), Bash(printf *), Bash(echo *), Bash(openssl *), Bash(head *), Bash(cut *), Bash(tr *), Bash(date *), Bash(sed *), Read, Write, Edit, Glob, Grep
+allowed-tools: Bash(npx *), Bash(npm *), Bash(node *), Bash(bash *), Bash(python3 *), Bash(cd *), Bash(cp *), Bash(mv *), Bash(mkdir *), Bash(rm *), Bash(cat *), Bash(grep *), Bash(test *), Bash(curl *), Bash(printf *), Bash(echo *), Bash(openssl *), Bash(head *), Bash(cut *), Bash(tr *), Bash(date *), Bash(sed *), Read, Write, Edit, Glob, Grep, Skill
 ---
 
 # Make $ARGUMENTS findable — go-live SEO + AI search

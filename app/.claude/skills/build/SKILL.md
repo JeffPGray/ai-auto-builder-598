@@ -3,7 +3,7 @@ name: build
 description: Build a bespoke Next.js website from gathered content for a business
 argument-hint: [business-name]
 effort: high
-allowed-tools: Bash(npx *), Bash(npm *), Bash(node *), Bash(python3 *), Bash(cd *), Bash(mkdir *), Bash(cp *), Bash(kill *), Bash(sleep *), Bash(*/notify.sh *), Read, Write, Edit, Glob, Grep
+allowed-tools: Bash(npx *), Bash(npm *), Bash(node *), Bash(python3 *), Bash(cd *), Bash(mkdir *), Bash(cp *), Bash(kill *), Bash(sleep *), Bash(*/notify.sh *), Read, Write, Edit, Glob, Grep, Skill
 
 > ⚠️ **Terminal events only.** `NOTIFY_CHANNEL` fans out to two channels, so one call is two
 > messages. Alert here ONLY if this failure stops the pipeline or needs a human now. Stage
