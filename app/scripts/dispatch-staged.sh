@@ -33,6 +33,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
+# BASE_CONTEXT_FILE must be a context-only brief (client facts, mode, proof requirements) -- NOT a
+# numbered "run the full pipeline from scratch" prompt like the single-shot dispatch prompts under
+# prompts/dispatch/. Code-review finding, 2026-08-19: concatenating a full pipeline prompt with a
+# stage-scope suffix produces a DIRECT instruction conflict -- e.g. the base file says "1. Claim the
+# client fresh... 2. /gather" while the suffix for a later stage says "do NOT re-run /gather", and a
+# real agent reading both has no principled way to know which wins. Refuse to proceed rather than
+# silently dispatching a self-contradictory prompt.
+if grep -qE '^\s*[0-9]+\.\s*\*\*.*(Claim the client|/gather|/build|/deploy)' "$BASE_CONTEXT_FILE" 2>/dev/null; then
+  echo "dispatch-staged.sh: BASE_CONTEXT_FILE ($BASE_CONTEXT_FILE) looks like a numbered full-pipeline prompt (matches a 'N. **Claim/gather/build/deploy**' step), not a context-only brief." >&2
+  echo "This WILL produce a self-contradictory stage prompt. Write a plain context brief (client facts, mode, proof requirements — no step list) and pass that instead." >&2
+  exit 1
+fi
+
 LOG_DIR="logs"
 mkdir -p "$LOG_DIR"
 

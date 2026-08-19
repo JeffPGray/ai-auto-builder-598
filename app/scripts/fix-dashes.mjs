@@ -51,6 +51,21 @@ function walk(dir) {
 // later on the same line, which then silently survives unfixed. This is a proper single-pass
 // scanner that tracks whether we're inside a '/"/` string (respecting `\`-escapes) and only treats
 // `//` or `/* */` as a comment start OUTSIDE any string.
+// A quote only starts a real JS string in an EXPRESSION position (after =, (, ,, :, [, {, |, &,
+// ?, +, ;, or the start of the file/a newline) -- a bare `'`/`"` in JSX text content ("Don't wait")
+// is plain reader text, not a string delimiter. Second code-review pass (2026-08-19) caught this:
+// without the check, an odd apostrophe count anywhere in a file (extremely common in real prose --
+// "Don't", "it's") desyncs string-tracking for the rest of the file, which can make a later real
+// `//` inside a URL get read as code again and mask a whole line, exactly the bug this scanner was
+// built to fix. Real client files (layout.tsx, privacy/page.tsx, blog/page.tsx) all have odd
+// apostrophe counts, so this is not a theoretical case.
+const EXPR_POSITION = /[=(,:[{|&?+;\n]\s*$/;
+// KNOWN REMAINING LIMITATION, deliberate: a bare, UNQUOTED "https://" appearing directly in JSX
+// text content (not inside an href="..." attribute) still reads as a real `//` line-comment start,
+// masking a dash later on the same line. Distinguishing JSX text from JS/TS code needs a real JSX
+// parser, out of scope for a best-effort mechanical fixer. This fails SAFE — it under-fixes,
+// leaving the dash for QA/manual review — never corrupts anything, and the pattern itself (a raw
+// unquoted URL sitting in JSX text rather than an href attribute) is rare in this codebase.
 function maskComments(text) {
   let out = '';
   let i = 0;
@@ -63,7 +78,10 @@ function maskComments(text) {
       if (ch === inString) inString = null;
       i++; continue;
     }
-    if (ch === '"' || ch === "'" || ch === '`') { inString = ch; out += ch; i++; continue; }
+    if ((ch === '"' || ch === "'" || ch === '`') && (i === 0 || EXPR_POSITION.test(text.slice(Math.max(0, i - 20), i)))) {
+      inString = ch; out += ch; i++; continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') { out += ch; i++; continue; } // not an expression position: plain prose apostrophe/quote, not a string
     if (ch === '/' && text[i + 1] === '/') {
       const end = text.indexOf('\n', i);
       const stop = end === -1 ? text.length : end;

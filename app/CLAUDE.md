@@ -242,17 +242,39 @@ treated every `_components/` touch as automatically systemic — but a component
 renders on exactly one route (`/`), and a real build's round 2 paid for an 11-route full re-review
 (measured: ~11+ minutes of screenshot capture alone) to fix a one-route autoplay bug in it. Before
 treating a `_components/` diff as an automatic full-round trigger, compute its REAL import set —
-same "orchestrator's own measurement, never self-report" discipline as the shasum diff itself:
+same "orchestrator's own measurement, never self-report" discipline as the shasum diff itself.
+**Must be TRANSITIVE, not one hop** (code-review finding, 2026-08-19): a component imported by only
+one OTHER component still reads as "1 importer" on a single grep pass even when that importer sits
+in `layout.tsx` and renders on every route — expand every `_components/` hit again until the
+frontier is only route files:
 ```bash
-for f in $TOUCHED_COMPONENT_FILES; do
-  name=$(basename "$f" .tsx)
-  grep -rl "\b${name}\b" clients/{slug}/site/src/app --include='*.tsx' | grep -v "_components/${name}.tsx"
+frontier="$(for f in $TOUCHED_COMPONENT_FILES; do basename "$f" | sed 's/\.[^.]*$//'; done)"
+routes=""
+for _ in 1 2 3 4 5; do  # bounded iterations, not a real fixed-point loop -- 5 hops covers any
+                         # realistic component nesting depth in this template; if it's still
+                         # finding new _components/ hits after 5, treat as unresolved (below)
+  next_files=""
+  for name in $frontier; do
+    hits=$(grep -rlF "$name" clients/{slug}/site/src/app --include='*.tsx' | grep -v "_components/${name}\.")
+    next_files="$next_files $hits"
+  done
+  new_components=$(echo "$next_files" | tr ' ' '\n' | grep '_components/' | xargs -n1 basename 2>/dev/null | sed 's/\.[^.]*$//' | sort -u)
+  new_routes=$(echo "$next_files" | tr ' ' '\n' | grep -v '_components/' | sort -u)
+  routes="$routes $new_routes"
+  [ -z "$new_components" ] && break
+  frontier="$new_components"
 done
+echo "$routes" | tr ' ' '\n' | sort -u
 ```
-If every touched `_components/` file's import set is exactly the routes already in `TOUCHED_ROUTES`
-(or a subset), it is NOT an escalation trigger — add its importing routes to the scoped review set
-instead of forcing a full round. If the grep fails, times out, or returns nothing (can't confirm
-zero importers is suspicious, not reassuring), fall back to the original full-escalation behaviour
+`grep -rlF` (fixed-string, not `\b...\b`) sidesteps any component-name/regex-metachar mismatch, and
+matches on the plain basename without the extension, so a `.ts` file (`schema.ts`, `site-data.ts`)
+doesn't leave a stray `.` that could act as a wildcard.
+
+If every touched `_components/` file's REAL (transitively-resolved) import set is exactly the
+routes already in `TOUCHED_ROUTES` (or a subset), it is NOT an escalation trigger — add its
+importing routes to the scoped review set instead of forcing a full round. If the grep fails, times
+out, hits the 5-hop bound still finding new components, or returns nothing (can't confirm zero
+importers is suspicious, not reassuring), fall back to the original full-escalation behaviour
 — an unprovable import graph is exactly the "could not be computed" case above.
 
 **If no trigger fires, scope round 2+:**
@@ -263,8 +285,12 @@ Run /qa-fix {business-name} to fix round N's reported issues.
 POST: snapshot source tree (shasum) again, diff against PRE -> TOUCHED_FILES.
 
 Map TOUCHED_FILES to routes: a changed clients/{slug}/site/src/app/{route}/page.tsx
-touches exactly that route. A changed file under _components/ or a shared config file is
-an escalation trigger (above) — stop here and run a full round instead.
+touches exactly that route. A changed shared config file (globals.css, layout.tsx,
+tailwind.config.ts, next.config.mjs, site-data.ts, blog-data.ts) is an unconditional escalation
+trigger (above) — stop here and run a full round instead. A changed file under _components/ is
+NOT automatically an escalation trigger — compute its real import graph per the
+"Import-graph-scoped escalation" section above first; only escalate if that graph exceeds the
+already-touched routes or can't be confirmed.
 
 If no trigger fired:
   CANARY = one route NOT in the touched set, chosen deterministically so it rotates rather
@@ -333,11 +359,14 @@ Run follow-ups first, then the pipeline. Keep looping.
     **Exception 2 — non-design PROSE surfaces only (blog added 2026-08-16; widened 2026-08-19,
     both on Jeff's approval).** Once the five blog article topics are fixed and
     `gathered-content.md` is written, you may spawn **one** sub-agent to draft, concurrently with
-    your own page writing: (a) the five blog articles into `blog-data.ts`, (b) the privacy/terms
-    page prose (they render through one frozen, non-bespoke template — no layout or component
-    decision to make), and (c) — where § Per-service pages fires — the per-service body prose,
-    returned to you as plain text blocks that **you** place into the `page.tsx` **you** write; the
-    sub-agent never touches a `.tsx` file directly for (c).
+    your own page writing: (a) the five blog articles into `blog-data.ts`, (b) the privacy/terms page
+    prose (they render through one frozen, non-bespoke template — no layout or component decision
+    to make), and (c) — where § Per-service pages fires — the per-service body prose. **For BOTH (b)
+    and (c), the sub-agent returns plain text only — never touches a `.tsx` file directly.** You
+    place the returned prose into `privacy/page.tsx` / `terms/page.tsx` / the relevant service
+    `page.tsx` yourself. (Only clarified 2026-08-19 — (b)'s original wording didn't repeat this
+    text-only qualifier that (c) stated explicitly, which read as though the sub-agent could write
+    the privacy/terms `.tsx` files itself; it cannot, same as (c).)
 
     *Why this is allowed when the rest is not.* Measured on a 14-route build: 47.8 of 55.8 minutes
     was token generation, and roughly 4,000 words of it is blog prose that touches **no design
