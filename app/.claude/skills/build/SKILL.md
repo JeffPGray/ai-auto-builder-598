@@ -820,8 +820,19 @@ DM Serif Display, Playfair Display, Young Serif, Lora — every ChatGPT/Wix AI s
 ### Avoid as body font (too invisible)
 Space Grotesk, Figtree, Outfit — only acceptable when paired with a genuinely uncommon serif heading.
 
-### Good heading fonts (distinctive, not yet overused by AI)
-Bitter, Fraunces, Literata, Bodoni Moda, Zilla Slab, Vollkorn, Crimson Pro, Cormorant Garamond, Spectral, Eczar, Newsreader, Libre Caslon Display, Petrona, Brygada 1918, Instrument Serif
+### Heading fonts — use the TRADE POOL, not a flat list
+
+⛔ **There is deliberately no general "good fonts" list here any more.** One used to sit at this
+spot containing Bodoni Moda undifferentiated by trade, and it is exactly what a build reached into
+when the font ledger rejected its correct pairing — shipping a Vogue fashion didone onto a Texas
+HVAC contractor (2026-08-19). A flat list cannot know that a didone suits a boutique and insults a
+boiler-repair company.
+
+**The consult prints `TYPOGRAPHY POOL (pick from these only)` for this client's trade. Pick from
+it.** Each trade's pool is 3 pairings chosen for register — engineered/tabular for HVAC and
+electrical, sturdy for plumbing, organic and warmer for landscaping. If every pool entry is blocked
+by a SAME-TOWN collision, widen with the typography domain search and stay inside the trade's
+register; never reach for a display/fashion serif on a trade site.
 
 ### Step 3 — Palette (script only, never hand-picked)
 
@@ -829,6 +840,18 @@ Bitter, Fraunces, Literata, Bodoni Moda, Zilla Slab, Vollkorn, Crimson Pro, Corm
 node scripts/derive-palette.mjs '<accent hex>' --harmony <type> --character <band> \
   --ground <family> --ground-hue <deg>
 ```
+`--ground` takes **light | cream | deep | dark | saturated**.
+
+**`saturated` is the committed option and it is usually the right answer for a trade site.** It
+paints the brand hue at full chroma (C 0.09-0.12) as the ENVIRONMENT rather than as a tint — the
+southernlifts.com.au pattern the trade seeds hold up as the bar. It was added 2026-08-19 because no
+existing family could reach that reference: `dark` was near-achromatic by construction, which is
+literally why a build shipped grey-on-black and the operator said "there's no colour theory".
+
+**Ground choice needs a business-specific reason recorded in `status.md`, never a vibe.** "Dark
+amplifies cold authority" is a vibe and it produced the flat build. Run `impeccable`'s
+category-reflex check first: if the ground is guessable from the trade alone (HVAC → navy-dark,
+contractor → dark), that is the training-data reflex and you must rework it.
 The brand accent is theirs and is **never** overridden. Every other colour comes from the deriver,
 because only it proves 4.5:1 and CVD separation against this client's real surfaces.
 
