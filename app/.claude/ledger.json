@@ -1161,11 +1161,12 @@
     },
     {
       "id": "CONTEXT-SPIRAL-01",
-      "status": "in_progress",
+      "status": "blocked",
       "title": "Compaction spiral: 56/76 reads were self-re-reads",
       "summary": "THE root cause of both the 2x wall-clock and the design regression. Build compacted 9 times (first at min 12, then every ~14 min). 56 of 76 Read calls re-read files the build authored itself (page.tsx 21x, written 34x). Rules added to build/SKILL.md. NOT YET PROVEN -- the metric to watch on the next build is compaction count, target <3.",
-      "next_step": "Run one build with the slimmed skill + context rules. Measure compaction count from the transcript (the script pattern is in DESIGN-RESET-DECISION.md). If still >3, the next lever is per-page dispatch or narrower reads.",
-      "owner": "main-session"
+      "next_step": "On completion run: node scripts/build-metrics.mjs --since-file /tmp/cf-slim-pre-sessions.txt. Targets compactions <3 (was 9) and self-re-reads <10 (was 40). If compactions are still >3, the next lever is QA-REVIEWER-SLIM-01 then per-page dispatch.",
+      "owner": "main-session",
+      "blocked_reason": "Test build RUNNING (pid 85249, started 2026-08-19T14:56:04Z). The fix is implemented and dispatched; proving it requires this build to finish. Editing ANY pipeline file mid-run (build/SKILL.md, qa-reviewer.md, verify-design-intent.mjs) would change behaviour partway through and contaminate the measurement, so those files are frozen until it completes."
     },
     {
       "id": "SECRET-CLEANUP-01",
@@ -1173,7 +1174,17 @@
       "title": "Removed appexport/ carrying a live Supabase PAT",
       "summary": "A git add -A swept untracked appexport/.mcp.json (Supabase Personal Access Token) into a commit; GitHub push protection blocked it, nothing reached the remote. Commit reset, directory removed on Jeff's explicit authorisation, root .gitignore extended to cover appexport/, .mcp.json, *.env. Verified app/.env is live and richer (38 keys vs the stale export's 35); only OUTREACH_CHANNELS and OUTREACH_PRIORITY existed solely in the export, both already known-unset in the live env. NOTE: deletion is not revocation -- the token itself remains valid in Supabase, though it was never exposed off-machine.",
       "owner": "main-session"
+    },
+    {
+      "id": "QA-REVIEWER-SLIM-01",
+      "status": "in_progress",
+      "title": "Slim qa-reviewer.md by extracting orchestration bash to a script",
+      "summary": "qa-reviewer.md is 836 lines / 85KB / ~22K tokens, reloaded by the QA subagent every round. Analysis: the bloat is NOT narrative (only 30 incident-dated lines) -- it is 319 lines of mechanical orchestration bash in Step 3 across 3 blocks, with just 21 lines of prose. Block 3 alone is 305 lines and needs zero model judgement. Extracted VERBATIM to scripts/qa-capture.sh ({slug} -> \"$SLUG\" the only edit); bash -n passes and every command-token class is preserved (119 -> 122 non-comment lines, the 3 extra being the script header).",
+      "verified": "scripts/qa-capture.sh committed but deliberately NOT wired into qa-reviewer.md yet.",
+      "blocked_reason": "Wiring it in would edit qa-reviewer.md while the slim-skill test build (pid 85249) is running, changing QA behaviour partway through and contaminating the measurement. The script is inert until referenced, so committing it now is safe.",
+      "next_step": "After the test build completes and its metrics are read: replace Step 3 Call 3's 305-line bash block in qa-reviewer.md with a single `bash ../../../scripts/qa-capture.sh {slug}` call, then verify one QA round still produces all screenshots and all gate logs. Expected saving ~330 lines / ~9K tokens per QA round.",
+      "owner": "main-session"
     }
   ],
-  "updated": "2026-08-19T14:20:00Z"
+  "updated": "2026-08-19T15:02:00Z"
 }
