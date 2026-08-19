@@ -64,6 +64,18 @@ CSV_CONFIG = {
         "file": "web-interface.csv",
         "search_cols": ["Category", "Issue", "Keywords", "Description"],
         "output_cols": ["Category", "Issue", "Platform", "Description", "Do", "Don't", "Code Example Good", "Code Example Bad", "Severity"]
+    },
+    "trade": {
+        # Real per-trade art direction (2026-08-19 Fable design-elevation review, B2). The four
+        # generic "Trade Service (...)" product-type rows carry a one-line design payload each; this
+        # gives the pipeline's actual core market (HVAC/plumbing/electrical/roofing/landscaping/
+        # locksmith/painting/auto-repair/local-service) real, specific, checkable art direction --
+        # design ideas, a signature motif, material direction, a mood story, and a named card-grid
+        # alternative -- instead of leaving all of that to be invented fresh (or not invented at
+        # all) on every build.
+        "file": "trade-identities.csv",
+        "search_cols": ["Trade Family", "Keywords"],
+        "output_cols": ["Trade Family", "Keywords", "Design Ideas (3 seeds)", "Hero Archetype Fit", "Signature Motif", "Material/Texture Direction", "Temperature/Mood Story", "Section Transition Style", "Card-Grid Alternative", "Reference Notes"]
     }
 }
 

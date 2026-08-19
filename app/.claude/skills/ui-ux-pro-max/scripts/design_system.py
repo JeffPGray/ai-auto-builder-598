@@ -29,7 +29,8 @@ SEARCH_CONFIG = {
     "style": {"max_results": 3},
     "color": {"max_results": 2},
     "landing": {"max_results": 2},
-    "typography": {"max_results": 2}
+    "typography": {"max_results": 2},
+    "trade": {"max_results": 1}
 }
 
 
@@ -263,6 +264,17 @@ class DesignSystemGenerator:
 
         best_landing = landing_results[0] if landing_results else {}
 
+        # Trade-specific real art direction (2026-08-19 Fable design-elevation review, B2) -- only
+        # for the "Trade Service (...)" categories this pipeline's actual market lives in. Every
+        # other category (SaaS, e-commerce, etc.) is unaffected; those already have richer style/
+        # product coverage elsewhere in this tool.
+        best_trade = {}
+        if category.startswith("Trade Service"):
+            trade_search = search(query, "trade", SEARCH_CONFIG["trade"]["max_results"])
+            trade_results = self._extract_results(trade_search)
+            if trade_results:
+                best_trade = trade_results[0]
+
         # Step 5: Build final recommendation
         # Combine effects from both reasoning and style search
         style_effects = best_style.get("Effects & Animation", "")
@@ -307,7 +319,18 @@ class DesignSystemGenerator:
             "key_effects": combined_effects,
             "anti_patterns": reasoning.get("anti_patterns", ""),
             "decision_rules": reasoning.get("decision_rules", {}),
-            "severity": reasoning.get("severity", "MEDIUM")
+            "severity": reasoning.get("severity", "MEDIUM"),
+            "trade": {
+                "family": best_trade.get("Trade Family", ""),
+                "design_ideas": best_trade.get("Design Ideas (3 seeds)", ""),
+                "hero_archetype": best_trade.get("Hero Archetype Fit", ""),
+                "signature_motif": best_trade.get("Signature Motif", ""),
+                "material": best_trade.get("Material/Texture Direction", ""),
+                "mood_story": best_trade.get("Temperature/Mood Story", ""),
+                "transition_style": best_trade.get("Section Transition Style", ""),
+                "card_alternative": best_trade.get("Card-Grid Alternative", ""),
+                "reference_notes": best_trade.get("Reference Notes", "")
+            } if best_trade else {}
         }
 
 
@@ -410,6 +433,31 @@ def format_ascii_box(design_system: dict) -> str:
         lines.append("|  KEY EFFECTS:".ljust(BOX_WIDTH) + "|")
         for line in wrap_text(effects, "|     ", BOX_WIDTH):
             lines.append(line.ljust(BOX_WIDTH) + "|")
+        lines.append("|" + " " * BOX_WIDTH + "|")
+
+    # Trade identity section (2026-08-19 Fable design-elevation review, B2) — real, specific art
+    # direction for this pipeline's actual core market (HVAC/plumbing/electrical/roofing/etc),
+    # replacing the one-line payload the generic "Trade Service (...)" product rows carried alone.
+    trade = design_system.get("trade", {})
+    if trade.get("family"):
+        lines.append(f"|  TRADE IDENTITY: {trade.get('family', '')}".ljust(BOX_WIDTH) + "|")
+        for line in wrap_text(f"Design ideas: {trade.get('design_ideas', '')}", "|     ", BOX_WIDTH):
+            lines.append(line.ljust(BOX_WIDTH) + "|")
+        for line in wrap_text(f"Hero archetype: {trade.get('hero_archetype', '')}", "|     ", BOX_WIDTH):
+            lines.append(line.ljust(BOX_WIDTH) + "|")
+        for line in wrap_text(f"Signature motif: {trade.get('signature_motif', '')}", "|     ", BOX_WIDTH):
+            lines.append(line.ljust(BOX_WIDTH) + "|")
+        for line in wrap_text(f"Material/texture: {trade.get('material', '')}", "|     ", BOX_WIDTH):
+            lines.append(line.ljust(BOX_WIDTH) + "|")
+        for line in wrap_text(f"Mood story: {trade.get('mood_story', '')}", "|     ", BOX_WIDTH):
+            lines.append(line.ljust(BOX_WIDTH) + "|")
+        for line in wrap_text(f"Section transitions: {trade.get('transition_style', '')}", "|     ", BOX_WIDTH):
+            lines.append(line.ljust(BOX_WIDTH) + "|")
+        for line in wrap_text(f"Card-grid alternative: {trade.get('card_alternative', '')}", "|     ", BOX_WIDTH):
+            lines.append(line.ljust(BOX_WIDTH) + "|")
+        if trade.get("reference_notes"):
+            for line in wrap_text(f"Note: {trade.get('reference_notes', '')}", "|     ", BOX_WIDTH):
+                lines.append(line.ljust(BOX_WIDTH) + "|")
         lines.append("|" + " " * BOX_WIDTH + "|")
 
     # Anti-patterns section
