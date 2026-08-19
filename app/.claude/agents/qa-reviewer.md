@@ -282,11 +282,11 @@ echo "--- mobile pass ---"; cat /tmp/qa-mobile-{slug}.log; rm -f /tmp/qa-mobile-
 # the actual shared phrases (re-derived fresh from that prior build's own files, only computed once
 # the threshold trips) — report it verbatim, but do NOT fail the round on it alone.
 
-# Combined parallel batch for all 9 checks above. Backgrounded with `&` and reaped with `wait`
+# Combined parallel batch for all 11 checks above. Backgrounded with `&` and reaped with `wait`
 # WITHIN this one Bash tool call — this is NOT the detached-background-process pattern the Call 2
 # warning above is about (that risk is a `&` that outlives the tool call and needs an approval
 # nothing answers headlessly; a `wait` before the call returns means the whole compound command
-# still blocks normally). None of these 9 checks reads another's output, and the concurrent-write
+# still blocks normally). None of these 11 checks reads another's output, and the concurrent-write
 # paths they share (data/design-fingerprints.json) are already mkdir-lock-protected
 # (scripts/lib/file-lock.mjs), so running them together is safe. Was ~9 sequential Bash-tool-call
 # turns; now 1 — each turn re-sends the accumulated session context, so this is a real token and

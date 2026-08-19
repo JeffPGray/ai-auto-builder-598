@@ -2582,12 +2582,15 @@ resolving to `out/`) is already applied in `contrast-check.mjs` — nothing to c
 invoke it above, but treat any PRE-2026-08-19 `CONTRAST_CHECK=PASS` recorded in an existing
 client's `status.md`/`qa-report.md` as unverified, not evidence of clean contrast.
 
-All three must print PASS (or the appropriate SKIP off the experiment branch — see each script's own
-QA-section documentation above for what SKIP means and when it's normal, not a finding). A FAIL on
-any of them here means: go fix the actual gap (add the missing gradients/textures, write the real
-"## HyperUI components used" section with genuine `[hex6]`-hashed citations per `hyperui-lookup.mjs`)
-and re-run — same discipline as `FONT_CHECK=FAIL` above. Do not hand a build with a FAIL on any of
-these three to QA; that is exactly the cost this section exists to avoid paying twice.
+All FIVE checks in this section — richness, HyperUI usage, HyperUI transplant, reviews
+(`REVIEW_CHECK`), and nav visibility (`NAV_VISIBILITY_CHECK`) — must print PASS (or the
+appropriate SKIP off the experiment branch — see each script's own QA-section documentation above
+for what SKIP means and when it's normal, not a finding). A FAIL on any of them here means: go fix
+the actual gap (add the missing gradients/textures, write the real "## HyperUI components used"
+section with genuine `[hex6]`-hashed citations per `hyperui-lookup.mjs`, replace an invented review
+with a real one, give the nav a legible resting state) and re-run — same discipline as
+`FONT_CHECK=FAIL` above. Do not hand a build with a FAIL on any of these five to QA; that is
+exactly the cost this section exists to avoid paying twice.
 
 Rescue leads with a parity checklist: after the build, self-check with `node scripts/parity-check.js $ARGUMENTS` (from the repo root) — it must exit clean; QA runs the same check and hard-fails on misses.
 
