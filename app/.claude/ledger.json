@@ -1204,7 +1204,25 @@
       "next_step": "Fix the pipeline (PIPE-FIX-01), then rebuild once and re-measure.",
       "owner": "unassigned",
       "blocked_reason": "Build pid 8826 was KILLED mid-fix-round on Jeff's instruction to stop iterating a site built on a pipeline we were still repairing. The 6 site defects are not separately actionable -- they will be re-derived (or not occur) on the next build once the 7 pipeline bugs are fixed at source. Do NOT hand-patch this client's files; that is the treat-the-symptom path."
+    },
+    {
+      "id": "AUDIT-BIDIR-01",
+      "status": "in_progress",
+      "lane": "design",
+      "title": "8 agents: bidirectional wiring audit + rule hardening",
+      "summary": "Jeff's call after five silent-wiring failures were found BY HAND in one day (3 of them mine): 'fire up 4 agents to audit the full firing, 2 to one end of the wire, 2 to the other, see if there is a connection' then 'another 4 teams for rule hardening and enforcement so this stops'. AUDIT (read-only): forward-trace build/SKILL.md; forward-trace all other skills+agents+CLAUDE.md; backward-trace every script/CSV-column/vendored-template asking WHO CALLS THIS; backward-trace every claimed gate asking DOES ANYTHING READ THIS VERDICT. HARDENING (writes to scripts/ only): generic wiring checker (frontmatter-vs-body tool usage, script flags vs arg parsers, capabilities vs consumers) to replace verify-wiring.sh's enumerate-known-failures approach; soft-rule -> measured-gate conversion (per-route design binding, visual-uniformity tail cap, perceptual secondary weight); contradiction/drift detector across all skill prose incl. cross-file and code-examples-beat-prose; and gates made load-bearing (wire qa-serve.mjs into qa-capture.sh, claim-vs-artifact reconciler, fix-verification).",
+      "next_step": "Collect all 8 reports. Verify true positives BY HAND before acting (agents can be confidently wrong). Apply real findings, re-run verify-wiring.sh, commit. Then ONE rebuild on the corrected pipeline -- nothing fixed today is proven until a build runs on it.",
+      "owner": "8 background agents"
+    },
+    {
+      "id": "FIXES-INVENTORY-01",
+      "status": "done",
+      "lane": "design",
+      "title": "Full inventory of fixes landed 2026-08-19 (post-design-reset)",
+      "summary": "WIRING: Skill tool added to build/outreach/seo allowed-tools (anti-ai-slop had NEVER run in any build); qa-reviewer.md frontmatter corrected from allowed-tools: (skill key, ignored on an agent) to tools: -- impeccable's visual judge had never fired. FONT: font ledger scoped to SAME-TOWN (global rule had rejected the consult's correct Literata pairing and pushed the build onto Bodoni_Moda, the skill's own code example -- rules lose to examples); code example neutralised; 'skip the consult font' instruction deleted; flat 'Good heading fonts' list (which still contained Bodoni Moda) removed in favour of per-trade Typography Pools wired through core.py + design_system.py to the printed output. COLOUR: NEUTRAL-CANVAS restored from git after the design reset deleted it (its deletion is what made mono-navy possible); saturated family reshaped from 5-dark-1-light to majority-light SATURATED-PANEL after Fable verified southernlifts.com.au is --background:#fff with indigo PANELS, not a saturated ground -- I had generalised its hero to the page ground; executable canvas-mode decision rule added; 'saturated is usually right for a trade site' line removed (it sat 15 lines under the table contradicting it). GATES: [monotone] (3 consecutive surface rungs within 0.10 luminance -- catches the shipped mono-navy, passes the reshaped ladder), [primitives] (shadcn vendored but zero imports -- catches the hand-rolled nav that broke /services), grid-break, dominant-element-area, rhythm, scale. INFRA: reset-client-design.mjs (my hand-reset cleared status.md but not design-fingerprints.json, which produced QA's claim-vs-artifact CRITICAL); qa-serve.mjs canonical assetPrefix-stripping server (QA's python http.server 404s the JS so React never hydrates -- that is why hero video reported readyState 0/paused, the video was always fine); qa-capture.sh extraction (qa-reviewer.md 836 -> 540 lines); colors.csv off the trade path; qa-fix context discipline; per-route design binding; /services anchor rule; srcSet-must-exist rule; 'collapse' defined numerically.",
+      "verified": "scripts/verify-wiring.sh -- 62 assertions, 0 failures, several proving by EXECUTION (monotone gate fires on the real mono-navy build; primitives gate fires on the real non-use) rather than by grepping for a rule's existence.",
+      "owner": "main-session"
     }
   ],
-  "updated": "2026-08-19T19:20:00Z"
+  "updated": "2026-08-19T20:10:00Z"
 }
