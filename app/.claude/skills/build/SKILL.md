@@ -799,12 +799,12 @@ default, but it is still **hue-first**, and hue-first is the weak heuristic:
 The character must hold across the WHOLE palette. A deep accent beside a pale secondary reads as
 two different sites, which is what a mismatched harmony produces and why it then goes unused.
 
-**Then run the deriver with a harmony that stays inside that character:**
-
-```bash
-node scripts/derive-palette.mjs '#ff8d13' --harmony split --character deep \
-  --light '#fefaf7,#f6efea' --dark '#261f1a'
-```
+**Then run the deriver with a harmony that stays inside that character** — the canonical, complete
+invocation (all five decision flags together) lives at § Convergence check below, once ground/
+ground-hue/formula are also decided; don't invent a partial call here. (Corrected 2026-08-19 —
+Fable consult: this example previously showed `--light`/`--dark`, which § Colour roles below
+explicitly forbids passing by default since it opts out of the derived tinted-neutral ladder
+entirely. Two sections gave contradictory example commands; this is the one that was wrong.)
 
 **`--character` is the flag that decides whether the site looks diverse or "all brown".**
 Harmony picks the secondary's HUE; character places its lightness and chroma. Without it the
@@ -927,7 +927,18 @@ readability.
 Every axis above — ground family, ground hue, typography formula, harmony, character — is now
 decided, and so is the font pairing from § How to pick fonts. Before writing a single `page.tsx`,
 check the choice against the last builds — this same call also carries the font-uniqueness check
-(§ How to pick fonts step 4), so don't invent a second, separate invocation:
+(§ How to pick fonts step 4), so don't invent a second, separate invocation.
+
+**This is also the point to run the ONE canonical `derive-palette.mjs` call** that produces the
+`:root` block you actually paste into `globals.css` — every decision it needs is now made, so this
+is the single complete invocation; § Colour character and § Colour roles above both point here
+rather than giving their own (previously contradictory) partial examples:
+```bash
+node scripts/derive-palette.mjs '<accent hex>' --harmony <type> --character <band> \
+  --ground <family> --ground-hue <deg>
+```
+
+Then run the ledger check:
 
 ```bash
 node scripts/design-ledger.mjs check $ARGUMENTS \
@@ -992,10 +1003,14 @@ meaningful fraction of the build:
 - Section treatments (need 4 distinct — light, alt-light, dark, image/gradient-backed): which
   section gets which.
 - HyperUI citations planned: which real components for which sections (hero stats, FAQ, CTA
-  bands, service cards, etc). Run `node scripts/hyperui-lookup.mjs <category>` for each and note
-  the exact path + its printed `[hex6]` hash HERE, now — this is the citation you'll paste into
-  "## HyperUI components used" later, already proven you looked at the real file instead of a
-  plausible-sounding name (hyperui-transplant-check.mjs hard-fails a missing/wrong hash).
+  bands, service cards, etc). **Decide the full category list here** (this is where it's actually
+  decided, first thing a builder reaches), then run the ONE batched lookup at § Targeted lookup
+  below (all categories in a single `&`+`wait` call, not one per category — corrected 2026-08-19,
+  this exact line used to instruct a per-category call and, being the first section reached, was
+  the one that actually got followed literally). Note each exact path + its printed `[hex6]` hash
+  HERE, now — this is the citation you'll paste into "## HyperUI components used" later, already
+  proven you looked at the real file instead of a plausible-sounding name (hyperui-transplant-check.mjs
+  hard-fails a missing/wrong hash).
 - Hero video: read back the `HERO_VIDEO=` line § Setup already wrote — confirm here which
   `<HeroVideo>` form this build uses.
 
@@ -1712,11 +1727,14 @@ a screenshot. So the compliant values are computed up front and the raw accent i
 text jobs entirely.
 
 Run it once per build, from the repo root, with the accent hue (brand `primary` if gathered,
-else the `/ui-ux-pro-max` primary) and the harmony chosen from the industry table below:
-
-```bash
-node scripts/derive-palette.mjs '#CA8A04' --harmony analogous
-```
+else the `/ui-ux-pro-max` primary) and the harmony chosen from the industry table below. **Use the
+one canonical, complete invocation at § Convergence check** (carrying `--character`/`--ground`/
+`--ground-hue` alongside `--harmony`) to produce the `:root` block you paste — not a bare
+`--harmony`-only call. (Corrected 2026-08-19 — Fable consult: this section previously showed a
+bare `--harmony`-only example and told you to paste ITS output, which silently re-derives with
+`character=vivid, ground=light, ground-hue=accent` — exactly the defaults § Ground exists to
+override. The design-ledger convergence check records the *decision*, not which flags the
+paste-producing call actually carried, so this drift was invisible to every other gate.)
 
 **Do NOT pass `--light`/`--dark` by default.** With no surface flags the script DERIVES the
 surfaces from the brand hue at very low chroma (page C 0.006, card C 0.010, dark section
@@ -2480,16 +2498,11 @@ large text, 4.5:1 otherwise). It must print `CONTRAST_CHECK=PASS`. Never eyeball
 ratio: white-on-gold at 2.9:1 looks like a handsome button, which is exactly how three builds
 shipped it. Do not hand a `CONTRAST_CHECK=FAIL` build to QA.
 
-**If FONT_CHECK, TOKEN_CHECK, and CONTRAST_CHECK all printed PASS just now, record it** so QA
-doesn't immediately re-run the identical check against the identical artefact (Fable consult,
-2026-08-18 — measured as the single largest redundant cost in the pipeline: QA's Step 3 runs
-these same 3 scripts again against `out/` that hasn't changed since this exact Verify pass):
-```bash
-echo "VERIFY_GATES_OK_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> clients/$ARGUMENTS/data/status.md
-```
-Only write this line if all three genuinely printed PASS. Skip it if any FAILed and you're about
-to fix-and-rebuild — a stale/wrong marker is worse than no marker, since QA's freshness check
-below trusts it without re-verifying the claim itself.
+Keep going — FONT_CHECK/TOKEN_CHECK/CONTRAST_CHECK passing is necessary but not sufficient; the
+marker that tells QA it can skip re-running gets written once ALL eight Verify checks (these three
+plus the five shift-left checks below) have passed, not after just these three (see after the
+5-check batch below — writing it here would have been wrong, since a FAIL further down still needs
+a real fix-and-rebuild before anything can be trusted stale-free).
 
 **Then assert the motion and chat pieces reached the artefact**, for the same reason
 — all three fail silently and all three are things the recurring fee is sold on:
@@ -2611,6 +2624,19 @@ section with genuine `[hex6]`-hashed citations per `hyperui-lookup.mjs`, replace
 with a real one, give the nav a legible resting state) and re-run — same discipline as
 `FONT_CHECK=FAIL` above. Do not hand a build with a FAIL on any of these five to QA; that is
 exactly the cost this section exists to avoid paying twice.
+
+**If FONT_CHECK, TOKEN_CHECK, CONTRAST_CHECK, and all five checks above genuinely printed PASS (or
+a normal SKIP) — all eight, not just the first three — record it now** so QA doesn't re-run any of
+them against the identical artefact (Fable consult, 2026-08-19 — extends the original 3-check
+dedupe to cover the five shift-left checks added the same night; previously only font/contrast/
+token were skippable in QA, so the five newer checks, including the browser-based nav-visibility
+screenshot pass, silently re-ran every single round regardless):
+```bash
+echo "VERIFY_GATES_OK_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> clients/$ARGUMENTS/data/status.md
+```
+Only write this line if every one of the eight genuinely passed (or SKIPped legitimately). Skip it
+if anything FAILed and you're about to fix-and-rebuild — a stale/wrong marker is worse than no
+marker, since QA's freshness check trusts it without re-verifying the claim itself.
 
 Rescue leads with a parity checklist: after the build, self-check with `node scripts/parity-check.js $ARGUMENTS` (from the repo root) — it must exit clean; QA runs the same check and hard-fails on misses.
 

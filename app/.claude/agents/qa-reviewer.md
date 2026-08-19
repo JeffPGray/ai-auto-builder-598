@@ -293,25 +293,26 @@ echo "--- mobile pass ---"; cat /tmp/qa-mobile-{slug}.log; rm -f /tmp/qa-mobile-
 # wall-clock saving, not just wall-clock.
 mkdir -p /tmp/qa-gates-{slug}
 
-# Verify/QA dedupe (Fable consult, 2026-08-18): /build's own Verify step just ran font-check and
-# BOTH contrast-check calls against this exact `out/` moments ago. If nothing under out/ or
-# globals.css has changed since Verify recorded its PASS, re-running those 3 checks here proves
-# nothing new — contrast-check in particular walks EVERY page in a real browser at 2 viewport
-# widths, the single most expensive script in this battery. Trust the marker only when it's
-# provably still fresh; any doubt (missing marker, or newer files) falls through to re-running for
-# real, which is always safe, just not free.
+# Verify/QA dedupe (Fable consult, 2026-08-18, WIDENED 2026-08-19): /build's own Verify step just
+# ran font-check, both contrast-check calls, AND (as of 2026-08-19) richness/hyperui-usage/
+# hyperui-transplant/reviews/nav-visibility against this exact `out/` moments ago. If nothing
+# under out/, globals.css, or status.md (the hyperui checks read status.md's citation section) has
+# changed since Verify recorded its PASS, re-running any of these 7 checks here proves nothing new
+# — contrast-check and nav-visibility in particular are real-browser passes, the most expensive
+# scripts in this battery. Trust the marker only when it's provably still fresh; any doubt (missing
+# marker, or newer files) falls through to re-running for real, which is always safe, just not free.
 VERIFY_AT=$(grep -oE '^VERIFY_GATES_OK_AT=.*' ../data/status.md 2>/dev/null | tail -1 | cut -d= -f2)
 VERIFY_FRESH=0
 if [ -n "$VERIFY_AT" ]; then
   VERIFY_EPOCH=$(date -jf "%Y-%m-%dT%H:%M:%SZ" "$VERIFY_AT" +%s 2>/dev/null || date -d "$VERIFY_AT" +%s 2>/dev/null)
   # -newer needs a reference FILE, not an epoch, so stamp a throwaway marker at VERIFY_EPOCH and
-  # compare every out/ + globals.css file's mtime against it. macOS `touch -d @epoch` vs
-  # GNU `touch -t` — try both, whichever this host supports wins.
+  # compare every out/ + globals.css + status.md file's mtime against it. macOS `touch -d @epoch`
+  # vs GNU `touch -t` — try both, whichever this host supports wins.
   if [ -n "$VERIFY_EPOCH" ]; then
     touch -d "@$VERIFY_EPOCH" "/tmp/.verify-marker-{slug}" 2>/dev/null \
       || touch -t "$(date -r "$VERIFY_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null)" "/tmp/.verify-marker-{slug}" 2>/dev/null
   fi
-  if [ -f "/tmp/.verify-marker-{slug}" ] && [ -z "$(find out src/app/globals.css -newer "/tmp/.verify-marker-{slug}" -type f 2>/dev/null | head -1)" ]; then
+  if [ -f "/tmp/.verify-marker-{slug}" ] && [ -z "$(find out src/app/globals.css ../data/status.md -newer "/tmp/.verify-marker-{slug}" -type f 2>/dev/null | head -1)" ]; then
     VERIFY_FRESH=1
   fi
   rm -f "/tmp/.verify-marker-{slug}"
@@ -321,20 +322,24 @@ if [ "$VERIFY_FRESH" = "1" ]; then
   echo "FONT_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/font-check.log
   echo "CONTRAST_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/contrast.log
   echo "TOKEN_CHECK=PASS (carried from Verify, globals.css unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/token.log
+  echo "HYPERUI_USAGE_CHECK=PASS (carried from Verify, status.md unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/hyperui-usage.log
+  echo "HYPERUI_TRANSPLANT_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/hyperui-transplant.log
+  echo "REVIEW_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/reviews.log
+  echo "NAV_VISIBILITY_CHECK=PASS (carried from Verify, out/ unchanged since $VERIFY_AT)" > /tmp/qa-gates-{slug}/nav-visibility.log
 else
   node ../../../scripts/font-check.mjs . > /tmp/qa-gates-{slug}/font-check.log 2>&1 &
   node ../../../scripts/contrast-check.mjs out > /tmp/qa-gates-{slug}/contrast.log 2>&1 &
   node ../../../scripts/contrast-check.mjs --tokens src/app/globals.css > /tmp/qa-gates-{slug}/token.log 2>&1 &
+  ( cd ../../.. && node scripts/hyperui-usage-check.mjs {slug} ) > /tmp/qa-gates-{slug}/hyperui-usage.log 2>&1 &
+  ( cd ../../.. && node scripts/hyperui-transplant-check.mjs {slug} ) > /tmp/qa-gates-{slug}/hyperui-transplant.log 2>&1 &
+  ( cd ../../.. && node scripts/verify-reviews.mjs {slug} ) > /tmp/qa-gates-{slug}/reviews.log 2>&1 &
+  node ../../../scripts/verify-nav-visibility.mjs out > /tmp/qa-gates-{slug}/nav-visibility.log 2>&1 &
 fi
 
 ( cd ../../.. && node scripts/font-uniqueness-check.mjs {slug} ) > /tmp/qa-gates-{slug}/font-uniqueness.log 2>&1 &
 ( cd ../../.. && node scripts/verify-hero-video.mjs --slug {slug} ) > /tmp/qa-gates-{slug}/hero-video.log 2>&1 &
 ( cd ../../.. && node scripts/verify-photos.mjs {slug} ) > /tmp/qa-gates-{slug}/photo.log 2>&1 &
-( cd ../../.. && node scripts/hyperui-usage-check.mjs {slug} ) > /tmp/qa-gates-{slug}/hyperui-usage.log 2>&1 &
-( cd ../../.. && node scripts/hyperui-transplant-check.mjs {slug} ) > /tmp/qa-gates-{slug}/hyperui-transplant.log 2>&1 &
 ( cd ../../.. && node scripts/copy-fingerprint-check.mjs {slug} ) > /tmp/qa-gates-{slug}/copy-fingerprint.log 2>&1 &
-( cd ../../.. && node scripts/verify-reviews.mjs {slug} ) > /tmp/qa-gates-{slug}/reviews.log 2>&1 &
-node ../../../scripts/verify-nav-visibility.mjs out > /tmp/qa-gates-{slug}/nav-visibility.log 2>&1 &
 wait
 for f in font-check font-uniqueness contrast token hero-video photo hyperui-usage hyperui-transplant copy-fingerprint reviews nav-visibility; do
   echo "--- $f ---"; cat "/tmp/qa-gates-{slug}/$f.log"
@@ -744,9 +749,19 @@ things must never reach them, and neither is visible in a screenshot — which i
 is a scripted gate and not something to eyeball:
 
 ```bash
-cd clients/{slug}/site && npx next build          # if out/ is not already current
+cd clients/{slug}/site
+if [ -d out ] && [ -z "$(find src public -newer out -type f 2>/dev/null | head -1)" ]; then
+  echo "out/ already newer than every src/public file -- skipping rebuild"
+else
+  npx next build
+fi
 node ../../../scripts/ship-scan.mjs . --fix
-node ../../../scripts/richness-check.mjs .        # design system actually reached the page?
+node ../../../scripts/richness-check.mjs .        # re-check AFTER ship-scan --fix, deliberately:
+                                                    # --fix mutates out/ (strips dev comments), so
+                                                    # this confirms that mutation didn't disturb
+                                                    # anything richness-check measures -- not
+                                                    # redundant with the earlier batch run, it's
+                                                    # checking a DIFFERENT (post-fix) artifact.
 ```
 
 `richness-check` is the gate for the failure ship-scan cannot see: a build that is CORRECT and FLAT.
