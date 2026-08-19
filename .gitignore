@@ -30,3 +30,6 @@ artifacts/
 # after it has already been changed, which is impossible to do honestly. Track the markdown + JSON.
 !baseline/BASELINE.md
 !baseline/*.json
+appexport/
+.mcp.json
+*.env
