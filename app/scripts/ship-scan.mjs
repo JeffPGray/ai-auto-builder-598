@@ -277,7 +277,7 @@ const result = { result: 'PASS', failures, warnings, fixed, scanned: 0 };
 if (liveUrl) {
   // Live mode reads the bytes actually served — the only mode that proves what a stranger
   // receives, and the only one that can inspect response headers.
-  const res = await fetch(liveUrl, { redirect: 'follow' });
+  const res = await fetch(liveUrl, { redirect: 'follow', signal: AbortSignal.timeout(15000) });
   const html = await res.text();
   result.scanned = 1;
   const lbl = new URL(liveUrl).pathname || '/';

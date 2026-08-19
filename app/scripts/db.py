@@ -92,9 +92,12 @@ def get_clients_by_status(status: str) -> list[dict]:
 
 def get_incomplete_clients() -> list[dict]:
     """Get clients not in a terminal/stable status."""
+    # Filtered server-side (Fable consult, 2026-08-18) — the old version pulled the ENTIRE clients
+    # table over the wire just to discard most of it in Python; identical semantics, real payload
+    # and round-trip saving at 50-100 builds/day growing the table fast.
     terminal = ("claimed", "outreach_sent", "responded", "converted", "rejected", "lapsed", "unreachable")
-    resp = get_db().table("clients").select("slug, name, status").execute()
-    return [c for c in (resp.data or []) if c.get("status") not in terminal]
+    resp = get_db().table("clients").select("slug, name, status").not_.in_("status", list(terminal)).execute()
+    return resp.data or []
 
 
 def _normalize_phone(phone: str) -> str:

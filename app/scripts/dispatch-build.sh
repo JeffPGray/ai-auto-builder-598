@@ -213,4 +213,21 @@ done
 
 wait "$CHILD"; rc=$?
 echo "child exited rc=$rc after $(( ($(date +%s) - started) / 60 ))m"
+
+# Post-exit sweep (Fable consult, 2026-08-18): qa-reviewer's Call 3 EXIT trap kills its own
+# `python3 -m http.server` on the client's QA port, but that trap only fires inside the CHILD
+# process's own bash — if the child was killed uncleanly above, or the trap itself failed, a
+# server can outlive the whole dispatch. Same phantom-idle shape as the exa-mcp-server incident
+# --strict-mcp-config was added for: the work is done, but a lingering process holds resources.
+# The command line alone (`python3 -m http.server <port> --directory out`) is generic across every
+# client and gives no client-scoped string to pkill -f on, so match by PID's cwd instead (via lsof)
+# — that's what actually distinguishes THIS run's server from another concurrent lane's.
+REPO_ROOT_ABS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+for pid in $(pgrep -f "http\.server .* --directory out" 2>/dev/null); do
+  cwd=$(lsof -a -d cwd -p "$pid" -Fn 2>/dev/null | sed -n 's/^n//p')
+  case "$cwd" in
+    "$REPO_ROOT_ABS/$WATCH_DIR"/*/site) kill "$pid" 2>/dev/null && echo "swept lingering QA http.server pid=$pid cwd=$cwd" ;;
+  esac
+done
+
 exit "$rc"

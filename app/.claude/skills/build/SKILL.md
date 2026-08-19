@@ -435,17 +435,33 @@ Every sentence in an article falls into one of three buckets, and the handling d
 The owner opens the blog, sees five posts dated across the last six months that they know they
 never wrote, and every other claim on the site becomes suspect.
 
-### anti-ai-slop is a TOOL CALL here, not a memory of one
+### anti-ai-slop enforcement on blog prose — ONE real invocation, not two (Fable consult, 2026-08-18)
+
+**Do NOT have the blog sub-agent invoke `anti-ai-slop` itself before drafting.** The prior version
+of this section told it to — a second full ENFORCE-mode Skill call, on top of the one you already
+ran for site copy at § Copy quality system above, re-injecting the same skill text a second time
+for zero net gain: the sub-agent's draft still gets checked for real, just once, by the step below
+instead of twice.
+
+**The real gate is the mandatory post-hoc review**, unchanged and still load-bearing:
 
 ```
 Skill(skill="anti-ai-slop", args="ENFORCE mode (job A) — blog articles for $ARGUMENTS")
 ```
 
-Literally invoke it before writing article prose, and hold the finished articles against its
-`eval.md` checklist afterwards. Five formulaic listicles do more damage than no blog: an owner who
-skims one paragraph of "In today's fast-paced world, maintaining a beautiful lawn..." has learned
-exactly what built the rest of the site. Article copy is the largest block of prose on the whole
-site and therefore the largest slop surface on it.
+Run this YOURSELF, after the sub-agent returns, against its actual finished prose (see "Then
+review before you commit it" below) — checking real output against the real checklist is strictly
+better evidence than trusting a sub-agent's own upfront self-certification, so nothing is lost by
+moving this from "before drafting" to "after drafting, before committing."
+
+Brief the sub-agent's prompt with a short inline summary instead (not the full skill): no
+three-item-default lists (vary 4/5/6 to fit content), no identical section shapes across the five
+articles, no closing recap or "Conclusion" heading, no rhetorical-question closers, end on the
+phone number and free consultation, avoid AI-fingerprint openers like "In today's fast-paced
+world...". Five formulaic listicles do more damage than no blog: an owner who skims one paragraph
+of AI-openers has learned exactly what built the rest of the site. Article copy is the largest
+block of prose on the whole site and therefore the largest slop surface on it — which is exactly
+why the REAL check (your post-hoc eval pass) must not be the one that gets skipped.
 
 Concretely, the failures that show up in blog copy specifically: three-item lists that were
 three because AI defaults to three (make list length follow the content, 4/5/6 items are normal);
@@ -544,8 +560,15 @@ draft the article prose while you write `globals.css`, the chrome and the route 
 This is the **only** build-stage delegation permitted — `CLAUDE.md` Critical Rule 10, Exception 2.
 Read that rule before using it; it is bounded on purpose.
 
+**`model="sonnet"`, not the parent's opus/high (Jeff, 2026-08-18 — "this is probably fine to do, we
+use sonnet for Gray Reserve blogs").** This is the single largest remaining per-build token lever:
+~4,000 words of prose at opus/high vs sonnet is real cost, and the safety net that makes a cheaper
+drafting model tolerable is unchanged — you fact-check every claim against `gathered-content.md`
+and run the real `anti-ai-slop` eval yourself on the returned prose either way (see above and "Then
+review before you commit it" below). This is a quality tradeoff on drafting only, not on review.
+
 ```
-Agent(subagent_type="general-purpose", prompt="""
+Agent(subagent_type="general-purpose", model="sonnet", prompt="""
 Draft 5 blog articles for {Business Name} as a `POSTS: Post[]` array for blog-data.ts.
 
 TOPICS (already decided — do not substitute):
@@ -2441,6 +2464,17 @@ translucent layers from the rendered page, and applies the real per-element thre
 large text, 4.5:1 otherwise). It must print `CONTRAST_CHECK=PASS`. Never eyeball a disputed
 ratio: white-on-gold at 2.9:1 looks like a handsome button, which is exactly how three builds
 shipped it. Do not hand a `CONTRAST_CHECK=FAIL` build to QA.
+
+**If FONT_CHECK, TOKEN_CHECK, and CONTRAST_CHECK all printed PASS just now, record it** so QA
+doesn't immediately re-run the identical check against the identical artefact (Fable consult,
+2026-08-18 — measured as the single largest redundant cost in the pipeline: QA's Step 3 runs
+these same 3 scripts again against `out/` that hasn't changed since this exact Verify pass):
+```bash
+echo "VERIFY_GATES_OK_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> clients/$ARGUMENTS/data/status.md
+```
+Only write this line if all three genuinely printed PASS. Skip it if any FAILed and you're about
+to fix-and-rebuild — a stale/wrong marker is worse than no marker, since QA's freshness check
+below trusts it without re-verifying the claim itself.
 
 **Then assert the motion and chat pieces reached the artefact**, for the same reason
 — all three fail silently and all three are things the recurring fee is sold on:

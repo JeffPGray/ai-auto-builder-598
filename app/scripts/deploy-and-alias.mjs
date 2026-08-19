@@ -100,7 +100,7 @@ const shortId = deployment.match(/https:\/\/[a-z0-9-]*?-([a-z0-9]{8,})-/)?.[1];
 let served = null;
 for (let i = 0; i < 6 && !served; i++) {
   try {
-    const res = await fetch(`https://${hostname}/`, { redirect: 'manual' });
+    const res = await fetch(`https://${hostname}/`, { redirect: 'manual', signal: AbortSignal.timeout(10000) });
     served = res.headers.get('x-vercel-id') || '';
     if (res.status >= 500) served = null;
   } catch { /* propagation; retry */ }

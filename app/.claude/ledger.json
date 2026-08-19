@@ -1008,7 +1008,74 @@
       ],
       "blocked_reason": "Explicit operator instruction: killed, and explicitly told not to restart. Waiting for Jeff to direct the next step.",
       "updated": "2026-08-18T22:35:00Z"
+    },
+    {
+      "id": "OPS-13",
+      "lane": "general",
+      "status": "done",
+      "owner": "self",
+      "title": "Repo consolidation: AI Auto Builder 598 (gray-reserve branch), clipsquare+bravo-zulu (GR-Client-Work subtree), protektd-detailing resolved, BAMonthly parked",
+      "note": "Jeff: create a repo AI Auto Builder 598 inside gray-reserve (corrected to: a permanent standalone branch in the gray-reserve repo, never merged to platform/main -- confirmed with Jeff this is the right call since platform/main drives the live grayreserve.com Vercel deploy and klaudius is a wholly separate app/pipeline). Also: clipsquare, bravo-zulu, BAMonthly, protektd-detailing to live inside GR-Client-Work.",
+      "verified": "AI Auto Builder 598: created JeffPGray/ai-auto-builder-598 (public, initially -- superseded by the gray-reserve-branch approach per Jeff), klaudius/app pushed there AND as branch add-ai-auto-builder-598 in gray-reserve off origin/platform/main, correctly NOT merged. clipsquare + bravo-zulu: real stale build-artifact-only commits (dist/.astro/.vercel/.cache, no source) already existed under those paths in GR-Client-Work main -- removed, then git subtree add (not squashed) from the real standalone repos, preserving full history (verified: 1156 commits reachable, real commit messages confirmed e.g. \"Fix call script content: it was pitching the wrong product\"). Pushed as branch add-clipsquare-bravozulu, not merged -- Jeff's call on the PR. protektd-detailing: investigated a real discrepancy -- a standalone JeffPGray/protektd-detailing repo exists but is just the original 2026-05-16 init scaffold; the copy ALREADY inside GR-Client-Work (bed1363, 2026-07-16) is the real, actively-developed, current version with real feature history (chat widget, lead form, video background, em-dash brand-voice fix, etc.) that the standalone repo does not have. CLOSED, no action -- the existing in-repo copy is authoritative, do not overwrite it with the stale standalone repo. BAMonthly: deliberately gitignored from GR-Client-Work on purpose (\"BAMonthly is its own independent git repo -- not tracked here\", a real prior decision) -- flagged the conflict with Jeff's instruction, he said \"ignore bam for now.\" Parked, not resolved -- awaiting a real decision on whether to override that exclusion.",
+      "blocked_reason": null,
+      "updated": "2026-08-19T02:10:00Z"
+    },
+    {
+      "id": "SEQ-08",
+      "lane": "outreach",
+      "status": "blocked",
+      "owner": "claude",
+      "title": "Second lead cold-front-ac (Cold Front A/C, The Woodlands TX) -- dispatched, full live end-to-end pipeline run in progress",
+      "note": "Jeff: use klaudius to find one more lead, same way same category, ensure both on the ledger. Used an already-vetted candidate from the SAME original sweep that found aot-mechanical (same method, same category, same night) rather than re-running a fresh Places sweep -- Cold Front A/C Of The Woodlands, real verified email, genuinely in-town, compete mode (site verdict ok). Claimed in Supabase (status=claimed) and clients/cold-front-ac/data/status.md written. Dispatched full live end-to-end pipeline run (gather->design->build->QA->deploy->GHL tag->real GR-598 email send) at 2026-08-19, wrapper pid 84520, child pid 84523, log logs/cold-front-ac-dispatch.log, watch-dir clients/cold-front-ac. This is the first client through the 950433a hardened gates \u2014 proof point before scaling. Do not touch clients/cold-front-ac/ while this runs.",
+      "verified": "Duplicate check clean, deployed-check.js verdict clear, site-check.js verdict ok (re-verified fresh). Both leads now on the ledger as Jeff asked: aot-mechanical (SEQ-06, done/deployed/live) and cold-front-ac (this item, claimed, build not yet dispatched).",
+      "blocked_reason": "Jeff killed the resume dispatch (wrapper pid 20974/child 20977) at 19:12 after ~52min on QA round 2 -- deemed too slow/token-costly, correctly, since it was running the pre-optimization qa-reviewer.md loaded at its 18:20 dispatch start. Confirmed clean kill (full tree + one orphaned qa-cold-front-ac playwright daemon that survived the external kill, also reaped). Salvage intact: gather, design-system.md, full built site, and the round-1 qa-report.md (FAIL, 8 critical incl. fabricated reviews) are all still on disk. Jeff wants the comprehensive 6th Fable consult (find/gather/build/qa-fix/gate-script-internals/DB/hero-video/cross-client-caching sweep) implemented FIRST, then redispatch fresh with every fix in place -- not yet redispatched.",
+      "updated": "2026-08-19T02:15:00Z"
+    },
+    {
+      "id": "PERF-01",
+      "lane": "performance",
+      "status": "done",
+      "owner": "claude",
+      "title": "Fable-consulted caching/parallelism/reliability pass on the pipeline",
+      "verified": "6 concrete fixes shipped: (1) AbortSignal.timeout() added to 2 unbounded fetch() calls in deploy-and-alias.mjs + ship-scan.mjs; (2) qa-reviewer.md Step 3 Call 1 skips redundant next build when out/ already fresh; (3) qa-reviewer.md 9 independent gate scripts collapsed from 9 sequential Bash-tool-call turns into 1 parallel batch (bash & + wait, all within one tool call, not a detached-background hang risk); (4) optimise-images.mjs adds mtime-based cache skip so unchanged photos are not re-encoded on every resume; (5) dispatch-build.sh sweeps orphaned QA http.server processes post-exit via lsof cwd matching, scoped per watch-dir; (6) build/SKILL.md Verify writes VERIFY_GATES_OK_AT marker, qa-reviewer.md skips re-running font-check/contrast-check x2 (the most expensive script in the battery) when out/+globals.css are unchanged since. Also corrected a stale/wrong rule in the parent klaudius/CLAUDE.md that said nohup-backgrounded dispatch gets killed by the harness -- empirically false, survived 65+ and 30+ min live. All edits bash -n / node --check verified.",
+      "updated": "2026-08-19T00:00:00Z"
+    },
+    {
+      "id": "PERF-02",
+      "lane": "performance",
+      "status": "done",
+      "owner": "claude",
+      "title": "QA screenshot capture parallelized (desktop+mobile concurrent), native webp, shrink-screenshots.mjs fixed for webp input",
+      "verified": "qa-reviewer.md home-page + subpages screenshot loops restructured from one sequential session into two concurrent named sessions (qa-{slug}-desktop / qa-{slug}-mobile) via &+wait, matching the gate-battery pattern; measured by Fable at ~2x on the capture step (42 screenshots / ~100 spawns on cold-front-ac). Captures now use --type webp directly (playwright-cli native support, verified via --help), removing redundant PNG->WebP conversion. Fixed a real self-deleting-output bug this introduced in shrink-screenshots.mjs (dest==src when input already .webp, old code unlinked src after rename == deleted the just-written file) before it could hit a real client. All qa-{slug} bare-session references removed/updated; extracted bash blocks verified with bash -n.",
+      "updated": "2026-08-19T00:10:00Z"
+    },
+    {
+      "id": "PERF-03",
+      "lane": "performance",
+      "status": "done",
+      "owner": "claude",
+      "title": "find/gather/deploy cost audit (Fable) -- serial call batching implemented",
+      "verified": "3 fixes shipped from the 5th Fable consult: (1) find/SKILL.md Step 1 -- the ~25-30 places-search.js calls (Layer 1 core sweep + Layer 2 locally-adapted extension) now instructed to run as ONE parallel batch (&+wait) instead of ~25-30 separate tool-call turns -- the skill text itself already said the Places API has no rate limit, so nothing was gained by serial execution; (2) deploy/SKILL.md shared-lane publish step -- rm -rf out && npx next build was unconditional even though QA had just built the identical source moments earlier; now skips rebuild via the same out/-newer-than-src mtime freshness check already used in qa-reviewer.md and optimise-images.mjs; (3) deploy/SKILL.md route-check loop and gather/SKILL.md Step 0b domain-variation curls -- both converted from serial curl-per-call to backgrounded &+wait batches. All new bash blocks extracted and bash -n verified. Confirmed genuine negatives from the same consult: gather site-visit steps (ddg-search rate-limits, IG rate-limits, FB/IG visits depend on prior-discovered handles) are correctly serial and were NOT touched; deploy already batches multi-prospect sends and IndexNow/disk-reclaim have nothing to batch.",
+      "updated": "2026-08-19T00:20:00Z"
+    },
+    {
+      "id": "PERF-04",
+      "lane": "performance",
+      "status": "done",
+      "owner": "claude",
+      "title": "6th Fable consult (comprehensive sweep) -- 2 real bugs in tonight own fixes caught+fixed, plus P1 safe wins",
+      "verified": "P0 (correctness, fixed): (1) Verify/QA dedupe was reading data/status.md from wrong cwd (clients/{slug}/site instead of clients/{slug}/) -- grep always found nothing, dedupe never fired, failed safe but silently inert; fixed to ../data/status.md. (2) nav-check block still referenced the pre-split bare qa-{slug} session after the desktop/mobile split -- would error or leak an untracked 3rd browser the EXIT trap never closes; fixed to qa-{slug}-desktop. Also fixed 3 stale mailto docs (qa-fix/SKILL.md, qa-reviewer.md x2) that could cause a qa-fix round to reintroduce the retired mailto contact-form pattern instead of the current POST-endpoint spec, and a doc mismatch understating the HyperUI floor. P1 (safe turn-count wins, implemented): db.py get_incomplete_clients() filters server-side instead of full-table-scan-then-Python-filter; qa-reviewer.md Step 4 static greps (fontFamily, unicode escapes, footer legal links, marquee, overflow-x:clip, scroll-cue, per-route h1 count) consolidated into one upfront batch instead of one-by-one. Explicitly declined: combining the 2 anti-ai-slop skill invocations (restructuring risk in a file with documented rules-get-dropped-when-reorganized history, not worth it for the token savings). All edits bash -n / python3 ast-parse / functional-tested verified.",
+      "updated": "2026-08-19T00:35:00Z"
+    },
+    {
+      "id": "PERF-05",
+      "lane": "performance",
+      "status": "done",
+      "owner": "claude",
+      "title": "Remaining P1 list executed: browser-eval folding, blog-subagent sonnet, anti-ai-slop dedupe, hero-video output cache",
+      "verified": "#4: RENDERED-depth (gradients/grain) and computed body-typography evals folded into the existing desktop screenshot loops (home page + subpages) instead of running as separate later calls; checklist bullets updated to read DEPTH_<route>=/TYPE_<route>= from Step 3. #12 (Jeff-approved): blog-prose sub-agent Agent() call now passes model=\"sonnet\" instead of inheriting opus/high; the existing mandatory post-hoc anti-ai-slop eval + fact-check pass (unchanged) remains the real quality gate. #8: removed the blog sub-agent own upfront anti-ai-slop Skill() invocation (was a 3rd re-injection of the same skill text with the parent already invoking it once for site copy and once more post-hoc reviewing the returned prose) -- replaced with a short inline anti-slop brief in the delegation prompt; the real enforcement (parent post-hoc eval against the actual returned prose) is unchanged and unweakened. #11: hero-video cross-CLIENT bundle caching explicitly rejected as unsafe to adopt without deeper Remotion staticFile()-resolution verification (risk: one client photos rendering into another clients video); implemented the safe per-CLIENT half instead -- output cache skip when hero.mp4+hero-poster.jpg already newer than every selected source photo, functionally tested both cache-hit (skips cleanly, correct return shape matching the real render paths images/frames/bundled fields) and cache-miss (correctly falls through to a real render attempt) against a scratch fixture. All 7 touched files (render.mjs, optimise-images.mjs, deploy-and-alias.mjs, ship-scan.mjs, shrink-screenshots.mjs, dispatch-build.sh, db.py) plus qa-reviewer.md and build/SKILL.md syntax-verified clean.",
+      "updated": "2026-08-19T00:50:00Z"
     }
   ],
-  "updated": "2026-08-19T00:15:00Z"
+  "updated": "2026-08-19T02:15:00Z"
 }

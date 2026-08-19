@@ -49,6 +49,8 @@ curl -sIL -o /dev/null -w "%{http_code}" "https://BUSINESSNAME.com"
 curl -sIL -o /dev/null -w "%{http_code}" "https://BUSINESSNAME.<country-tld>"
 ```
 
+**Once you've generated the full variation list below** (spaces-removed, hyphenated, truncated, brand+TLD-suffix, brand+city — can run to 10-16 URLs), check them all in ONE Bash call backgrounded with `&` + `wait` rather than one curl per tool call (Fable consult, 2026-08-18 — same pattern shipped for find's search sweep and deploy's route check). They're independent HEAD requests against domains that mostly don't exist; no reason to pay a separate turn for each.
+
 Also check the domain of any email address found (contact@X → check https://X). And when you pull the Google photos later, glance at any shopfront/window shot for a web address painted on the signage — businesses advertise domains on the shop that never made it onto their Google listing; if one appears, curl it before proceeding.
 
 Try variations (against both `.com` and the country TLD):

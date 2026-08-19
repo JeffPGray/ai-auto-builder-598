@@ -82,9 +82,12 @@ try {
   process.exit(0);
 }
 
-const shots = readdirSync(dir).filter((f) => /^qa-.*\.png$/.test(f)).sort();
+// qa-reviewer.md now captures directly as .webp (playwright-cli --type webp, 2026-08-18) — the
+// PNG->WebP conversion this script exists for is already done at capture time for those shots, so
+// matching .png too is just backward compatibility for any older/manual capture. Match both.
+const shots = readdirSync(dir).filter((f) => /^qa-.*\.(png|webp)$/.test(f)).sort();
 if (!shots.length) {
-  console.log('  no qa-*.png screenshots found — nothing to shrink');
+  console.log('  no qa-*.png/.webp screenshots found — nothing to shrink');
   process.exit(0);
 }
 
@@ -99,6 +102,7 @@ for (const f of shots) {
 
   if (DRY) { after += b; continue; }
 
+  const isAlreadyWebp = /\.webp$/.test(f);
   const tmp = join(dir, `.${f}.tmp.webp`);
   const dest = join(dir, f.replace(/\.png$/, '.webp'));
   try {
@@ -112,7 +116,13 @@ for (const f of shots) {
     if (!isMobile) pipe.resize({ width: WIDTH, withoutEnlargement: true });
     await pipe.webp({ quality: QUALITY }).toFile(tmp);
     renameSync(tmp, dest);
-    unlinkSync(src);                       // the PNG is the thing that costs context; remove it
+    // Only unlink src if it's a DIFFERENT path from dest (the .png -> .webp rename case). When
+    // src was already .webp, dest === src (the regex above has nothing to replace), and renameSync
+    // just overwrote it with the shrunk version in place — unlinking here would delete the file we
+    // just created. This exact bug (self-deleting the just-written output on already-webp input)
+    // is why isAlreadyWebp exists: it was live for the ~40s between the capture-side webp switch
+    // and this fix, caught before any real client had screenshots run through it.
+    if (!isAlreadyWebp) unlinkSync(src);
     after += statSync(dest).size;
   } catch (e) {
     // Keep the original on ANY failure. A QA review with a heavy screenshot beats a QA review with

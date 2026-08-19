@@ -113,13 +113,19 @@ test -f "$SHARED_REPO/scripts/publish-klaudius-tenant.mjs" || {
   echo "Shared lane publisher not found on any ref or worktree. The durable fix is merging"
   echo "feat/klaudius-shared-lane into gr-no-website-builds main (ledger SI-09). STOP."; exit 1; }
 
-# 1. A FRESH static export. The shared lane serves whatever is in out/, so a stale
-#    out/ ships a stale site to a real prospect. This also asserts the site really is
-#    a static export — the whole reason it can be served without its own project.
+# 1. A FRESH static export — but SKIP the rebuild if QA already built this exact source moments
+#    ago (Fable consult, 2026-08-18: the same freshness pattern already shipped for QA's own
+#    redundant rebuild). The shared lane serves whatever is in out/, so a stale out/ ships a stale
+#    site to a real prospect — this still asserts the site really IS a static export, and still
+#    rebuilds for real whenever out/ could actually be stale (source changed since QA's build).
 cd clients/$ARGUMENTS/site
 grep -qE "^[[:space:]]*output:[[:space:]]*['\"]export['\"]" next.config.mjs || {
   echo "Not a static export — the shared lane cannot serve a server app. STOP."; exit 1; }
-rm -rf out && npx next build
+if [ -d out ] && [ -z "$(find src public -newer out -type f 2>/dev/null | head -1)" ]; then
+  echo "out/ already newer than every src/public file (QA's own build) -- skipping rebuild"
+else
+  rm -rf out && npx next build
+fi
 
 # 2. Publish into the lane. This splits documents (function-served) from assets
 #    (filesystem-served) and re-points the asset URLs. It does NOT deploy.
@@ -404,14 +410,22 @@ BASE="${ALIAS:-$URL}"; BASE="${BASE%/}"
 #   * This runs under zsh, which does NOT word-split unquoted variables, so `ROUTES=$(...)` plus
 #     `for R in $ROUTES` loops exactly ONCE on the whole string and every subpage goes unchecked
 #     while the block still looks like it ran. Pipe into `while read` — correct in bash and zsh.
+# Routes are independent checks against an already-live host — backgrounded + waited the same way
+# as the QA gate battery / QA screenshots / find's search sweep (Fable consult, 2026-08-18).
+# `&` inside a `while read` loop backgrounds each curl while the loop keeps reading the next line;
+# the trailing `wait` reaps them all before printing, so this stays one blocking compound command.
+mkdir -p /tmp/route-check-$$
 ( cd "clients/$ARGUMENTS/site/src/app" 2>/dev/null && \
   find . -name 'page.tsx' -not -path './admin/*' \
   | sed -e 's|^\./||' -e 's|page\.tsx$||' -e 's|/$||' ) \
 | while IFS= read -r R; do
-    CODE=$(curl -sSL -o /dev/null -w '%{http_code}' --max-time 20 "$BASE/$R")
-    echo "$BASE/$R -> $CODE"
-    [ "$CODE" = "200" ] || echo "  ^^ NOT SERVING 200 — do NOT record or outreach; the nav links into a 404"
+    ( CODE=$(curl -sSL -o /dev/null -w '%{http_code}' --max-time 20 "$BASE/$R")
+      echo "$BASE/$R -> $CODE" > "/tmp/route-check-$$/$(echo "$R" | tr '/' '_').log"
+      [ "$CODE" = "200" ] || echo "  ^^ NOT SERVING 200 — do NOT record or outreach; the nav links into a 404" >> "/tmp/route-check-$$/$(echo "$R" | tr '/' '_').log" ) &
   done
+wait
+cat /tmp/route-check-$$/*.log 2>/dev/null
+rm -rf "/tmp/route-check-$$"
 ```
 
 The home route falls out of that pipeline as an empty string, so the first line checks `$BASE/`

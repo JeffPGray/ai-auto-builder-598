@@ -34,7 +34,7 @@ Work through the QA report systematically:
 - **fontFamily overrides**: Remove any `style={{ fontFamily: ... }}` from every route file and the shared chrome (`grep -rn 'fontFamily' src/app --include='*.tsx'`)
 - **Bad grid layout**: Switch from `grid grid-cols-X` to `flex flex-wrap justify-center`
 - **Missing Google Maps**: Add CID-based embed from gathered-content.md
-- **Missing contact section**: If email known, wire as a `mailto:` (button or form-submit-to-mailto). If no email, add a client-side-only form with a success-message stub.
+- **Missing contact section**: build `_components/ContactForm.tsx` posting to `/api/preview/${slug}/contact` per build/SKILL.md's § Contact form (2026-08-18 spec) — never `mailto:`, retired for silent-failure reasons the skill explains. The endpoint's own orphan-queue path handles the no-email case; there is no separate no-email branch to build anymore.
 
 ## Step 4: Verify build
 ```bash

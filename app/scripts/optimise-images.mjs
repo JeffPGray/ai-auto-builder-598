@@ -108,7 +108,19 @@ for (const f of files) {
 
   const outName = `${stem}.webp`;                 // the largest variant keeps the plain name
   const outPath = join(dest, outName);
-  if (!DRY) {
+
+  // Cache skip: if every variant this source needs already exists and is newer than the source
+  // photo, the `sharp().webp({effort:6})` encode (the slow setting, deliberately) is pure repeat
+  // work — every resume/re-run of this client re-encoded every photo from scratch even when
+  // nothing about the source or the width ladder had changed. inPath itself never changes after
+  // gather, so mtime comparison is a safe, sufficient cache key (no hash needed).
+  const srcMtime = statSync(inPath).mtimeMs;
+  const allVariantsFresh = !DRY && widths.every((w) => {
+    const p = w === widths[widths.length - 1] ? outPath : join(dest, `${stem}-${w}.webp`);
+    return existsSync(p) && statSync(p).mtimeMs >= srcMtime;
+  });
+
+  if (!DRY && !allVariantsFresh) {
     for (const w of widths) {
       const isLargest = w === widths[widths.length - 1];
       await sharp(inPath)
@@ -127,10 +139,12 @@ for (const f of files) {
     const f2 = w === widths[widths.length - 1] ? outPath : join(dest, `${stem}-${w}.webp`);
     return n + (existsSync(f2) ? statSync(f2).size / 1024 : 0);
   }, 0);
-  rows.push.length;                               // (rows appended below)
   var variantNote = `${widths.join('/')}px`;
   after += kbOut;
-  rows.push([f, kbIn, kbOut, DRY ? '(dry run)' : `-> ${stem}.webp @ ${variantNote}`]);
+  const note = DRY ? '(dry run)' : allVariantsFresh
+    ? `-> ${stem}.webp @ ${variantNote} (cached, source unchanged)`
+    : `-> ${stem}.webp @ ${variantNote}`;
+  rows.push([f, kbIn, kbOut, note]);
 }
 
 for (const [f, i, o, note] of rows) {

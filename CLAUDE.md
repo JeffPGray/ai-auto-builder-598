@@ -299,8 +299,17 @@ env -u CLAUDECODE -u CLAUDE_CODE CLAUDE_WORKER_CHILD=1 \
   claude -p --permission-mode dontAsk --model opus --effort high "<prompt>"
 ```
 ⛔ **Never pass `--mcp-config`** — any form of it hangs `claude -p`, even pointing at an empty
-config, and it killed three builds with zero-byte logs. ⛔ Never `nohup … &` — the harness kills the
-process group. `--effort max` is unreachable (Claude.ai subscriber gate, a BILLING gate).
+config, and it killed three builds with zero-byte logs. `--effort max` is unreachable (Claude.ai
+subscriber gate, a BILLING gate).
+
+✅ **`nohup … &` from a live session IS safe for dispatch — this line previously said otherwise
+and was wrong.** Corrected 2026-08-18 (Fable consult) after `scripts/dispatch-build.sh` used
+exactly this pattern (`nohup bash scripts/dispatch-build.sh ... &`) across two real dispatches that
+survived 65 and 25+ minutes each, across many separate tool calls/turns, with no process-group
+kill. `nohup` reparents to PID 1 and detaches from the shell's job control, which is precisely
+what avoids the failure this line was warning about — a **bare** `cmd &` with no `nohup`, which
+stays in the invoking shell's process group and dies with it when that shell/tool-call ends. The
+two are not the same thing; only the bare form is the real risk.
 
 **Two `ui-ux-pro-max` exist.** The build invokes it by relative path, so with `cwd=app/` the VENDOR
 copy runs — correct, because it carries 11 data CSVs and 13 stacks including `nextjs`. The

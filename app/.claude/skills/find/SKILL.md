@@ -67,6 +67,18 @@ Registry-only: sends nothing, costs no send-pacing budget. (Defaults to the firs
 
 Run all searches for the chosen town upfront, in two layers. The Places API has no rate limiting, so run them all immediately. `<town>` below is the town from Step 0. (A fixed list alone was measured to surface only ~25% of a town's qualified supply — the extension layer is not optional.)
 
+**Run every query in ONE Bash call, backgrounded with `&` and reaped with `wait`** (Fable consult, 2026-08-18 — same pattern already shipped for the QA gate battery and QA screenshot capture). None of these queries depends on another's result, the API itself has no rate limit per the line above, so the only thing serial execution was ever buying was ~25-30 extra tool-call turns for zero benefit:
+```bash
+mkdir -p /tmp/find-sweep
+node scripts/places-search.js "plumber <town>" > /tmp/find-sweep/plumber.log 2>&1 &
+node scripts/places-search.js "electrician <town>" > /tmp/find-sweep/electrician.log 2>&1 &
+# ...one line per query below, each backgrounded the same way, both Layer 1 and Layer 2 together...
+wait
+for f in /tmp/find-sweep/*.log; do echo "--- $f ---"; cat "$f"; done
+rm -rf /tmp/find-sweep
+```
+Write the real query list into that pattern (all ~15 Layer 1 lines plus your generated 10-15 Layer 2 lines, all in the SAME batch) rather than running them as separate tool calls one at a time.
+
 **Use natural `${OPERATOR_LANGUAGE}` industry terms in your queries** — Google Places matches local-language searches against local-language listings. The Places scripts pass `${OPERATOR_LANGUAGE_CODE}` so display names and addresses come back in the right language, but the *query strings* are yours to write (e.g. Italian `idraulico`, Spanish `fontanero`, French `plombier`, not `plumber`).
 
 Adapt the query terms to regional conventions even within a single language. Google Places doesn't always match across regional vocab (e.g. `heating engineer` works in the UK; `HVAC contractor` is the US equivalent. `tyre shop` for UK; `tire shop` for US. `takeaway` for UK / AU / IE; `takeout` for US/CA. `kitchen fitter` for UK; `kitchen remodeler` for US):

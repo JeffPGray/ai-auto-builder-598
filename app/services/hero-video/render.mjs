@@ -80,6 +80,33 @@ export async function renderHero({ slug, maxImages = 4, serveUrl, siteDirOverrid
     throw new Error(`only ${images.length} usable photo(s); need at least 3 for a hero clip`);
   }
 
+  // Output cache (Fable consult, 2026-08-18): a resume/redispatch of the SAME client with an
+  // UNCHANGED photo set re-renders from scratch even though this file's own header already proves
+  // two renders of identical input are byte-identical. Skip if both output files already exist and
+  // are newer than every selected source photo — the exact class of freshness check already
+  // shipped tonight for node_modules/images/QA rebuilds, applied here for the same reason. This is
+  // per-client only (never cross-client — a shared bundle/publicDir cache was considered and
+  // rejected: it would need verifying Remotion resolves staticFile() fresh from the RENDER call's
+  // own publicDir rather than baking it into the bundle, and a wrong answer there means one
+  // client's photos silently rendering into another client's hero video, which is not a risk worth
+  // ~7s/build for).
+  const cachedOut = path.join(siteDir, "public", "hero.mp4");
+  const cachedPoster = path.join(siteDir, "public", "hero-poster.jpg");
+  if (!serveUrl && existsSync(cachedOut) && existsSync(cachedPoster)) {
+    const outMtime = Math.min(statSync(cachedOut).mtimeMs, statSync(cachedPoster).mtimeMs);
+    const allSourcesOlder = images.every(
+      (rel) => statSync(path.join(siteDir, "public", rel)).mtimeMs <= outMtime
+    );
+    if (allSourcesOlder) {
+      console.log(`hero-video: cache hit — ${cachedOut} already newer than every selected photo, skipping render`);
+      // Match the real render path's return shape exactly (images/frames/bundled) so the CLI
+      // entry's status line and any other caller reading these fields behave identically on a
+      // cache hit vs a real render — frames isn't cheaply knowable without decoding the file, but
+      // it's cosmetic-only (only printed in the OK log line), so a marker string is fine here.
+      return { out: cachedOut, poster: cachedPoster, images: images.length, frames: "cached", bundled: null };
+    }
+  }
+
   // publicDir is the client's own public/ folder, so the composition sees exactly
   // the same asset paths the finished site will use.
   const publicDir = path.join(siteDir, "public");
