@@ -112,6 +112,34 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 1
 # can run gather and mechanical qa-fix rounds at a cheaper tier while design/build stays opus/high —
 # per the 2026-08-19 Fable review: effort is a real per-turn reasoning-token multiplier, and gather
 # is mostly checklist-shaped tool-driving, not the design-judgment surface that tier exists to protect.
+#
+# CLAUDE_WORKER_CHILD=1 also silences SessionStart ledger injection (surface-ledger.mjs +
+# app/.claude/hooks/session-start-worker-guard.mjs). A child that reads the orchestrator ledger
+# burned 15 minutes before writing a page (2026-08-20).
+#
+# ── PLAYWRIGHT MUST NOT OUTLIVE THE BUILD THAT STARTED IT ────────────────────────────────────
+# playwright-cli sessions are GLOBAL per machine and never self-close. An aborted run never
+# reaches the skill's `close` line. Measured 2026-08-20: four orphaned cliDaemon.js sessions
+# held ~5.9 GB. `ps -o etimes=` is unsupported on macOS — parse `etime` instead.
+pw_age_secs() {
+  ps -o etime= -p "$1" 2>/dev/null | tr -d ' ' | awk -F'[-:]' '{
+    if (NF==4) print $1*86400+$2*3600+$3*60+$4;
+    else if (NF==3) print $1*3600+$2*60+$3;
+    else if (NF==2) print $1*60+$2; else print 0 }'
+}
+pw_sweep_stale() {
+  local cap=$(( (HARD_MAX_MIN + 15) * 60 )) killed=0 age
+  for pw in $(pgrep -f 'cliDaemon.js' 2>/dev/null); do
+    age=$(pw_age_secs "$pw")
+    if [ "${age:-0}" -gt "$cap" ]; then
+      pkill -P "$pw" 2>/dev/null; kill -9 "$pw" 2>/dev/null; killed=$((killed+1))
+    fi
+  done
+  [ "$killed" -gt 0 ] && echo "swept $killed stale playwright session(s) older than $((cap/60))m"
+  return 0
+}
+pw_sweep_stale
+
 env -u CLAUDECODE -u CLAUDE_CODE CLAUDE_WORKER_CHILD=1 \
   claude -p --permission-mode dontAsk --model "${DISPATCH_MODEL:-opus}" --effort "${DISPATCH_EFFORT:-high}" --strict-mcp-config \
   ${DISPATCH_OUTPUT_FORMAT:+--output-format "$DISPATCH_OUTPUT_FORMAT"} \
@@ -266,5 +294,18 @@ for pid in $(pgrep -f "http\.server .* --directory out" 2>/dev/null; pgrep -f "q
     "$REPO_ROOT_ABS/$WATCH_DIR"/*/site) kill "$pid" 2>/dev/null && echo "swept lingering QA server pid=$pid cwd=$cwd" ;;
   esac
 done
+
+# Operator rule, 2026-08-20: playwright has to stop when builds stop. Sweep leftover
+# session daemons only when this was the last dispatch wrapper (safe under concurrent lanes).
+sleep 1
+if [ -z "$(pgrep -f 'dispatch-(staged|build)\.sh' | grep -v "^$$\$")" ]; then
+  pw_left=$(pgrep -f 'cliDaemon.js' 2>/dev/null | wc -l | tr -d ' ')
+  if [ "${pw_left:-0}" -gt 0 ]; then
+    for pw in $(pgrep -f 'cliDaemon.js' 2>/dev/null); do
+      pkill -P "$pw" 2>/dev/null; kill -9 "$pw" 2>/dev/null
+    done
+    echo "no dispatch left running — swept $pw_left orphaned playwright session(s)"
+  fi
+fi
 
 exit "$rc"

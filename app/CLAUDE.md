@@ -139,12 +139,23 @@ Use the returned palette, typography, and layout pattern as input to `/build`. T
 #### QA Loop (replaces /qa)
 After `/build` completes, QA is handled by an **independent agent** — the session that built the site subconsciously does lenient QA because it already knows the content and compromises, so a fresh agent with zero build context reviews the site as a business owner would: cold and critical. The agent that built the site must NOT review it.
 
-**Round 1 is ALWAYS full — never scoped, no exceptions.** It is the only full look the site
-ever gets, and it is not merely a formality: on a real build, round 1's fix was a one-character
-JSX change on `/about`, and round 2's FULL re-review (not a scoped one) is what caught a
-badly mismatched photo on the HOME page that round 1 had missed. A scoped round 2 that only
-re-checked `/about` would have shipped it. That is why scoping only ever applies to round 2+,
-gated on real evidence, never to round 1.
+**Gates before screenshots (experiment/speed-cut, 2026-08-21).** Hillards round 1 spent a full
+Playwright pass on a contrast FAIL. Screenshots are the expensive step; Node gates are cheap.
+
+```
+0. bash scripts/pre-qa-gates.sh {slug}
+   PRE_QA_GATES=FAIL → fix, rebuild, re-run. Do NOT spawn qa-reviewer.
+   (pre-qa-gates already wraps the `gates` stage timer.)
+```
+
+**Round 1 is ALWAYS full — never scoped, no exceptions — and only after gates PASS.** It is the
+only full look the site ever gets.
+
+**Experiment cap: 2 QA rounds.** A third round is a process bug — stop and ask. Hillards and
+aquaklear already pass in 2.
+
+**Refuse a full QA round 2 unless the round-1 report tagged a critical SYSTEMIC.** Round 2 is
+scoped + one canary. Do not re-screenshot every route because a LOCAL contrast miss was fixed.
 
 ```
 1. Spawn the qa-reviewer agent for ROUND 1 (always full). Use the dedicated subagent_type —
@@ -152,8 +163,10 @@ gated on real evidence, never to round 1.
    "follow the agent file" prompt has historically led agents to skip the screenshot and
    report-write steps:
 
+   node scripts/stage-timer.mjs start {slug} qa-round-1
    Agent(subagent_type="qa-reviewer", prompt="""Run a FULL QA check for client slug: {slug}.
    Follow .claude/agents/qa-reviewer.md exactly. This is round 1 — review every route.
+   GATES_ALREADY_PASSED=1 (pre-qa-gates.sh). Skip re-running the Node battery; go to screenshots.
 
    Mandatory deliverables — your run is invalid without all three:
    (a) Run `npx next build`, serve `out/`, take all 3 desktop screenshots (qa-top, qa-mid,
@@ -199,8 +212,8 @@ gated on real evidence, never to round 1.
      failure mode this mechanism replaced: an impression question with nothing computed from it.
      Treat a missing/incomplete hard-blocker section the same as an invalid report (step 2).
 
-4. Maximum 3 QA iterations. If still failing after 3 rounds, stop and
-   ask the user for guidance.
+4. Maximum 2 QA iterations on this experiment. A third round is a process
+   bug — stop and ask. After the reviewer returns: node scripts/stage-timer.mjs end {slug} qa-round-N
 ```
 
 ##### Round 2+: scoped, double-keyed against a real footprint (never against self-report)
@@ -223,6 +236,9 @@ net, and it runs as part of the deterministic battery on every round regardless 
    — a fixer that touched `globals.css` while "just fixing a typo" is exactly the case that must
    escalate, and only a real file-content diff catches that; an agent's own claim of what it
    touched is not evidence.
+
+**Refuse a full QA round 2 unless the round-1 report tagged a critical SYSTEMIC.** LOCAL-only
+FAILs get `/qa-fix` plus a scoped round + canary. Do not re-screenshot the whole site.
 
 **Escalation triggers — any ONE of these forces a FULL, unscoped round (same as round 1), no
 exceptions:**

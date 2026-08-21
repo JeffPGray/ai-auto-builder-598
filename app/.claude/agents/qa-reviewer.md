@@ -30,13 +30,16 @@ Read `prompts/lessons/build.md` before starting.
 
 You will be given a client slug. Run a full QA check and return a structured report.
 
-**Round 1 is always this: every route, full screenshots, full review.** Round 2+ MAY arrive as a
-SCOPED invocation instead — the prompt will say so explicitly and name exactly which routes to
-screenshot plus one rotating canary route (see `CLAUDE.md`'s "QA Loop" § "Round 2+: scoped,
-double-keyed" for the full mechanism and why it exists). If the prompt doesn't say "scoped",
-treat it as full — never scope yourself. Whichever mode you're in: **run the full deterministic
-gate battery in Step 3 regardless** — those are scripts, cost ~2-3 minutes, and cover every page
-no matter what you screenshot. Only the screenshot/visual-review set narrows.
+**Round 1 is always this: every route, full screenshots, full review — after gates already
+passed.** The orchestrator must have run `bash scripts/pre-qa-gates.sh {slug}` first. If the
+spawn prompt includes `GATES_ALREADY_PASSED=1`, skip re-running the Node battery (Step 3) and go
+straight to screenshots. Re-running the battery after a PASS is idle wall-clock (hillards).
+
+Round 2+ MAY arrive as a SCOPED invocation — the prompt will say so explicitly. If the prompt
+doesn't say "scoped", treat it as full — never scope yourself. Experiment cap: 2 rounds.
+
+If the prompt does **not** include `GATES_ALREADY_PASSED=1`, run the full deterministic gate
+battery in Step 3 before any screenshot. A contrast FAIL must never cost a Playwright pass.
 
 **Tag every critical issue LOCAL or SYSTEMIC**, whether the round is full or scoped — the
 orchestrator reads this tag to decide whether a scoped result can stand. LOCAL means confined to

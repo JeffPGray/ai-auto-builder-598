@@ -50,11 +50,11 @@ chk "tailwindcss-animate in config"      "grep -q 'tailwindcss-animate' template
 chk "accordion keyframes survive"        "grep -q 'accordion-down' templates/trade-site/tailwind.config.ts"
 for d in clsx tailwind-merge class-variance-authority lucide-react tailwindcss-animate; do
   chk "dep: $d"                          "grep -q '\"$d\"' templates/trade-site/package.json"; done
-chk "build skill references shadcn"      "grep -q 'shadcn' .claude/skills/build/SKILL.md"
-chk "default-styling ban is stated"      "grep -q 'NEVER ship shadcn' .claude/skills/build/SKILL.md"
+chk "build skill references shadcn"      "grep -rq 'shadcn' .claude/skills/build --include='*.md'"
+chk "default-styling ban is stated"      "grep -rq 'NEVER ship shadcn' .claude/skills/build --include='*.md'"
 
 echo ""; echo "── 4. impeccable wired as brain AND judge ──"
-chk "build invokes impeccable"           "grep -q 'skill=\"impeccable\"' .claude/skills/build/SKILL.md"
+chk "build invokes impeccable"           "grep -rq 'skill=\"impeccable\"' .claude/skills/build --include='*.md'"
 chk "QA invokes impeccable"              "grep -q 'skill=\"impeccable\"' .claude/agents/qa-reviewer.md"
 
 echo ""; echo "── 5. trade data reaches the build (CSV -> core -> generator -> printed) ──"
@@ -94,9 +94,9 @@ chk "monotone-ground gate exists"        "grep -q 'MONOTONE GROUND RUN' scripts/
 chk "monotone gate catches mono-navy"    "node scripts/richness-check.mjs clients/cold-front-ac/site 2>&1 | grep -q '\[monotone\]'"
 chk "shadcn-ignored gate exists"         "grep -q 'SHADCN PRIMITIVES' scripts/richness-check.mjs"
 chk "shadcn gate catches non-use"        "node scripts/richness-check.mjs clients/cold-front-ac/site 2>&1 | grep -q '\[primitives\]'"
-chk "canvas decision rule is executable" "grep -q 'CANVAS_MODE=' .claude/skills/build/SKILL.md"
-chk "NEUTRAL-CANVAS is the trade default" "grep -q 'NEUTRAL-CANVAS is the default' .claude/skills/build/SKILL.md"
-chk "saturated no longer 'usually right'" "! grep -q 'usually the right answer for a trade site' .claude/skills/build/SKILL.md"
+chk "canvas decision rule is executable" "grep -rq 'CANVAS_MODE=' .claude/skills/build --include='*.md'"
+chk "NEUTRAL-CANVAS is the trade default" "grep -rq 'NEUTRAL-CANVAS is the default' .claude/skills/build --include='*.md'"
+chk "saturated no longer 'usually right'" "! grep -rq 'usually the right answer for a trade site' .claude/skills/build --include='*.md'"
 chk "reset script clears fingerprints"   "grep -q 'design-fingerprints' scripts/reset-client-design.mjs"
 chk "canonical qa-serve strips prefix"   "grep -q 'klaudius' scripts/qa-serve.mjs"
 
@@ -132,6 +132,16 @@ chk "verify-fix detects a non-fix"        "grep -q 'NOT-FIXED' scripts/verify-fi
 chk "verify-fix detects a regression"     "grep -q 'REGRESSED' scripts/verify-fix.mjs"
 chk "verify-fix names unadjudicated"      "grep -q 'UNADJUDICATED' scripts/verify-fix.mjs"
 chk "dispatch sweeps qa-serve too"        "grep -q 'qa-serve' scripts/dispatch-build.sh"
+chk "dispatch sweeps playwright at start" "grep -q 'pw_sweep_stale' scripts/dispatch-build.sh"
+chk "worker child env is set"            "grep -q 'CLAUDE_WORKER_CHILD=1' scripts/dispatch-build.sh"
+chk "stage-timer exists"                 "test -f scripts/stage-timer.mjs"
+chk "write-once-check exists"            "test -f scripts/write-once-check.mjs"
+chk "pre-qa-gates wraps run-gates"       "grep -q 'run-gates.mjs' scripts/pre-qa-gates.sh"
+chk "build skill is a dispatcher"        "test $(wc -l < .claude/skills/build/SKILL.md) -lt 200"
+chk "build stages split"                 "test -f .claude/skills/build/stages/author.md -a -f .claude/skills/build/stages/verify.md"
+chk "QA gates before screenshots"        "grep -q 'pre-qa-gates.sh' CLAUDE.md"
+chk "QA cap is 2 rounds"                 "grep -q 'Maximum 2 QA iterations' CLAUDE.md"
+chk "blog spawn is sonnet"               "grep -q 'model=\"sonnet\"' .claude/skills/build/stages/author.md"
 
 echo ""; echo "── 8. no dangling references to deleted sections ──"
 chk "no dead § refs"                     "! grep -rqE '§ (Visual richness|Composition|Colour roles|Ground|Trade personality|Photo art direction|Section treatments|Design manifest|Typography variation)' .claude/skills/*/SKILL.md .claude/agents/*.md CLAUDE.md scripts/*.mjs"

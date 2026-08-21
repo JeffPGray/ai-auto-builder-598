@@ -58,6 +58,10 @@ clients/
 # Parallel-orchestration scratch (per-run .summary / .cmd / .log children write here)
 orchestrator-logs/
 
+# stage-timer in-flight marks (jsonl is local measurement, not source)
+data/stage-timer-marks.json
+data/stage-timer.jsonl
+
 # Local Claude state (per-machine)
 .claude/settings.local.json
 .claude/worktrees/
