@@ -22,6 +22,7 @@ Write ONE file: clients/{slug}/site/src/app/{route}/page.tsx
 
 A second Write to the same path is a hard fail (`write-once-check.mjs` exit 1).
 Parent Opus authors chrome only. Sonnet authors every `page.tsx`.
+This is **Exception 3** of `CLAUDE.md` Critical Rule 10 (experiment/speed-cut). Do not skip it because Exception 2 used to be the only build-stage spawn.
 
 ## Site structure (MANDATORY — decide the page count before writing any TSX)
 
@@ -374,7 +375,7 @@ Those 4-7 minutes are serial time spent on prose that touches no design surface.
 once you have picked the five topics and `gathered-content.md` exists, spawn **one** sub-agent to
 draft the article prose while you write `globals.css`, the chrome and the route pages.
 
-This is the **only** build-stage delegation permitted — `CLAUDE.md` Critical Rule 10, Exception 2.
+This is **Exception 2** (`CLAUDE.md` Critical Rule 10). Blogs must be `model="sonnet"`. Parent does not draft `blog-data.ts`.
 Read that rule before using it; it is bounded on purpose.
 
 **`model="sonnet"`, not the parent's opus/high (Jeff, 2026-08-18 — "this is probably fine to do, we

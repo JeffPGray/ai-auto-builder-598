@@ -142,6 +142,7 @@ chk "build stages split"                 "test -f .claude/skills/build/stages/au
 chk "QA gates before screenshots"        "grep -q 'pre-qa-gates.sh' CLAUDE.md"
 chk "QA cap is 2 rounds"                 "grep -q 'Maximum 2 QA iterations' CLAUDE.md"
 chk "blog spawn is sonnet"               "grep -q 'model=\"sonnet\"' .claude/skills/build/stages/author.md"
+chk "Rule 10 allows route children"      "grep -q 'Exception 3 — experiment/speed-cut route children' CLAUDE.md"
 
 echo ""; echo "── 8. no dangling references to deleted sections ──"
 chk "no dead § refs"                     "! grep -rqE '§ (Visual richness|Composition|Colour roles|Ground|Trade personality|Photo art direction|Section treatments|Design manifest|Typography variation)' .claude/skills/*/SKILL.md .claude/agents/*.md CLAUDE.md scripts/*.mjs"

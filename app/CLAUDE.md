@@ -368,44 +368,21 @@ Run follow-ups first, then the pipeline. Keep looping.
 8. **If other Claude Code sessions are running in parallel**, check Supabase for existing clients before starting to avoid duplicates. Skip any client with status `claimed`, another session is working on it.
 9. **Claim before working.** When you start working on a client (find, gather, build, etc.), immediately claim them in Supabase: `python3 -c "from scripts.db import claim_client; print(claim_client('SLUG'))"`. This is atomic. If another session races you, only one succeeds. Update to the real status when done: `python3 -c "from scripts.db import update_status; update_status('SLUG', 'gathered')"`.
 
-10. **Delegate to a sub-agent only in the two cases below.** Do NOT use the Agent tool for find, gather, deploy, or outreach, or for any part of `/build` that touches the design surface. Always invoke those skills yourself directly. You are a worker, not an orchestrator.
+10. **Delegate to a sub-agent only in the cases below.** Do NOT use the Agent tool for find, gather, deploy, or outreach. Design lock (`globals.css`, chrome, `DESIGN_IDEA`) stays on the parent.
 
-    **Exception 1 — QA.** After `/build`, spawn the `qa-reviewer` agent (see QA Loop above) so the site gets reviewed by fresh eyes with no build context.
+    **Exception 1 — QA.** After `/build` and `PRE_QA_GATES=PASS`, spawn the `qa-reviewer` agent (see QA Loop above).
 
-    **Exception 2 — non-design PROSE surfaces only (blog added 2026-08-16; widened 2026-08-19,
-    both on Jeff's approval).** Once the five blog article topics are fixed and
-    `gathered-content.md` is written, you may spawn **one** sub-agent to draft, concurrently with
-    your own page writing: (a) the five blog articles into `blog-data.ts`, (b) the privacy/terms page
-    prose (they render through one frozen, non-bespoke template — no layout or component decision
-    to make), and (c) — where § Per-service pages fires — the per-service body prose. **For BOTH (b)
-    and (c), the sub-agent returns plain text only — never touches a `.tsx` file directly.** You
-    place the returned prose into `privacy/page.tsx` / `terms/page.tsx` / the relevant service
-    `page.tsx` yourself. (Only clarified 2026-08-19 — (b)'s original wording didn't repeat this
-    text-only qualifier that (c) stated explicitly, which read as though the sub-agent could write
-    the privacy/terms `.tsx` files itself; it cannot, same as (c).)
+    **Exception 2 — blog prose.** One **Sonnet** subagent drafts the five articles into a `POSTS` array while chrome is authored. Parent fact-checks against `gathered-content.md`. Do not draft `blog-data.ts` on Opus.
 
-    *Why this is allowed when the rest is not.* Measured on a 14-route build: 47.8 of 55.8 minutes
-    was token generation, and roughly 4,000 words of it is blog prose that touches **no design
-    surface at all** — no palette, no layout, no motion, no components. Rule 10 exists so the site
-    has one accountable author whose design decisions stay coherent across pages; none of (a)/(b)/(c)
-    can cause design drift by the same reasoning that already cleared blog prose, so widening to
-    these three surfaces is not a new exception, it's the same one applied to its full scope. It
-    remains a genuine concurrency win because the sub-agent's generation is a separate concurrent
-    call, and it moves more of the ~93-minute generation-phase floor onto a lane already proven safe.
+    **Exception 3 — experiment/speed-cut route children.** After design lock, spawn **Sonnet** write-once children for route `page.tsx` files (one route or 2–3 related routes each). Parent does not hold 13 pages in context. Children: one `Write`, `write-once-check.mjs --note`, exit. Never delegate `globals.css`, `SiteNav`, `layout.tsx`, or `SiteFooter`.
 
-    *The bounds, and they are not optional:*
-    - **One** sub-agent for all of (a)/(b)/(c) combined, not one per surface or one per article.
-    - **You** choose the blog topics and, for (c), the specific facts/claims each service page will
-      make — the sub-agent drafts prose against your decisions, it does not make them.
-    - Attach `gathered-content.md` and carry the **three-bucket truth rule** into its prompt
-      verbatim. An invented claim about a real business is the worst output this pipeline can
-      produce, and a sub-agent has less context to notice it, not more.
-    - **You review everything that comes back against `anti-ai-slop`'s eval before committing it**
-      anywhere. Delegating the writing does not delegate the judgement.
-    - Never delegate `page.tsx` itself, `globals.css`, the shared chrome, or anything under
-      § Design (HARD RULES). (c)'s prose comes back as text, not markup — you write every `.tsx` file
-      that exists. If you catch yourself reaching for a second sub-agent, or letting this one touch
-      a component/layout/style decision, stop — that is the line.
+    *Why Exception 3 exists.* cold-front-ac wrote `page.tsx` 34 times and compacted 9 times (first at minute 12). gulf-coast-septic-ms attempt 2 (2026-08-20) was still in `/impeccable` at ~90 min with 9 compactions and no deploy. Serial parent authorship under a 2k-line skill is the wall-clock. Rule 10's original bound (one author for design coherence) still applies to chrome; routes inherit the locked system.
+
+    *The bounds:*
+    - Chrome and palette: parent Opus only.
+    - Routes: Sonnet, write-once, no screenshots, no ledger.
+    - Blogs: Exception 2, Sonnet, required.
+    - If you catch a child editing `globals.css` or a second Write to the same route, that child failed — do not widen the exception.
 11. **NEVER skip QA.** Every site MUST go through the QA loop (qa-reviewer agent) before deploying — no exceptions, however rushed the run or simple the site. Deploying a broken site to a real business owner wastes the lead.
 12. **NEVER send test/debug messages to real clients.** No test emails, test SMS, test anything to client email addresses or phone numbers. Ever. If you need to test SMTP/IMAP, send to your own `${EMAIL_ADDRESS}` (it loops back to your inbox). For SMS tests, send to `${TEST_PHONE}` (your personal mobile). A client receiving "test" from you is unprofessional and wastes the lead.
 
