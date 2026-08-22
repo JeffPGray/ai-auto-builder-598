@@ -1150,14 +1150,14 @@ if (!/--site-nav-clearance\s*:/.test(css)) {
       .replace(/<style[\s\S]*?<\/style>/gi, ' ')
       .replace(/<[^>]+>/g, ' ');
     const words = text.split(/\s+/).filter((w) => /[A-Za-z]{2,}/.test(w)).length;
-    if (/demo preview/i.test(body) || words < 220) {
+    if (/demo preview/i.test(body) || words < 750) {
       thinLegal.push(`${name}(words=${words})`);
     }
   }
   if (thinLegal.length) {
     failures.push(
       `[legal] thin or stub privacy/terms: ${thinLegal.join(', ')} — run ` +
-      '`node scripts/generate-legal-pages.mjs <slug> --write` (inventory-built, ≥220 words each).');
+      '`node scripts/generate-legal-pages.mjs <slug> --write` (Termageddon-class generate-legal-pages, ≥750 words / ≥8 h2 each).');
   }
 }
 
@@ -1203,7 +1203,7 @@ if (!/--site-nav-clearance\s*:/.test(css)) {
       } else {
         continue;
       }
-      if (words < 220 || h2 < 2) {
+      if (words < 750 || h2 < 2) {
         thin.push(`${ent.name}(words=${words},h2=${h2})`);
       }
     }

@@ -626,3 +626,5 @@ in this session's transcript. Worth rotating it at https://vercel.com/account/to
 Files: templates/trade-site/{globals.css,SiteFooter,blog/[slug],HF components}, scripts/{font-uniqueness-check,palette-uniqueness,richness-check,inspect-logo,lib/gates}, services/higgsfield/*, services/media-surface/*, .claude/skills/build/{SKILL,stages/*}.md.
 
 2026-08-22 — Legal pages generator in the stack. Empty one-paragraph privacy/terms stubs (Lux) are banned. `scripts/generate-legal-pages.mjs <slug> --write` inventories SiteChat/ContactForm/maps/analytics/reviews and writes Squarespace-class pages from `site-data.ts` + `reference/legal-pages.md` rules. Template ships generated scaffold (`--template --write`). Gates: `--check` in `gates.mjs`, richness `[legal]` stub/thin fail, verify stage runs `--check`. Author stage must run `--write` after site-data is filled.
+
+2026-08-22 — Legal generator upgraded to Termageddon-class depth (privacy ≥900w / ≥8 h2, terms ≥750w), still inventory-honest (no fake analytics/cookie tables). Not a Termageddon SaaS embed — full static policies customized per build.
