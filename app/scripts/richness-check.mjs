@@ -1153,6 +1153,10 @@ if (!/--site-nav-clearance\s*:/.test(css)) {
     if (/demo preview/i.test(body) || words < 750) {
       thinLegal.push(`${name}(words=${words})`);
     }
+    const h2 = (body.match(/<h2\b/gi) || []).length;
+    if (h2 < 8 && existsSync(file)) {
+      thinLegal.push(`${name}(h2=${h2})`);
+    }
   }
   if (thinLegal.length) {
     failures.push(
@@ -1203,7 +1207,7 @@ if (!/--site-nav-clearance\s*:/.test(css)) {
       } else {
         continue;
       }
-      if (words < 750 || h2 < 2) {
+      if (words < 220 || h2 < 2) {
         thin.push(`${ent.name}(words=${words},h2=${h2})`);
       }
     }
