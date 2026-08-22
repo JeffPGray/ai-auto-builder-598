@@ -1132,6 +1132,35 @@ if (!/--site-nav-clearance\s*:/.test(css)) {
     'with H1s on blog/legal/text-led pages. Add the main padding rule from templates/trade-site globals.css.');
 }
 
+
+/* 17f. LEGAL PAGES — empty privacy/terms stubs are not Squarespace-class (Lux 2026-08-22). */
+{
+  const thinLegal = [];
+  for (const name of ['privacy', 'terms']) {
+    const built = join(siteDir, 'out', name + '.html');
+    const src = join(siteDir, 'src', 'app', name, 'page.tsx');
+    const file = existsSync(built) ? built : src;
+    if (!existsSync(file)) {
+      thinLegal.push(`${name}(missing)`);
+      continue;
+    }
+    const body = readFileSync(file, 'utf8');
+    const text = body
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ');
+    const words = text.split(/\s+/).filter((w) => /[A-Za-z]{2,}/.test(w)).length;
+    if (/demo preview/i.test(body) || words < 220) {
+      thinLegal.push(`${name}(words=${words})`);
+    }
+  }
+  if (thinLegal.length) {
+    failures.push(
+      `[legal] thin or stub privacy/terms: ${thinLegal.join(', ')} — run ` +
+      '`node scripts/generate-legal-pages.mjs <slug> --write` (inventory-built, ≥220 words each).');
+  }
+}
+
 /* 17e. THIN SERVICE PAGES — Lux 2026-08-22: /services/<slug> shipped hero + NAP only.
  * Prefer built out/ HTML (what ships). Fall back to page.tsx, but do NOT strip
  * self-closing JSX like <ServiceDetailFrame body="…" /> as one tag — that ate the

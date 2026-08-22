@@ -1245,7 +1245,14 @@
       "status": "done",
       "owner": "agent:klaudius-speed",
       "verified": "2026-08-22 local: MEDIA_SURFACE_CHECK=PASS, richness-check=PASS, PALETTE/FONT uniqueness PASS; desktop walkthrough video recorded for share."
+    },
+    {
+      "id": "LEGAL-PAGES-01",
+      "title": "Deterministic privacy/terms generator + stub gate (Squarespace-class, inventory-built)",
+      "status": "done",
+      "owner": "agent:klaudius-speed",
+      "verified": "2026-08-22 generate-legal-pages.mjs --write on Lux + template; LEGAL_PAGES_CHECK=PASS; richness PASS"
     }
   ],
-  "updated": "2026-08-22T20:18:20Z"
+  "updated": "2026-08-22T20:26:32Z"
 }

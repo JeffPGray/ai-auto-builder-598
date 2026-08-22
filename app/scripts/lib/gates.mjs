@@ -77,6 +77,12 @@ export const GATES = [
     verdict: /PALETTE_UNIQUENESS_CHECK=(PASS|FAIL|WARN|SKIP)/,
   },
   {
+    id: 'legal-pages',
+    label: 'Privacy + terms are full inventory pages (not empty stubs)',
+    argv: (slug) => ['scripts/generate-legal-pages.mjs', slug, '--check'],
+    verdict: /LEGAL_PAGES_CHECK=(PASS|FAIL)/,
+  },
+  {
     id: 'contrast',
     label: 'Computed WCAG contrast on every rendered route (alpha-composited)',
     argv: (slug) => ['scripts/contrast-check.mjs', `clients/${slug}/site/out`],

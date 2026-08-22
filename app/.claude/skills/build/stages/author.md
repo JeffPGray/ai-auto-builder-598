@@ -206,7 +206,15 @@ Route additions from other skills (`/book` from the booking facade, `/admin` fro
 
 **Jeff, 2026-08-16: "on every single build we need to port over our terms and conditions and privacy policy to be in the footer or sub footer, built for each site."** Both routes ship every time, no exceptions, no threshold.
 
-**Read `reference/legal-pages.md` in full before writing either page** — it has the disclosure inventory (what to grep for and what each finding means for the copy), the chat-widget disclosure template, the per-page content spec, and the wiring checklist (canonical URLs, footer links, sitemap/llms.txt entries). This is not a section to skip or paraphrase from memory: these pages make legal representations on behalf of a business that never reviewed them, and a fabricated clause is a liability we manufactured for them.
+**Do not hand-author stubs.** After `site-data.ts` and chrome exist, run:
+
+```bash
+node scripts/generate-legal-pages.mjs $ARGUMENTS --write
+```
+
+That invents chat/form/maps/analytics from the tree and writes Squarespace-class `/privacy` and `/terms` customized to this build (`reference/legal-pages.md`). Re-run after adding/removing SiteChat, ContactForm, maps, or reviews.
+
+**Read `reference/legal-pages.md` in full before hand-editing either page** — it has the disclosure inventory (what to grep for and what each finding means for the copy), the chat-widget disclosure template, the per-page content spec, and the wiring checklist (canonical URLs, footer links, sitemap/llms.txt entries). This is not a section to skip or paraphrase from memory: these pages make legal representations on behalf of a business that never reviewed them, and a fabricated clause is a liability we manufactured for them.
 
 **Kept here verbatim as a floor, never skip even under time pressure — the full never-write list, with reasoning, is in the reference file:** company registration number, VAT/EIN/tax number, a named data-protection officer, a statutory-rights recital (GDPR/CCPA), data retention periods, international transfer clauses, "we may share your data with trusted partners", a cookie table for cookies the site doesn't set, children's-privacy clauses, arbitration/venue/jurisdiction beyond the business's own state, indemnities, a money liability cap, prices/deposits/refund terms, guarantees or SLAs, licence/accreditation claims not in `gathered-content.md`, "your continued use constitutes acceptance", and any promise about what the business does with an enquiry after it reaches them. **The rule that covers the whole class: if you cannot point at the fact in `gathered-content.md`, `site-data.ts`, or code you just read, it does not go on the page.**
 

@@ -120,3 +120,6 @@ Accumulated lessons for the build stage. The QA reviewer reads this file too —
 
 ## 2026-08-22 — ServiceDetailFrame + thin-service gate
 `ServiceDetailFrame` is mandatory on `/services/<slug>` (BOTH lanes): photo-ground hero + `band-depth-frost` body. Do not hand-roll video heroes + flat `bg-surface-1` bodies — `MEDIA_SURFACE_CHECK` fails closed. Richness thin-service measures built `out/services/*.html` (≥220 words, ≥2 h2); never rely on stripping TSX tags alone (that ate `body="…"` props inside self-closing JSX). Same-town Frisco pairings: run `palette-uniqueness` + `font-uniqueness` before locking accents/fonts. Dark logos need `inspect-logo --write` → `navTheme: light` and matching footer plate.
+
+## 2026-08-22 — Privacy/terms are generated, not stubbed
+Never ship the one-paragraph "demo preview" privacy/terms. Run `node scripts/generate-legal-pages.mjs $SLUG --write` after site-data exists. Gate with `--check` / richness `[legal]`.

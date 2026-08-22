@@ -181,6 +181,8 @@ If any English boilerplate slips through, the QA reviewer will flag it as a crit
 ```bash
 rm -rf clients/$ARGUMENTS/site
 cp -r templates/trade-site clients/$ARGUMENTS/site
+# Template ships privacy/terms scaffolding; after site-data is filled, author stage MUST run:
+#   node scripts/generate-legal-pages.mjs $ARGUMENTS --write
 mkdir -p clients/$ARGUMENTS/site/public/images
 cp clients/$ARGUMENTS/data/images/* clients/$ARGUMENTS/site/public/images/ 2>/dev/null || true
 cd clients/$ARGUMENTS/site

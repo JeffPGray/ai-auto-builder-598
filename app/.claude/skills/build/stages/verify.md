@@ -79,6 +79,9 @@ npx next build
 # static export: every marketing route must have produced its own HTML file.
 # privacy and terms ship on EVERY build (§ Legal pages) - a MISSING on either is
 # never an acceptable drop, unlike a sufficiency-gated /services or /about.
+node scripts/generate-legal-pages.mjs $ARGUMENTS --check
+# privacy/terms must be full inventory pages (not the one-paragraph stub)
+
 for r in index services about contact blog privacy terms; do
   test -f "out/$r.html" -o -f "out/$r/index.html" && echo "OK   /$r" || echo "MISSING /$r"
 done
