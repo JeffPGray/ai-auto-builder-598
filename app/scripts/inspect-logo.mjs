@@ -85,7 +85,7 @@ else if (plate === "light" || (aspect >= 0.85 && aspect <= 1.25 && whiteRatio >=
 }
 
 const navTheme = plate === "light" ? "light" : "dark";
-const logoOnly = mode === "lockup" || mode === "wordmark";
+let logoOnly = mode === "lockup" || mode === "wordmark";
 
 let logoImgClass = "h-10 w-10 shrink-0 object-contain";
 if (mode === "lockup") {
