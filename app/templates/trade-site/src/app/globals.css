@@ -190,11 +190,32 @@ body {
   width: 1px;
   background: linear-gradient(180deg, var(--accent) 0%, var(--surface-4) 100%);
 }
+/*
+ * ICON SLOT ONLY — absolute pin for the needle/mark at the rail.
+ * Measured 2026-08-22 (Lux): authors put full work photos inside .gauge-rail__mark;
+ * absolute stacking collapsed the service band into a colliding image tower + rail line
+ * through the photos. Photos belong in flow <article> grids, never in __mark.
+ */
 .gauge-rail__mark {
   position: absolute;
   left: 0;
   top: 0.15rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--accent);
+  pointer-events: none;
+  z-index: 1;
+}
+.gauge-rail__mark > svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.gauge-rail__mark img {
+  /* Hard stop if someone nests a photo here again */
+  display: none !important;
 }
 
 /* ── Spine motif (alternate signature architecture) ── */
@@ -526,6 +547,23 @@ a { color: inherit; text-decoration: none; }
 /* Mobile sticky bar */
 .sticky-mobile-bar {
   transition: opacity 300ms ease, transform 300ms ease;
+}
+
+/*
+ * Fixed dual-bar SiteNav (utility ~28px + main ~64px) overlays the viewport.
+ * Text-led routes (blog index/article, contact without under-nav hero, legal) must clear it.
+ * Full-bleed under-nav heroes opt out with data-hero or data-under-nav on the first child of main.
+ * Measured 2026-08-22 (Lux): blog H1 sat under the black nav with only py-16/py-20.
+ */
+:root {
+  --site-nav-clearance: 7rem;
+}
+main {
+  padding-top: var(--site-nav-clearance);
+}
+main:has(> [data-hero]),
+main:has(> [data-under-nav]) {
+  padding-top: 0;
 }
 
 /* Nav scroll solidify (Motion sets data-scrolled) — token-driven, not hardcoded green-black */

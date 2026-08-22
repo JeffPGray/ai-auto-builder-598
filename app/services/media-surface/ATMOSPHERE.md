@@ -42,7 +42,7 @@ One class per layer per section. Stacking *within* a layer is banned.
 ## Service detail — frost forever
 
 `ServiceDetailFrame` only: **photo-ground hero + `band-depth-frost` body**.  
-**Ban** `hatch*` and `band-go-mesh` on `/services/<slug>`. No rotation. Variation = photo + copy + spine.
+**Ban** `hatch*` and `band-go-mesh` on `/services/<slug>`. No rotation. Variation = photo + copy + spine. Authors must use the frame component (or identical class stack) — media-surface fails closed otherwise.
 
 ## Soft depth without stripes
 

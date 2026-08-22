@@ -314,3 +314,6 @@ two are not the same thing; only the bare form is the real risk.
 **Two `ui-ux-pro-max` exist.** The build invokes it by relative path, so with `cwd=app/` the VENDOR
 copy runs — correct, because it carries 11 data CSVs and 13 stacks including `nextjs`. The
 operator's global copy is React Native only. Do not "fix" the path.
+
+## 2026-08-22 craft note
+See `app/CUSTOMISATIONS.md` (2026-08-22), `app/services/media-surface/ATMOSPHERE.md`, and gr-brain session `project_klaudius_hf_media_lux_validation_2026_08_22.md`.

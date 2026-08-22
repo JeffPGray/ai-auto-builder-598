@@ -1,7 +1,7 @@
 # Stage: verify
 Scripts only. Run `bash scripts/pre-qa-gates.sh $ARGUMENTS` BEFORE spawning qa-reviewer.
 
-Gates include `media-surface` (`MEDIA_SURFACE_CHECK`) — overlays, money CTAs, image-plan,
+Gates include `media-surface` (`MEDIA_SURFACE_CHECK`), `palette-uniqueness` (`PALETTE_UNIQUENESS_CHECK`), `font-uniqueness` — overlays, money CTAs, image-plan,
 `assetPrefix`, hatch/watermark budgets, built-`out/` atmosphere (`ATMOSPHERE.md`).
 Same gate for a single `/build` and for a parallel `run-lane` worker. Record the line in `status.md`.
 

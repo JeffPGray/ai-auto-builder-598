@@ -881,6 +881,41 @@ if (home) {
       }
     }
 
+
+  /* 14e2. GAUGE-RAIL MARK MISUSE — Lux 2026-08-22: authors put full work photos inside
+   * .gauge-rail__mark (position:absolute icon slot). Images stacked and the rail line cut through them. */
+  {
+    const page = join(siteDir, 'src', 'app', 'page.tsx');
+    const src = existsSync(page) ? readFileSync(page, 'utf8') : h;
+    if (/gauge-rail__mark[\s\S]{0,400}<(?:img|Image)\b/.test(src)) {
+      failures.push(
+        '[layout] .gauge-rail__mark contains an <img> — that class is an absolute icon pin only ' +
+        '(needle/mark). Photos belong in flow <article> grids beside copy. Measured Lux 2026-08-22: ' +
+        'absolute stacking collapsed the service band into a colliding image tower.');
+    }
+  }
+
+  /* 14e3. ADJACENT CLOSING CTAs — Lux 2026-08-22: photo-ground money CTA + band-go-mesh
+   * "Schedule a visit" stacked with no content between = double closer. */
+  {
+    const page = join(siteDir, 'src', 'app', 'page.tsx');
+    const src = existsSync(page) ? readFileSync(page, 'utf8') : h;
+    const secs = src.split(/(?=<section\b)/i).filter((s) => /^<section\b/i.test(s));
+    let adjacentClosers = 0;
+    const isCloser = (s) =>
+      /\b(photo-ground|band-go-mesh|band-depth-frost|band-depth-dark)\b/.test(s) &&
+      /\bcta-primary\b/.test(s);
+    for (let i = 0; i < secs.length - 1; i++) {
+      if (isCloser(secs[i]) && isCloser(secs[i + 1])) adjacentClosers += 1;
+    }
+    facts.adjacentClosingCtas = adjacentClosers;
+    if (adjacentClosers > 0) {
+      failures.push(
+        `[cta] ${adjacentClosers} pair(s) of adjacent closing CTA bands on home (photo-ground|band-go-mesh|band-depth ` +
+        '+ cta-primary). One money closer only — fold service-area copy into that closer. Measured Lux 2026-08-22.');
+    }
+  }
+
   /* 14f. Hero copy column width — asymmetric split must leave the TYPE readable.
    * Bluegrass 2026-08-20: max-w-xl + md:pr-[42%] stacked the H1 on four lines with a dead right
    * third. Fail: hero H1 capped at max-w-xl/sm/md, OR right pad ≥40% without a matching wide max-w.
@@ -1084,6 +1119,71 @@ if (existsSync(uiDir)) {
       failures.push(
         '[atmosphere-home] page.tsx missing earned plate (band-go-mesh, band-depth-frost, or secondary-fill band).');
     }
+
+  }
+}
+
+/* 17d. NAV CLEARANCE — fixed dual-bar SiteNav overlays the viewport.
+ * Text-led routes need main { padding-top: var(--site-nav-clearance) } with data-hero / data-under-nav opt-out.
+ * Measured Lux 2026-08-22: blog H1 sat under the black nav. */
+if (!/--site-nav-clearance\s*:/.test(css)) {
+  failures.push(
+    '[layout] compiled CSS missing --site-nav-clearance — fixed SiteNav (utility + main bar) will collide ' +
+    'with H1s on blog/legal/text-led pages. Add the main padding rule from templates/trade-site globals.css.');
+}
+
+/* 17e. THIN SERVICE PAGES — Lux 2026-08-22: /services/<slug> shipped hero + NAP only.
+ * Prefer built out/ HTML (what ships). Fall back to page.tsx, but do NOT strip
+ * self-closing JSX like <ServiceDetailFrame body="…" /> as one tag — that ate the
+ * entire copy when authors used the frame (props are the prose). */
+{
+  const servicesDir = join(siteDir, 'src', 'app', 'services');
+  const outServices = join(siteDir, 'out', 'services');
+  const thin = [];
+  if (existsSync(servicesDir)) {
+    for (const ent of readdirSync(servicesDir, { withFileTypes: true })) {
+      if (!ent.isDirectory()) continue;
+      const built = join(outServices, ent.name + '.html');
+      const sp = join(servicesDir, ent.name, 'page.tsx');
+      let words = 0;
+      let h2 = 0;
+      if (existsSync(built)) {
+        const html = readFileSync(built, 'utf8');
+        const text = html
+          .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+          .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+          .replace(/<[^>]+>/g, ' ');
+        words = text.split(/\s+/).filter((w) => /[A-Za-z]{2,}/.test(w)).length;
+        h2 = (html.match(/<h2\b/gi) || []).length;
+      } else if (existsSync(sp)) {
+        const src = readFileSync(sp, 'utf8');
+        // Pull string props used by ServiceDetailFrame / similar frames.
+        const propBlob = [...src.matchAll(
+          /\b(?:body|expect|short|title|proofLine)\s*=\s*(?:\{`([\s\S]*?)`\}|"([^"]*)"|'([^']*)')/g,
+        )].map((m) => m[1] || m[2] || m[3] || '').join(' ');
+        const text = (propBlob + ' ' + src)
+          .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+          .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+          .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ')
+          .replace(/<[A-Za-z][\s\S]*?\/>/g, ' ') // self-closing JSX (attrs already extracted)
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/[`'"]/g, ' ');
+        words = text.split(/\s+/).filter((w) => /[A-Za-z]{2,}/.test(w)).length;
+        h2 = (src.match(/<h2\b/g) || []).length
+          + (/\bServiceDetailFrame\b/.test(src) ? 1 : 0); // frame ships one body h2
+      } else {
+        continue;
+      }
+      if (words < 220 || h2 < 2) {
+        thin.push(`${ent.name}(words=${words},h2=${h2})`);
+      }
+    }
+  }
+  facts.thinServicePages = thin;
+  if (thin.length) {
+    failures.push(
+      `[copy] thin service page(s): ${thin.join(', ')} — need ≥220 prose words and ≥2 <h2>s ` +
+      '(not hero + locations only). Measured Lux 2026-08-22.');
   }
 }
 

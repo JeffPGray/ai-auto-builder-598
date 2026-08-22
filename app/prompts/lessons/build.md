@@ -117,3 +117,6 @@ Accumulated lessons for the build stage. The QA reviewer reads this file too —
 - **`src/app/fonts/GeistVF.woff` and `GeistMonoVF.woff` ship in the scaffold and are never
   referenced.** Geist is on the banned list, so delete both (and the now-empty `src/app/fonts/`)
   during setup rather than exporting dead bytes.
+
+## 2026-08-22 — ServiceDetailFrame + thin-service gate
+`ServiceDetailFrame` is mandatory on `/services/<slug>` (BOTH lanes): photo-ground hero + `band-depth-frost` body. Do not hand-roll video heroes + flat `bg-surface-1` bodies — `MEDIA_SURFACE_CHECK` fails closed. Richness thin-service measures built `out/services/*.html` (≥220 words, ≥2 h2); never rely on stripping TSX tags alone (that ate `body="…"` props inside self-closing JSX). Same-town Frisco pairings: run `palette-uniqueness` + `font-uniqueness` before locking accents/fonts. Dark logos need `inspect-logo --write` → `navTheme: light` and matching footer plate.

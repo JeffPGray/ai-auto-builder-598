@@ -1,9 +1,17 @@
 /**
  * Template SiteFooter — 1:1 structure with bluegrass-blast-pw fixture.
  * Links come from NAV_LINKS (+ children). Opus fills biz tagline / hours / NAP.
+ *
+ * Logo chrome mirrors SiteNav: navTheme "light" means dark ink (inspect-logo).
+ * Footer is always bg-surface-6 (dark) — dark ink needs a light plate here too
+ * (measured Lux 2026-08-22: black mark on green footer).
  */
 import Link from "next/link";
 import { biz, NAV_LINKS } from "./site-data";
+
+const navTheme = (biz as { navTheme?: string }).navTheme === "light" ? "light" : "dark";
+/** Dark ink (light nav) cannot sit bare on the dark footer ground. */
+const logoNeedsLightPlate = navTheme === "light";
 
 const GaugeNeedle = () => (
   <svg
@@ -46,14 +54,27 @@ export default function SiteFooter() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-y-10 gap-x-12 relative z-10">
           <div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/images/logo.webp"
-              alt={biz.name}
-              width={900}
-              height={705}
-              className="h-16 w-auto mb-5 brightness-110"
-            />
+            {logoNeedsLightPlate ? (
+              <div className="mb-5 inline-flex max-w-full items-center rounded-lg bg-surface-1 px-3 py-2 shadow-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/images/logo.webp"
+                  alt={biz.name}
+                  width={900}
+                  height={705}
+                  className="h-14 w-auto max-h-16 max-w-[13rem] shrink-0 object-contain"
+                />
+              </div>
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src="/images/logo.webp"
+                alt={biz.name}
+                width={900}
+                height={705}
+                className="mb-5 h-16 w-auto brightness-110"
+              />
+            )}
             <p className="text-on-dark-muted text-sm leading-relaxed mb-4">
               {biz.footerBlurb || biz.tagline}
             </p>

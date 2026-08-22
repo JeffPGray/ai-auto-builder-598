@@ -23,3 +23,6 @@ should own sourcing.
 OSM Overpass (free, keyless, datacenter-safe) precisely BECAUSE Places is billing-blocked here.
 Worth checking Klaudius's `find` skill for its data source early — if it assumes Places, that is a
 blocker on the same account limitation, not a Klaudius defect.
+
+## Craft gates (2026-08-22)
+After a build: `node scripts/verify-media-surface.mjs <slug>`, `node scripts/richness-check.mjs clients/<slug>/site`, `node scripts/palette-uniqueness.mjs <slug> --gate`, `node scripts/font-uniqueness-check.mjs <slug>`. Atmosphere: `services/media-surface/ATMOSPHERE.md`.

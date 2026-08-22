@@ -1,5 +1,17 @@
 [
   {
+    "slug": "lux-texas-landscaping",
+    "ground": "NEUTRAL-CANVAS",
+    "hueBin": 120,
+    "formula": 2,
+    "harmony": "analogous-cool",
+    "character": "muted",
+    "ts": null,
+    "headingFont": "Vollkorn",
+    "bodyFont": "Source Sans 3",
+    "town": "Frisco"
+  },
+  {
     "slug": "bluewater-basement-waterproofing",
     "ground": "light",
     "hueBin": 180,

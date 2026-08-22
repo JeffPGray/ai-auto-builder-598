@@ -71,6 +71,12 @@ export const GATES = [
     verdict: /FONT_UNIQUENESS_CHECK=(PASS|FAIL|SKIP)/,
   },
   {
+    id: 'palette-uniqueness',
+    label: 'Same-town accent hue is distinct from live neighbour builds (Lux/Erik Frisco class)',
+    argv: (slug) => ['scripts/palette-uniqueness.mjs', slug, '--gate'],
+    verdict: /PALETTE_UNIQUENESS_CHECK=(PASS|FAIL|WARN|SKIP)/,
+  },
+  {
     id: 'contrast',
     label: 'Computed WCAG contrast on every rendered route (alpha-composited)',
     argv: (slug) => ['scripts/contrast-check.mjs', `clients/${slug}/site/out`],

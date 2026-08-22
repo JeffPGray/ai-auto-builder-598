@@ -23,14 +23,16 @@
  *      in an `@font-face` block anywhere under `clients/<slug>/site/out/` (any nested .css file)?
  *      This is a WARN-only sanity signal, not a second source of truth — step 1's source-level
  *      extraction is what the rest of this script scores against.
+ *   3. Scans every other client layout.tsx and sibling site-data.ts directly, so
+ *      a same-town collision still fails when either client is absent from the fingerprint ledger.
  *
  * Scoring, against data/design-fingerprints.json:
  *   - Same-slug claim-vs-artifact drift (this build's own prior ledger record claimed a different
  *     heading/body font than what actually shipped) — hard FAIL. Bookkeeping-integrity issue, not
  *     a judgment call: whatever the ledger says was decided is supposed to be what got built.
- *   - Heading-font reuse — hard FAIL ONLY on SAME-TOWN collision against the last 8 OTHER
- *     records (same rule as design-ledger.mjs). Cross-town reuse is INFO only — forcing a re-pick
- *     produced Bodoni on HVAC (2026-08-19).
+ *   - Heading-font reuse — hard FAIL ONLY on SAME-TOWN collision against sibling client source or
+ *     the last 8 OTHER records (same rule as design-ledger.mjs). Cross-town reuse is INFO only —
+ *     forcing a re-pick produced Bodoni on HVAC (2026-08-19).
  *   - Same-town body-font reuse against the last 8 OTHER records — WARN only.
  *
  * Prints FONT_UNIQUENESS_CHECK=PASS|FAIL|SKIP. SKIP fires when there is nothing real to compare
@@ -100,6 +102,14 @@ function roleForIdentifier(source, identifier) {
   if (/variable\s*:\s*["'`]--font-display-src["'`]/.test(config)) return 'heading';
   if (/variable\s*:\s*["'`]--font-body-src["'`]/.test(config)) return 'body';
   return null;
+}
+
+function headingFontFromLayout(source) {
+  const imported = source.match(/import\s*\{([^}]+)\}\s*from\s*["']next\/font\/google["']/);
+  if (!imported) return null;
+  const ids = imported[1].split(',').map((s) => s.trim()).filter(Boolean);
+  const headingId = ids.find((id) => roleForIdentifier(source, id) === 'heading') || ids[0];
+  return headingId ? headingId.replace(/_/g, ' ') : null;
 }
 
 let extractedHeading = null;
@@ -173,19 +183,58 @@ const own = ledger.find((r) => r.slug === slug);
 const priors = ledger.filter((r) => r.slug !== slug).slice(0, LOOKBACK);
 const priorsWithHeadingClaim = priors.filter((r) => r.headingFont);
 
+// The ledger is not the whole client set. Lux had no fingerprint record, so its Fraunces collision
+// with another Frisco client was invisible. Read the town and heading font directly from every
+// sibling client, including an own-city fallback when this slug's ledger row is absent or incomplete.
+function cityFromSiteData(clientSlug) {
+  const siteDataPath = join(
+    REPO_ROOT, 'clients', clientSlug, 'site', 'src', 'app', '_components', 'site-data.ts'
+  );
+  if (!existsSync(siteDataPath)) return null;
+  return (readFileSync(siteDataPath, 'utf8').match(/\bcity\s*:\s*"([^"]+)"/) || [])[1] || null;
+}
+
+const ownTown = (own && own.town) || cityFromSiteData(slug);
+const siblingHeadingCollisions = [];
+const clientsDir = join(REPO_ROOT, 'clients');
+if (ownTown && extractedHeading && existsSync(clientsDir)) {
+  for (const entry of readdirSync(clientsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name === slug) continue;
+    const siblingLayoutPath = join(clientsDir, entry.name, 'site', 'src', 'app', 'layout.tsx');
+    if (!existsSync(siblingLayoutPath)) continue;
+    const siblingTown = cityFromSiteData(entry.name);
+    if (!siblingTown || normFont(siblingTown) !== normFont(ownTown)) continue;
+    const siblingHeading = headingFontFromLayout(readFileSync(siblingLayoutPath, 'utf8'));
+    if (siblingHeading && normFont(siblingHeading) === normFont(extractedHeading)) {
+      siblingHeadingCollisions.push({
+        slug: entry.name,
+        town: siblingTown,
+        headingFont: siblingHeading,
+      });
+    }
+  }
+}
+
 // Nothing comparable exists yet anywhere in the system (no own claim to check drift against, and
 // no prior record carries a font field to check reuse against) — SKIP rather than manufacture a
 // FAIL out of an empty/sparse history.
 const ownHasFontClaim = Boolean(own && (own.headingFont || own.bodyFont));
 const priorsHaveFontData = priors.some((r) => r.headingFont || r.bodyFont);
-if (!ownHasFontClaim && !priorsHaveFontData) {
+if (!ownHasFontClaim && !priorsHaveFontData && siblingHeadingCollisions.length === 0) {
   console.log(
-    `FONT_UNIQUENESS_CHECK=SKIP (no comparable font data in data/design-fingerprints.json yet — no other records carry font fields, and ${slug} has no prior font claim to check drift against)`
+    `FONT_UNIQUENESS_CHECK=SKIP (no comparable font data in data/design-fingerprints.json or same-town sibling client sources yet — no other records carry font fields, and ${slug} has no prior font claim to check drift against)`
   );
   process.exit(0);
 }
 
 let hardFail = false;
+
+for (const collision of siblingHeadingCollisions) {
+  console.log(
+    `FONT_UNIQUENESS_CHECK=FAIL — shipped heading font "${extractedHeading}" collides with ${collision.slug}'s shipped heading font "${collision.headingFont}" in the SAME TOWN (${ownTown}). Neighbouring owners can see both sites — swap the import in layout.tsx for a different shortlist entry.`
+  );
+  hardFail = true;
+}
 
 // ── Claim-vs-artifact drift (same slug, own prior record) — hard FAIL ──
 if (own) {
@@ -213,7 +262,6 @@ if (own) {
 // therefore passed at build time and hard-FAILed at QA, told to swap fonts. That forced re-pick is
 // precisely what pushed a build onto Bodoni Moda, a Vogue fashion didone, on a Texas HVAC
 // contractor. Uniqueness only has value where a prospect could see both sites.
-const ownTown = (own && own.town) || null;
 if (extractedHeading) {
   const sameFont = priorsWithHeadingClaim.filter((r) => normFont(r.headingFont) === normFont(extractedHeading));
   const collision = ownTown
@@ -224,7 +272,7 @@ if (extractedHeading) {
       `FONT_UNIQUENESS_INFO — heading font "${extractedHeading}" is also used by ${sameFont.map((r) => r.slug).join(', ')}, but in a different town. NOT a failure: no prospect sees both sites, and forcing a re-pick here is what produced a fashion didone on an HVAC contractor (2026-08-19).`
     );
   }
-  if (collision) {
+  if (collision && !siblingHeadingCollisions.some((c) => c.slug === collision.slug)) {
     console.log(
       `FONT_UNIQUENESS_CHECK=FAIL — shipped heading font "${extractedHeading}" collides with ${collision.slug}'s heading font "${collision.headingFont}" in the SAME TOWN (${ownTown}). Neighbouring owners can see both sites — swap the import in layout.tsx for a different shortlist entry.`
     );
@@ -233,7 +281,7 @@ if (extractedHeading) {
 }
 
 // ── Same-town body-font reuse against the last 8 OTHER records — WARN only ──
-const town = own && own.town;
+const town = ownTown;
 if (town && extractedBody) {
   const townCollisions = priors.filter(
     (r) => r.town && r.bodyFont && normFont(r.town) === normFont(town) && normFont(r.bodyFont) === normFont(extractedBody)

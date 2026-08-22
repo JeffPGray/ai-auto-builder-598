@@ -9,8 +9,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import SiteNav from "../../_components/SiteNav";
-import SiteFooter from "../../_components/SiteFooter";
 import { POSTS, wordCountOf, readMinutesOf } from "../../_components/blog-data";
 import { pageGraph, breadcrumbs, blogPostingSchema } from "../../_components/schema";
 import { biz } from "../../_components/site-data";

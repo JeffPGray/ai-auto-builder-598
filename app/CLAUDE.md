@@ -19,6 +19,10 @@ Two operator-facing references ship at the project root:
 
 When the user asks about anything covered there, answer briefly and point them at the relevant doc ("open `DOCS.html` in your browser").
 
+## Craft stack (BOTH lanes — shared multisite + dedicated)
+
+Default site craft lives in `templates/trade-site` + `services/media-surface/ATMOSPHERE.md` + `services/higgsfield/`. Shared vs dedicated differ only by `assetPrefix` / `SITE_URL`. Authors use `ServiceDetailFrame` on `/services/<slug>` (photo-ground + frost). Gates: `verify-media-surface`, `richness-check`, `font-uniqueness-check`, `palette-uniqueness` (same-town), `inspect-logo` (navTheme). See `CUSTOMISATIONS.md` 2026-08-22.
+
 ## If asked to finish setup or debug install issues
 
 Run `npx klaudius@latest install` first, read stderr carefully, and fix what you find. Verify with `npx klaudius@latest doctor` and report which checks are green vs red. Don't move on to pipeline work until install is clean.
@@ -249,7 +253,7 @@ exceptions:**
      one route** (measured, 2026-08-19 Fable review — see below), OR the import graph could not be
      computed
    - the diff touches any `public/` file referenced from more than one route
-   - any deterministic gate (font/font-uniqueness/contrast/token/photo/ship-scan/richness/copy-fingerprint) FAILed
+   - any deterministic gate (font/font-uniqueness/palette-uniqueness/contrast/token/photo/ship-scan/richness/media-surface/copy-fingerprint) FAILed
    - the reviewer tagged any critical SYSTEMIC
    - the real diff touches a route the reviewer's scoped review did NOT cover
 
@@ -317,8 +321,8 @@ If no trigger fired:
   Follow .claude/agents/qa-reviewer.md exactly, with this scope override:
 
   This is round {N}, scoped. qa-fix's real diff touched only: {TOUCHED_ROUTES}.
-  - Run the FULL deterministic battery exactly as normal (font/font-uniqueness/contrast/token/
-    photo/ship-scan/richness/copy-fingerprint) — these are scripts, ~2-3 minutes, and they cover every page
+  - Run the FULL deterministic battery exactly as normal (font/font-uniqueness/palette-uniqueness/contrast/token/
+    photo/ship-scan/richness/media-surface/copy-fingerprint) — these are scripts, ~2-3 minutes, and they cover every page
     regardless of scope. Do not skip or narrow them.
   - Screenshot and visually review ONLY: {TOUCHED_ROUTES} plus this rotating canary route:
     {CANARY_ROUTE}. Do not screenshot the rest of the site this round.

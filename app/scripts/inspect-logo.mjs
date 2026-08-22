@@ -4,6 +4,8 @@
  *
  * BOTH lanes (shared + dedicated): decide nav chrome from the real logo file.
  * - White-plate lockups → light navbar + logo-only (no shortName duplicate)
+ * - Dark ink / black marks → LIGHT navbar (never dark-on-dark)
+ * - Light / white ink marks → dark navbar
  * - Tiny square marks → bump display height
  * - Wide wordmarks → height-first, width auto
  *
@@ -47,57 +49,99 @@ const w = meta.width || 1;
 const h = meta.height || 1;
 const aspect = w / h;
 
-// Sample border + corners for white-plate detection (ignore transparent)
 const { data, info } = await sharp(logoPath)
   .ensureAlpha()
   .raw()
   .toBuffer({ resolveWithObject: true });
+
+// Edge sample → white-plate detection
 const bw = Math.max(2, Math.floor(w * 0.1));
 const bh = Math.max(2, Math.floor(h * 0.1));
-let opaque = 0;
-let white = 0;
-let dark = 0;
+let edgeOpaque = 0;
+let edgeWhite = 0;
+let edgeDark = 0;
+
+// Full opaque sample → ink luminance (drives contrast vs nav)
+let inkOpaque = 0;
+let inkSum = 0;
+let inkDark = 0;
+let inkLight = 0;
+
 for (let y = 0; y < h; y++) {
   for (let x = 0; x < w; x++) {
-    const edge = x < bw || x >= w - bw || y < bh || y >= h - bh;
-    if (!edge) continue;
     const i = (y * w + x) * info.channels;
     const a = data[i + 3];
     if (a < 24) continue;
-    opaque++;
     const r = data[i];
     const g = data[i + 1];
     const b = data[i + 2];
     const L = (r + g + b) / 3;
-    if (L >= 232) white++;
-    if (L <= 48) dark++;
+
+    inkOpaque++;
+    inkSum += L;
+    if (L <= 72) inkDark++;
+    if (L >= 200) inkLight++;
+
+    const edge = x < bw || x >= w - bw || y < bh || y >= h - bh;
+    if (!edge) continue;
+    edgeOpaque++;
+    if (L >= 232) edgeWhite++;
+    if (L <= 48) edgeDark++;
   }
 }
-const whiteRatio = opaque ? white / opaque : 0;
-const darkRatio = opaque ? dark / opaque : 0;
+
+const whiteRatio = edgeOpaque ? edgeWhite / edgeOpaque : 0;
+const darkRatio = edgeOpaque ? edgeDark / edgeOpaque : 0;
 const plate = whiteRatio >= 0.35 ? "light" : darkRatio >= 0.45 ? "dark" : "mixed";
+
+const meanInkL = inkOpaque ? inkSum / inkOpaque : 128;
+const inkDarkRatio = inkOpaque ? inkDark / inkOpaque : 0;
+const inkLightRatio = inkOpaque ? inkLight / inkOpaque : 0;
 
 /** @type {'lockup'|'wordmark'|'mark'} */
 let mode = "mark";
 if (aspect >= 1.65) mode = "wordmark";
 else if (plate === "light" || (aspect >= 0.85 && aspect <= 1.25 && whiteRatio >= 0.25)) {
-  mode = "lockup"; // square/near-square with readable plate — not a 40px favicon
+  mode = "lockup";
 }
 
-const navTheme = plate === "light" ? "light" : "dark";
+/**
+ * Nav chrome must CONTRAST the logo ink.
+ * Bug (2026-08-22 Lux): plate=dark → navTheme=dark put a black mark on bg-surface-dark.
+ * White-plate lockups still want a light bar (the plate is the ground).
+ * Dark ink → light nav. Light ink → dark nav. Mixed defaults to light (safer for trade marks).
+ */
+let navTheme;
+let contrastNote = null;
+if (plate === "light") {
+  navTheme = "light";
+} else if (meanInkL <= 110 || inkDarkRatio >= 0.35) {
+  navTheme = "light";
+  contrastNote = "dark-ink→light-nav";
+} else if (meanInkL >= 180 || inkLightRatio >= 0.35) {
+  navTheme = "dark";
+  contrastNote = "light-ink→dark-nav";
+} else {
+  navTheme = "light";
+  contrastNote = "mixed-ink→light-nav-safe";
+}
+
+// Hard guard: never ship dark nav with dark ink (invisible logo)
+if (navTheme === "dark" && meanInkL < 120 && inkDarkRatio >= 0.25) {
+  navTheme = "light";
+  contrastNote = "forced-light-nav (blocked dark-on-dark)";
+}
+
 let logoOnly = mode === "lockup" || mode === "wordmark";
 
 let logoImgClass = "h-10 w-10 shrink-0 object-contain";
 if (mode === "lockup") {
-  // Was crushed to 40² — give the plate real presence
   logoImgClass = "h-12 w-auto max-h-14 max-w-[11rem] sm:h-14 sm:max-w-[13rem] shrink-0 object-contain";
 } else if (mode === "wordmark") {
   logoImgClass = "h-9 w-auto max-h-11 max-w-[12rem] sm:h-10 sm:max-w-[14rem] shrink-0 object-contain";
 } else if (Math.min(w, h) < 96) {
-  // Tiny source mark — display larger than intrinsic pixel density suggests
   logoImgClass = "h-11 w-11 sm:h-12 sm:w-12 shrink-0 object-contain";
 } else if (mode === "mark" && Math.min(w, h) >= 128) {
-  // Large square brand icon — readable alone; redundant shortName reads as a bug
   logoOnly = true;
   logoImgClass = "h-14 w-14 sm:h-16 sm:w-16 shrink-0 object-contain";
 }
@@ -109,9 +153,13 @@ const result = {
   aspect: Math.round(aspect * 1000) / 1000,
   whiteRatio: Math.round(whiteRatio * 1000) / 1000,
   darkRatio: Math.round(darkRatio * 1000) / 1000,
+  meanInkL: Math.round(meanInkL * 10) / 10,
+  inkDarkRatio: Math.round(inkDarkRatio * 1000) / 1000,
+  inkLightRatio: Math.round(inkLightRatio * 1000) / 1000,
   plate,
   mode,
   navTheme,
+  contrastNote,
   logoOnly,
   logoImgClass,
   inspectedAt: new Date().toISOString(),
@@ -132,7 +180,6 @@ if (WRITE && existsSync(siteDataPath)) {
     if (re.test(src)) {
       src = src.replace(re, `$1${lit}`);
     } else {
-      // insert after shortName line
       src = src.replace(
         /(shortName:\s*[^,\n]+,)/,
         `$1\n  ${key}: ${lit},`,
@@ -144,7 +191,9 @@ if (WRITE && existsSync(siteDataPath)) {
 }
 
 console.log(
-  `LOGO_NAV=PASS slug=${slug} plate=${plate} mode=${mode} navTheme=${navTheme} logoOnly=${logoOnly}`,
+  `LOGO_NAV=PASS slug=${slug} plate=${plate} mode=${mode} navTheme=${navTheme} logoOnly=${logoOnly}` +
+    (contrastNote ? ` contrast=${contrastNote}` : "") +
+    ` meanInkL=${result.meanInkL}`,
 );
 console.log(`  ${outPath}`);
 process.exit(0);
