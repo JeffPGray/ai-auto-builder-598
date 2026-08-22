@@ -1,5 +1,5 @@
 # Stage: design
-Opus / high only. Lock DESIGN_IDEA, globals.css, site-data.ts, SiteNav, layout, SiteFooter.
+Opus / high only. Lock DESIGN_IDEA, fill `:root` in the templated globals.css, fill site-data.ts, swap fonts in the templated layout. SiteNav/SiteFooter already ship — bind data, do not rewrite.
 Do not author route page.tsx in this stage.
 
 ## Design (HARD RULES — measured, never described)
@@ -16,70 +16,63 @@ satisfiable by a token gesture — "use a signature motif" is satisfied by one f
 belong in this file.** The full history lives in git (`git log -- .claude/skills/build/SKILL.md`)
 and in `DESIGN-RESET-DECISION.md`.
 
-### Step 1 — Consult (script, mandatory, before any TSX)
+### Step 1 — Consult (once — `stages/consult-once.md`)
 
-```bash
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<industry> <style keywords from gathered content>" --design-system -p "$ARGUMENTS" \
-  | tee "clients/$ARGUMENTS/data/design-system.md"
-```
-Returns the trade's real art direction from `data/trade-identities.csv` (design ideas, hero
-archetype, signature motif, material direction, card-grid alternative). **Use it.** The output is
-the artifact — a consult that was never written down cannot be distinguished from one that never ran.
+If `clients/$ARGUMENTS/data/design-lock.md` already exists, skip to Step 2 (typography load).
+Do not run a second `search.py --design-system`. Do not `Skill(skill="impeccable")`.
+gulf-coast-septic-ms sat in that Skill for ~90 minutes, compacted 9 times, and never deployed.
 
-### Step 1b — COMPOSITION BRAIN: invoke `impeccable` (MANDATORY, 2026-08-19)
+Composition **is** the `SIGNATURE MOVE` line in `design-lock.md`. Bind layout to that line:
+no identical icon-card grids, no centered-hero-when-the-lock-says-split, no LILA purple.
 
-`/ui-ux-pro-max` is a lookup table. It returns a style name, a palette family, a font pairing and a
-section order — it has **no capacity to judge whether any of that suits this business**, and it
-proved that by matching "Exaggerated Minimalism (Best For: fashion, architecture, luxury, editorial)"
-to an HVAC contractor on the word "bold". Sections, elements and styling are exactly what it cannot
-reason about, and that is what keeps reading as slop.
+### Step 1b — (removed as a Skill dump)
 
-**So invoke a real design brain for composition, before writing any TSX:**
-
-```
-Skill(skill="impeccable", args="shape — a marketing site for {BUSINESS}, a {TRADE} in {TOWN}. Register: brand. Ground: {GROUND}. Brand accent {HEX}. DESIGN_IDEA: {DESIGN_IDEA}. Sections planned: {SECTION LIST}. Give me the compositional spec: layout pattern per section, where hierarchy breaks, what is featured vs secondary, and what to avoid.")
-```
-
-Hold its output as binding for **layout and composition**. It carries the bans this pipeline keeps
-violating, by name:
-- **"Identical card grids — same-sized cards with icon + heading + text, repeated endlessly"** — the
-  exact defect that shipped 16 uniform service rows.
-- Side-stripe borders, gradient text, glassmorphism-as-default, the hero-metric template,
-  modal-as-first-thought.
-- A real **colour strategy** axis (Restrained → Committed → Full palette → Drenched) — pick one and
-  commit; a timid middle is what produced grey-on-black.
+The consult-once lock replaces the impeccable session. If the lock is thin (no SIGNATURE MOVE),
+the build has not started — go back to `stages/consult-once.md`.
 - The **category-reflex check**: if someone could guess the palette from the category alone
   ("trade → navy", "HVAC → blue", "contractor → dark"), that is the training-data reflex, and you
   must rework it until the answer is not obvious from the trade. Run it at both altitudes.
 
-**Precedence:** `impeccable` owns layout, composition, hierarchy and colour STRATEGY.
-`derive-palette.mjs` still owns the actual hex values (only it proves 4.5:1 and CVD separation).
-`/ui-ux-pro-max` is demoted to a retrieval library — typography rows, trade seeds, section order.
-Where `impeccable` and `ui-ux-pro-max` disagree on composition, **`impeccable` wins.**
-
-> Why this was missing: `build/SKILL.md`'s frontmatter forbade the `Skill` tool entirely until
-> 2026-08-19, so no build could ever invoke `impeccable`, `taste-skill`, `anti-ai-slop` or anything
-> else. The pipeline was architecturally locked to the lookup table.
+**Precedence (speed-cut — do not Skill-dump):**
+- **Composition / layout / hierarchy** → `design-lock.md` (`DESIGN_IDEA`, `SIGNATURE MOVE`, `CANVAS`).
+  That is the brief. Do not open `impeccable` as a session.
+- **Hex values** → `derive-palette.mjs` only (4.5:1 + CVD).
+- **`/ui-ux-pro-max`** → retrieval library only (typography pool, trade seeds). One `search.py` at
+  consult-once; never a second dump.
+- **QA** may invoke `impeccable` as a *judge* after gates PASS. Authoring must not.
 
 ### Step 1c — shadcn/ui primitives (pre-vendored, use them for MECHANICS only)
 
 `templates/trade-site` now ships shadcn/ui already wired — `components.json`, `src/lib/utils.ts`
-(`cn`), and four vendored primitives in `src/app/_components/ui/`: **accordion, dialog, sheet,
-dropdown-menu**. They arrive with `cp -r templates/trade-site`, so there is **no network fetch and
-no install step** during a build.
+(`cn`), and a **16-primitive mechanics pack** in `src/app/_components/ui/`.
 
-**Use them for the interactive mechanics that are error-prone to hand-write:**
+**Core four (required imports every build):** accordion, dialog, sheet, dropdown-menu  
+→ FaqAccordion, EstimateDialog, mobile nav sheet, services dropdown.
+
+**Forms / chrome (available; use for ContactForm and similar):** input, label, textarea, checkbox,
+radio-group, select, switch, tabs, separator, scroll-area, tooltip, popover.
+
+They arrive with `cp -r templates/trade-site`, so there is **no network fetch and
+no install step** during a build (radix deps are in template `package.json`).
+
+**Use them for the interactive mechanics that are error-prone to hand-write — ALL CORE FOUR on every build:**
 - `sheet` → mobile nav drawer (focus trap, escape-to-close, scroll lock — all handled)
 - `dropdown-menu` → the Services nav dropdown (keyboard nav + ARIA wiring).
   ⛔ **The trigger MUST remain a real `<a href="/services">`, not a bare `<button>`.** Wiring this
   dropdown on 2026-08-19 shipped a nav whose measured hrefs were `["/","/about","/contact","/blog"]`
   — `/services` was unreachable from primary nav for keyboard and mobile users, and QA caught it as
   a critical. Render the anchor, and attach the dropdown as a secondary affordance on it.
-- `accordion` → FAQ (replaces hand-rolled `<details>`; gives animated height + correct roles)
-- `dialog` → anything modal, though `impeccable` bans modal-as-first-thought — exhaust inline/progressive alternatives first
+- `accordion` → FAQ via template `FaqAccordion` (replaces hand-rolled `<details>`)
+- `dialog` → estimate / quote via template `EstimateDialog` (nav + hero). Not a marketing modal wall.
 
-They are built on Radix, so they are `'use client'` — fine under `output: 'export'`. To add another
-primitive: `npx shadcn@latest add <name>` from the client's `site/` directory.
+`richness-check.mjs` **FAILS** if any of the **core four** is unused, or if an imported
+primitive still carries stock slate/new-york token classes. Template primitives are already
+token-restyled — do not reintroduce `slate-*` / `bg-white` / `text-slate-*`. Extra pack files need
+not all be imported.
+
+**Hero copy width (chrome / home):** on asymmetric split heroes, H1 is `max-w-2xl` or `max-w-3xl`;
+media pad ~24–32% (`md:pr-[24%]`–`[32%]`). Never `max-w-xl` on the H1 with `pr-[≥40%]`.
+Gate: `[hero-width]` in `richness-check.mjs`.
 
 > ⛔ **NEVER ship shadcn's default styling. This is the single rule that matters here.**
 > Default shadcn (new-york + slate) is the most recognisable look on the web — it is what v0,
@@ -90,7 +83,7 @@ primitive: `npx shadcn@latest add <name>` from the client's `site/` directory.
 > So on every primitive you use: **replace the default classes with this client's derived tokens**
 > (`bg-surface-*`, `text-on-dark`, `border-accent-*`, the real radius and shadow scale from the
 > design system). `components.json` sets `cssVariables: false` deliberately so nothing silently
-> inherits a slate palette. shadcn supplies BEHAVIOUR; `impeccable` and `derive-palette` supply
+> inherits a slate palette. shadcn supplies BEHAVIOUR; `design-lock.md` + `derive-palette` supply
 > every visual decision. If a rendered component still looks like stock shadcn, it is wrong.
 
 > ⛔ **Never write a `srcSet` referencing a variant file that does not exist.** `optimise-images.mjs`
@@ -101,8 +94,30 @@ primitive: `npx shadcn@latest add <name>` from the client's `site/` directory.
 > are actually there**, or drop the srcSet and use a single `src` with a `sizes` attribute.
 
 **Scope limit:** primitives only. Do not reach for shadcn card/button/badge to compose sections —
-that is exactly how a site becomes a recognisable template. Section composition is `impeccable`'s
-job (§ Step 1b), and the trade seed's Card-Grid Alternative still governs layout.
+that is exactly how a site becomes a recognisable template. Section composition is the lock's
+`SIGNATURE MOVE` (architecture, not garnish) plus the trade seed's Card-Grid Alternative.
+
+### Step 1e — Photo art direction (required attribute)
+
+Scraped photos are raw. Every marketing `<img>` that is a *designed* photo (not a tiny icon) gets:
+
+```html
+data-photo-treatment="scrim" | "duotone" | "contained"
+```
+
+**Image plan (2026-08-21):** Preflight runs `node services/higgsfield/image-plan.mjs --slug $ARGUMENTS --all`.
+Bind marketing images only from `clients/$ARGUMENTS/data/image-plan.json` where `source !== "none"`.
+Roles `metrics` / `dense-copy` / `faq` / `spec-ledger` must stay `source: none` (no photo-veils under copy).
+Full rules: `services/higgsfield/IMAGE-RULES.md`. Use each slot’s `crop.objectPosition`.
+
+| Value | Meaning |
+|---|---|
+| `scrim` | Absolute wash/overlay over the photo (hero, photo-ground sections) |
+| `duotone` | Filter / blend / brand-tint treatment on the image |
+| `contained` | Graphic crop, mask, or non-rectangle containment |
+
+`richness-check.mjs` accepts the attribute **or** inferred wash/filter evidence — but the attribute
+is what teaches the builder without a failed QA round. Prefer tagging intentionally.
 
 ### Step 1d — The design idea binds on EVERY route, not just the home page
 
@@ -114,11 +129,8 @@ treatment, and subpages then read as the generic filler the operator keeps calli
 **Before you write each route, state in one line how THIS page expresses the DESIGN_IDEA** — which
 signature move appears, on which section. Every marketing route (`/`, `/services`, `/about`,
 `/contact`, and every `/services/<slug>`) carries **at least one** of the three signature moves and
-at least one gradient or photo-ground. **⚠️ NOT YET MECHANICALLY ENFORCED — this is on you.** `richness-check.mjs` currently scopes its
-rhythm/motion/photo-ground checks to `index.html` and counts gradients site-wide over concatenated
-CSS, so a design idea present on `/` and absent from `/about` and `/contact` passes every gate.
-That is the exact defect this step exists to prevent, so verify it by eye per route until the
-per-page check lands.
+at least one gradient or photo-ground. **Mechanically enforced** by `richness-check.mjs` `[binding]`
+(per-route gradient class resolution + photo-ground). A bare `/about` or `/contact` FAILs the build.
 
 ### Step 2 — Typography (script + seed, never the `--design-system` font field)
 
@@ -208,29 +220,22 @@ electrical, sturdy for plumbing, organic and warmer for landscaping. If every po
 by a SAME-TOWN collision, widen with the typography domain search and stay inside the trade's
 register; never reach for a display/fashion serif on a trade site.
 
-### Canvas mode: NEUTRAL-CANVAS (default for trade sites) vs FULL-TINT vs SATURATED-PANEL
+### Canvas mode — DEFAULT is NEUTRAL-CANVAS only
+
+**One default. Two exceptions. Never three competing defaults.**
+
+| Mode | When |
+|---|---|
+| **NEUTRAL-CANVAS** | **DEFAULT for every trade site.** True white / near-black page base; tinted ladder used as punctuation on a minority of sections. Emergency trades and gathers with &lt;4 photos always land here. |
+| **FULL-TINT** | Exception only: everyday trade + warm brand hue + homey content, deliberately colour-forward. |
+| **SATURATED-PANEL** | Exception only: aspirational trade + brand hue dark enough for white text + 6+ photos. White body with full-chroma *panels* — never a mono-hue page ground. |
 
 **Every rung above is brand-tinted, including the ones the code calls "neutral."** That is
-deliberate — but FULL-TINT is NOT the default (corrected 2026-08-19; NEUTRAL-CANVAS is, per the decision rule below). FULL-TINT suits everyday trades with a warm brand hue, where a colour-forward page reads
-warm and approachable. But it means the page's *base* — hero, body copy sections, the default
-ground a visitor sits on for most of a scroll — always carries the brand hue, never a true white
-or true dark. **Caught live 2026-08-16** (Jeff, looking at a blue-brand HVAC build): "the AC is
-cool, but I think would look more luxury with a white background and colored sections vs all blue
-variants... think Ritz-Carlton." He is describing a second, real mode this system did not yet have
-a name for:
+deliberate. FULL-TINT means the page *base* always carries brand hue — Jeff (2026-08-16, blue HVAC):
+wanted white body + coloured sections ("Ritz-Carlton"), which is NEUTRAL-CANVAS, not FULL-TINT.
 
-| | FULL-TINT (the exception) | NEUTRAL-CANVAS (the trade default) |
-|---|---|---|
-| `--surface` / `--surface-alt` (page base, most sections) | drawn from the tinted ladder (`--surface-1`/`-2`) | **true neutral** — `#ffffff` / near-white for a light-first brand, true near-black (`#0a0a0a`-ish, not a tinted `--surface-6`) for a dark-first one |
-| The 6-rung tinted ladder | used everywhere, is the whole rhythm system | **demoted to an accent device** — used only on a minority of sections (a stat strip, a testimonial band, the footer) as deliberate colour punctuation against the neutral base |
-| Reads as | warm, colour-forward, approachable — right for most everyday trades | restrained, premium — restraint IS the signal, same reasoning § Design (HARD RULES) already gives for `none` harmony on jewellers/tailors/galleries/funeral masons |
-
-**Choosing it is a CHARACTER decision, made once, at the same point you pick harmony** — not a
-per-section toggle. **NEUTRAL-CANVAS is the default for a trade site** (see the executable decision rule below, which routes every emergency trade and any build with <4 photos to it). FULL-TINT is the deliberate exception for everyday trades with warm brand hues and homey content. Consider NEUTRAL-CANVAS when
-the gathered content itself signals premium positioning (high-end brands serviced, decades of
-awards, a heritage/family narrative, premium pricing already implied) even inside an "ordinary"
-trade like HVAC — a colour-saturated page under-sells a business the content says is upmarket.
-**Record the choice in `status.md`** next to the harmony decision, same as CHARACTER.
+**Choosing it is a CHARACTER decision, made once** — not a per-section toggle. Record
+`CANVAS_MODE=<mode>` in `status.md` with a one-line reason.
 
 Amplitude was only half the problem. The other half was REACH: for a long time the engine offered
 four hooks, so a page could be fully compliant and still animate in two places, which is why the
@@ -321,9 +326,9 @@ existing family could reach that reference: `dark` was near-achromatic by constr
 literally why a build shipped grey-on-black and the operator said "there's no colour theory".
 
 **Ground choice needs a business-specific reason recorded in `status.md`, never a vibe.** "Dark
-amplifies cold authority" is a vibe and it produced the flat build. Run `impeccable`'s
-category-reflex check first: if the ground is guessable from the trade alone (HVAC → navy-dark,
-contractor → dark), that is the training-data reflex and you must rework it.
+amplifies cold authority" is a vibe and it produced the flat build. Run the category-reflex check
+first: if the ground is guessable from the trade alone (HVAC → navy-dark, contractor → dark), that
+is the training-data reflex and you must rework it.
 The brand accent is theirs and is **never** overridden. Every other colour comes from the deriver,
 because only it proves 4.5:1 and CVD separation against this client's real surfaces.
 
@@ -387,14 +392,31 @@ stories (not a photo grid), trade motif animated into the site chrome. **A build
 visibly more timid than that page next to it has not met the bar** — name what makes it timid and
 fix that specific thing.
 
-### Step 4b — Favicon (script, not prose)
+### Step 4b — Favicon + social share card (scripts, not prose)
 
 ```bash
 node scripts/generate-favicon.mjs $ARGUMENTS
+node scripts/generate-og-image.mjs $ARGUMENTS
 ```
-This script exists because the favicon rule was prose and got silently skipped on a real build
-(2026-08-17: shipped the scaffold's stale `favicon.ico`, no `app/icon.png`). A rule you have to
-remember every time is not a gate; a script that runs every time is.
+
+Favicon script exists because the rule was prose and got silently skipped
+(2026-08-17: shipped scaffold `favicon.ico`, no `app/icon.*`). OG script writes
+`public/og.jpg` (1200×630 from lock CANVAS / hero). Wire both into `layout.tsx`:
+
+```ts
+openGraph: {
+  /* …existing fields… */
+  images: [{ url: `${SITE_URL}/og.jpg`, width: 1200, height: 630, alt: biz.name }],
+},
+twitter: {
+  card: "summary_large_image",
+  title: biz.name,
+  description: biz.tagline,
+  images: [`${SITE_URL}/og.jpg`],
+},
+```
+
+`pre-qa-gates` / richness FAIL if scaffold `favicon.ico` remains OR `public/og.jpg` is missing.
 
 ### Step 5 — Verify (scripts, before handing to QA)
 

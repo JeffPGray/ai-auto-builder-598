@@ -16,6 +16,7 @@ Read `prompts/lessons/build.md` first.
 | Stage | File | Timer | Model |
 |---|---|---|---|
 | 1 preflight | `stages/preflight.md` | — | parent |
+| 1b consult once | `stages/consult-once.md` | `design` | **one** `search.py`, then `design-lock.md` |
 | 2 copy template + hero video | `stages/preflight.md` § Setup | `copy-template` | scripts |
 | 3 design lock | `stages/design.md` | `design` | **Opus / high** |
 | 4 chrome | `stages/design.md` | `author` (chrome only) | **Opus / high** |
@@ -32,9 +33,19 @@ node scripts/stage-timer.mjs end $ARGUMENTS copy-template
 
 ## Model routing (hard)
 
-- **Opus / high:** design consult, `DESIGN_IDEA`, `globals.css`, `site-data.ts`, `SiteNav`, `layout.tsx`, `SiteFooter` only.
-- **Sonnet:** every route `page.tsx`, the five blog articles, `qa-reviewer`.
+- **Opus / high:** design consult, `DESIGN_IDEA`, `globals.css`, `site-data.ts`, `SiteNav`,
+  `layout.tsx`, `SiteFooter`, **and home `src/app/page.tsx`** (hero + services + one proof band +
+  FAQ/CTA). That is the $5k bar surface — Sonnet must not invent a second identity on `/`.
+- **Sonnet:** every other route `page.tsx`, the three blog articles, `qa-reviewer`.
 - **Never Haiku.** Gates stay Node. Do not lower visual QA to Haiku.
+
+**Surface atmosphere (BOTH lanes):** `services/media-surface/ATMOSPHERE.md` — hatch is accent ≤1/page;
+default body is flat; `ServiceDetailFrame` = photo-ground + frost. Preflight runs `inspect-logo.mjs --write`.
+Gate: `MEDIA_SURFACE_CHECK` (+ `ship-scan` at QA for comment/tell cleanup).
+
+**Chrome owns home.** After design lock, Opus Writes `/` once. Sonnet children do not rewrite
+`src/app/page.tsx`. Use template `FaqAccordion` + `EstimateDialog` + `ContactForm`; do not hand-roll
+FAQ/details, estimate modals, or native form fields. Hero split: H1 `max-w-2xl|3xl`, pad ~24–32%.
 
 If you draft `blog-data.ts` yourself, you have violated this file. Spawn:
 
@@ -49,6 +60,15 @@ in the **same message** as chrome work. Record `blogs` on the stage timer around
 After design lock, spawn one Sonnet child per route (or 2–3 related routes). Each child Writes **one** `page.tsx`, runs `node scripts/write-once-check.mjs $ARGUMENTS --note src/app/{route}/page.tsx`, and exits. Parent does not Read those files.
 
 Do **not** template `SiteNav`, `SiteFooter`, `layout.tsx`, or the blog renderer.
+Copy-template is scaffold only. Every look is unique to `$ARGUMENTS` (consult + lock + ledger).
+Do not copy another client's chrome or routes. Do not ship a shared section kit.
+
+**Do not rewrite** `HeroVideo.tsx`, `Motion.tsx`, `SiteChat.tsx`, `schema.ts` unless a gate names them.
+Legal `/privacy` and `/terms` use the frozen layout in `reference/legal-pages.md`.
+
+**No mid-build screenshot loop.** Do not `preview-route` / Read PNGs before `PRE_QA_GATES=PASS`.
+
+Consult once: `stages/consult-once.md`. If `design-lock.md` exists, do not Skill-dump design corpora.
 
 ## Gates before screenshots
 

@@ -153,7 +153,26 @@ console.log(JSON.stringify(result, null, 2));
 
 const failures = [];
 if (!t1.present) failures.push("no <video> element found, but status.md claims HERO_VIDEO=OK");
-if (t1.present && t2.present && t2.currentTime <= t1.currentTime) failures.push(`playback did not advance (t1=${t1.currentTime}s, t2=${t2.currentTime}s) — video is present but not actually playing`);
+// Loop-aware advance: a short looping clip can wrap between probes (t2 < t1) while still
+// playing. Measured on aquaklear-ms 5.04s Seedance — raw t2<=t1 false-failed healthy heroes.
+function playbackAdvanced(a, b) {
+  if (!a?.present || !b?.present) return false;
+  if (b.paused) return false;
+  if (typeof b.readyState === "number" && b.readyState < 2) return false;
+  if (b.currentTime > a.currentTime + 0.15) return true;
+  const d = a.duration || b.duration;
+  if (d && d > 1 && b.currentTime < a.currentTime) {
+    const traveled = d - a.currentTime + b.currentTime;
+    return traveled >= 0.45;
+  }
+  return false;
+}
+if (t1.present && t2.present && !playbackAdvanced(t1, t2)) {
+  failures.push(
+    `playback did not advance (t1=${t1.currentTime}s, t2=${t2.currentTime}s` +
+      `${t1.duration != null ? `, dur=${t1.duration}s` : ""}) — video is present but not actually playing`,
+  );
+}
 if (t1.present && !t1.hasControl && !t2.hasControl) failures.push("no WCAG 2.2.2 pause/play control found — required for autoplaying motion over 5s");
 if (paused && paused.present && !paused.paused) failures.push("pause control clicked but video did not pause");
 if (rmRequests.length) failures.push(`reduced-motion visitor fetched the video anyway (${rmRequests.length} request(s)) — should serve poster only`);

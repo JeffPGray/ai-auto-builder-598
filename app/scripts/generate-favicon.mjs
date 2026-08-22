@@ -66,8 +66,9 @@ function extractAccentHex(globalsCssPath) {
   if (!fs.existsSync(globalsCssPath)) return "#111111";
   const css = fs.readFileSync(globalsCssPath, "utf8");
   const m =
-    css.match(/--accent-fill:\s*(#[0-9a-fA-F]{3,8})/) ||
-    css.match(/--accent:\s*(#[0-9a-fA-F]{3,8})/);
+    css.match(/--accent-fill-bright:\s*(#[0-9a-fA-F]{3,8})/) ||
+    css.match(/--accent:\s*(#[0-9a-fA-F]{3,8})/) ||
+    css.match(/--accent-fill:\s*(#[0-9a-fA-F]{3,8})/);
   return m ? m[1] : "#111111";
 }
 

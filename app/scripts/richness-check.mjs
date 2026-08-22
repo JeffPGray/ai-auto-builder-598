@@ -357,8 +357,8 @@ if (home) {
   /* ⚠️ REWRITTEN 2026-08-19 — this gate was failing builds on a requirement they were never taught.
    * `data-photo-treatment` appears NOWHERE in build/SKILL.md, the template, qa-reviewer.md or
    * qa-fix: the only two files in the repo that mention it are this script and
-   * verify-consistency.mjs. Its remediation text still points at "§ Photo art direction", a section
-   * deleted on 2026-08-19. Real builds emit the attribute only because they HIT this gate, read the
+   * verify-consistency.mjs. Its remediation text still pointed at a deleted "Photo art direction"
+   * section (removed 2026-08-19). Real builds emit the attribute only because they HIT this gate, read the
    * failure text, and complied — a gate that teaches by failing costs a QA round every single time.
    *
    * Fix: measure the DESIGN FACT (was this photo art-directed?) instead of the LABEL. The explicit
@@ -487,7 +487,7 @@ const sized = imgs.map((f) => ({ f, kb: Math.round(statSync(f).size / 1024) })).
 facts.imageCount = imgs.length;
 facts.imageTotalKB = sized.reduce((n, x) => n + x.kb, 0);
 facts.largestImageKB = sized[0]?.kb || 0;
-const HERO_MAX_KB = 250, TOTAL_MAX_KB = 1800;
+const HERO_MAX_KB = 200, TOTAL_MAX_KB = 1600;
 const fat = sized.filter((x) => x.kb > HERO_MAX_KB);
 if (fat.length) {
   failures.push(
@@ -497,7 +497,19 @@ if (fat.length) {
     'WebP/AVIF at build time.');
 }
 if (facts.imageTotalKB > TOTAL_MAX_KB) {
-  warnings.push(`[weight] ${facts.imageTotalKB}KB of images total — mobile LCP will suffer.`);
+  failures.push(
+    `[weight] ${facts.imageTotalKB}KB of images total (cap ${TOTAL_MAX_KB}KB). ` +
+    'Re-run optimise-images.mjs and drop unused ladder rungs. Mobile LCP is the product.');
+}
+const pubImages = join(siteDir, 'public', 'images');
+if (existsSync(pubImages)) {
+  const rasters = readdirSync(pubImages).filter((f) => /\.(jpe?g|png)$/i.test(f) && !/^og/i.test(f));
+  facts.nonWebpInPublic = rasters;
+  if (rasters.length) {
+    failures.push(
+      `[webp] public/images still has raster originals: ${rasters.join(', ')}. ` +
+      'Ship WebP only (optimise-images.mjs). Keep sources in data/images/.');
+  }
 }
 
 /* 6. EXPLICIT DIMENSIONS. Lighthouse flags "Image elements do not have explicit width and height";
@@ -607,6 +619,9 @@ const dsPath = ['../data/design-system.md', 'data/design-system.md']
   .map((r) => join(siteDir, r)).find((f) => existsSync(f));
 const statusPath = ['../data/status.md', 'data/status.md']
   .map((r) => join(siteDir, r)).find((f) => existsSync(f));
+const lockPath = ['../data/design-lock.md', 'data/design-lock.md']
+  .map((r) => join(siteDir, r)).find((f) => existsSync(f));
+const dsLock = lockPath ? readFileSync(lockPath, 'utf8') : '';
 if (!dsPath) {
   failures.push(
     '[design] clients/<slug>/data/design-system.md is missing — the /ui-ux-pro-max output was ' +
@@ -642,7 +657,10 @@ if (!dsPath) {
   // STYLE name should appear somewhere in the record if it was adopted, or be justified if not.
   const styleName = ((ds.match(/STYLE:\s*([A-Za-z][A-Za-z \-]{3,40})/) || [])[1] || '').trim();
   if (styleName && status && !new RegExp(styleName.split(/\s+/)[0], 'i').test(status)) {
-    dropped.push(`style "${styleName}" not referenced in status.md`);
+    // Adopt-or-document: DESIGN_SYSTEM_DEVIATION / STYLE_ADOPTED count as documentation
+    if (!/DESIGN_SYSTEM_DEVIATION|STYLE_ADOPTED|STYLE:\s*/i.test(status)) {
+      dropped.push(`style "${styleName}" not referenced in status.md`);
+    }
   }
 
   facts.designConsult = { effectsRecommended: fxTokens.length, dropped: dropped.length };
@@ -660,16 +678,16 @@ if (!dsPath) {
    * DESIGN_IDEA and 3 named signature moves BEFORE any TSX is written. This checks presence (the
    * step was genuinely done, not skipped) — same discipline as VERIFY_GATES_OK_AT's presence check
    * elsewhere in this pipeline, applied to a creative artifact instead of a technical one. */
-  const hasDesignIdea = /DESIGN_IDEA\s*=/.test(status);
+  const hasDesignIdea = /DESIGN_IDEA\s*=/.test(status) || /DESIGN_IDEA:/i.test(dsLock);
   const signatureMoveCount = [...status.matchAll(/Signature move \d+:/gi)].length;
-  facts.designIdea = { present: hasDesignIdea, signatureMoves: signatureMoveCount };
-  if (!hasDesignIdea || signatureMoveCount < 3) {
+  const hasLock = /SIGNATURE MOVE:/i.test(dsLock);
+  facts.designIdea = { present: hasDesignIdea, signatureMoves: signatureMoveCount, lock: hasLock };
+  if (!hasDesignIdea || (signatureMoveCount < 3 && !hasLock)) {
     failures.push(
-      `[design] DESIGN_IDEA and/or its 3 signature moves are missing from status.md ` +
-      `(present=${hasDesignIdea}, signature moves recorded=${signatureMoveCount}/3). This is the ` +
-      'one-sentence organizing idea every choice on the page should serve, required before any TSX ' +
-      'per the design-system step — its absence is exactly how a build satisfies every other gate ' +
-      'and still reads as arranged-not-authored.');
+      `[design] DESIGN_IDEA missing, and neither design-lock.md SIGNATURE MOVE nor 3 status.md moves ` +
+      `(present=${hasDesignIdea}, signature moves=${signatureMoveCount}/3, lock=${hasLock}). ` +
+      'Consult-once writes the lock; sync-design-lock.mjs stamps status.md. Absence is how a build ' +
+      'passes every other gate and still reads arranged-not-authored.');
   }
 }
 
@@ -778,7 +796,25 @@ if (home) {
  * a gathered photo behind an 80-88% colour wash, which is what produces the "ghosted in" depth. */
 if (home) {
   const h = readFileSync(home, 'utf8');
-  const photoGrounds = (h.match(/<section[^>]*>[\s\S]{0,400}?<img[^>]*absolute[^>]*inset-0/g) || []).length;
+  // Count photo-ground sections that carry an absolute inset image somewhere in the
+  // section body (not only within 400 chars of <section> — authors put overlays/wash
+  // wrappers between). Stack-wide aquaklear fail: 3× photo-ground, regex saw 1.
+  const sections = h.split(/(?=<section\b)/i).filter((s) => /^<section\b/i.test(s));
+  let photoGrounds = 0;
+  for (const sec of sections) {
+    if (!/\bphoto-ground\b/.test(sec)) continue;
+    if (/<(?:img|Image)\b[\s\S]{0,800}?\b(?:absolute|inset-0)\b|className="[^"]*\babsolute\b[^"]*\binset-0\b/.test(sec)) {
+      photoGrounds += 1;
+    } else if (/\bphoto-ground\b/.test(sec) && /<(?:img|Image)\b/.test(sec)) {
+      photoGrounds += 1;
+    }
+  }
+  // Fallback: className photo-ground count when section split misses fragments
+  if (photoGrounds < 2) {
+    const classHits = (h.match(/\bphoto-ground\b/g) || []).length;
+    const absImgs = (h.match(/\babsolute\b[^>]*\binset-0\b|\binset-0\b[^>]*\babsolute\b/g) || []).length;
+    if (classHits >= 2 && absImgs >= 2) photoGrounds = Math.min(classHits, absImgs);
+  }
   facts.photoGroundedSections = photoGrounds;
   if (photoGrounds < 2) {
     // Promoted WARN -> FAIL 2026-08-18, same trigger and reasoning as the gradient-count
@@ -786,6 +822,128 @@ if (home) {
     failures.push(
       `[depth] ${photoGrounds} photo-grounded section(s) — need 2+. A gathered work photo behind ` +
       'an 80-88% wash plus grain is what gives a page atmosphere; flat fills alone read flat.');
+  }
+
+  /* 14b. $5k bar — service card kit ban (experiment/speed-cut). Three equal rounded-xl
+   * image+copy cards is the local-service AI template. Editorial bands / rails pass. */
+  const cardKit = (h.match(/rounded-xl[^"]*overflow-hidden[^"]*border[^"]*shadow/g) || []).length;
+  facts.serviceCardKit = cardKit;
+  if (cardKit >= 3) {
+    failures.push(
+      `[composition] ${cardKit} rounded-xl bordered shadow cards on home — the service card kit. ` +
+      '§ Design lift ($5k): use editorial bands, split rails, or signature-driven lists instead.');
+  }
+
+  /* 14c. Lock canvas in hero — CANVAS: line names a gathered asset; it must appear in the hero. */
+  const canvasLine = (lockPath && existsSync(lockPath)
+    ? (readFileSync(lockPath, 'utf8').match(/^CANVAS:\s*(.+)$/mi) || [])[1]
+    : '') || '';
+  const canvasFile = (canvasLine.match(/([\w.-]+\.(?:jpe?g|webp|png|mp4))/i) || [])[1];
+  facts.lockCanvasFile = canvasFile || null;
+  if (canvasFile) {
+    const heroSlice = h.slice(0, 8000);
+    const stem = canvasFile.replace(/\.(jpe?g|webp|png)$/i, '');
+    const inHero = heroSlice.includes(canvasFile) || heroSlice.includes(stem) ||
+      heroSlice.includes('hero-home') || heroSlice.includes('/hero');
+    // Prefer explicit lock asset; accept hero-home* when lock names hero-home.jpeg
+    const ok = /hero-home/i.test(canvasFile)
+      ? /hero-home|poster=.*hero-home/i.test(heroSlice)
+      : (heroSlice.includes(canvasFile) || heroSlice.includes(stem));
+    facts.lockCanvasInHero = ok;
+    if (!ok) {
+      failures.push(
+        `[canvas] design-lock CANVAS names ${canvasFile} but home hero does not use it as LCP/poster. ` +
+        'Lock canvas is the hero plane; before/after lives below the fold.');
+    }
+  }
+
+  /* 14e. Signature architecture — ≥1 non-divider structural role on home.
+   * Motif-only (gauge-needle as bullet/divider) is garnish; rail/index/mask/spine is architecture. */
+  const archHits = {
+    rail: (h.match(/\b(gauge-rail|signature-rail|motif-rail|spine-rail)\b/g) || []).length,
+    index: (h.match(/\b(signature-index|motif-index|gauge-rail__mark)\b/g) || []).length,
+    mask: (h.match(/\b(signature-mask|motif-mask|clip-path|mask-\[)\b/g) || []).length,
+    spine: (h.match(/\b(signature-spine|section-spine|motif-spine)\b/g) || []).length,
+  };
+  const archRoles = Object.entries(archHits).filter(([, n]) => n > 0).map(([k]) => k);
+  facts.signatureArchRoles = archRoles;
+    if (archRoles.length < 1) {
+      const motifOnly = (h.match(/\b(gauge-needle|gauge-divider|section-divider|motif-divider)\b/g) || []).length;
+      if (motifOnly >= 2) {
+        failures.push(
+          `[signature] motif classes present (${motifOnly}) but zero architectural roles ` +
+          `(rail|index|mask|spine). Divider-only is garnish — bind SIGNATURE MOVE as structure ` +
+          '(e.g. gauge-rail, signature-index). See consult-once § Design lift.');
+      } else {
+        warnings.push(
+          '[signature] no architectural signature role detected on home — lock SIGNATURE MOVE should ' +
+          'name rail|index|mask|spine and appear in markup.');
+      }
+    }
+
+  /* 14f. Hero copy column width — asymmetric split must leave the TYPE readable.
+   * Bluegrass 2026-08-20: max-w-xl + md:pr-[42%] stacked the H1 on four lines with a dead right
+   * third. Fail: hero H1 capped at max-w-xl/sm/md, OR right pad ≥40% without a matching wide max-w.
+   * Scope is the H1 className only — a supporting max-w-xl on the subhead must not false-positive. */
+  {
+    const heroSrc = (() => {
+      const page = join(siteDir, 'src', 'app', 'page.tsx');
+      return existsSync(page) ? readFileSync(page, 'utf8') : '';
+    })();
+    const heroBlock = (heroSrc.match(/data-hero[\s\S]{0,2500}/) || [''])[0];
+    const h1Class = ((heroBlock.match(/<h1\b[^>]*className="([^"]*)"/) || [])[1] || '');
+    const narrowH1 = /\bmax-w-(?:xs|sm|md|xl)\b/.test(h1Class);
+    const fatPad = /md:pr-\[(?:4[0-9]|[5-9]\d)%\]|lg:pr-\[(?:4[0-9]|[5-9]\d)%\]/.test(heroBlock);
+    const wideCopy = /\bmax-w-(?:2xl|3xl|4xl|5xl|6xl|7xl)\b/.test(h1Class)
+      || (/\bmax-w-(?:2xl|3xl|4xl|5xl|6xl|7xl)\b/.test(heroBlock) && !narrowH1);
+    facts.heroCopyWide = !narrowH1 && (wideCopy || !fatPad);
+    if (narrowH1 || (fatPad && !wideCopy)) {
+      failures.push(
+        '[hero-width] home hero copy column is too narrow (max-w-xl/sm/md on H1, or ≥40% right pad ' +
+        'without max-w-2xl+). Split heroes need readable type — use max-w-2xl|3xl on the H1 and ' +
+        'keep media pad around 24–32% (see consult-once / design stage).');
+    }
+  }
+}
+
+/* 14d. Favicon + social share card — scaffold Vercel favicon.ico is an AI-template tell;
+ * missing og.jpg means iMessage/Slack/LinkedIn get no card. Scripts: generate-favicon.mjs,
+ * generate-og-image.mjs. IndexNow still waits for /seo at conversion. */
+{
+  const appDir = join(siteDir, 'src', 'app');
+  const staleIco = join(appDir, 'favicon.ico');
+  const hasIcon =
+    existsSync(join(appDir, 'icon.svg')) || existsSync(join(appDir, 'icon.png'));
+  const ogJpg = join(siteDir, 'public', 'og.jpg');
+  facts.hasAppIcon = hasIcon;
+  facts.hasOgJpg = existsSync(ogJpg);
+  facts.staleFaviconIco = existsSync(staleIco);
+  if (existsSync(staleIco)) {
+    failures.push(
+      '[favicon] scaffold favicon.ico still in src/app/ — run generate-favicon.mjs ' +
+        '(writes icon.svg/png and deletes the Vercel/Next default).');
+  } else if (!hasIcon) {
+    failures.push(
+      '[favicon] no src/app/icon.svg or icon.png — tab icon falls back to host default. ' +
+        'Run node scripts/generate-favicon.mjs <slug>.');
+  }
+  if (!existsSync(ogJpg)) {
+    failures.push(
+      '[og] public/og.jpg missing — no social share card. Run node scripts/generate-og-image.mjs <slug> ' +
+        'and wire openGraph.images + twitter.card in layout.tsx.');
+  } else {
+    const layoutPath = join(appDir, 'layout.tsx');
+    if (existsSync(layoutPath)) {
+      const layout = readFileSync(layoutPath, 'utf8');
+      if (!/og\.jpg/.test(layout) || !/openGraph/.test(layout)) {
+        failures.push(
+          '[og] public/og.jpg exists but layout.tsx does not reference it in openGraph.images.');
+      }
+      if (!/twitter:\s*\{/.test(layout) || !/summary_large_image/.test(layout)) {
+        warnings.push(
+          '[og] twitter.card summary_large_image not set in layout — LinkedIn/X previews may degrade.');
+      }
+    }
   }
 }
 
@@ -851,11 +1009,62 @@ if (existsSync(uiDir)) {
       'its own interactive widgets instead — which is how a nav shipped with Services as a <button> ' +
       'and /services unreachable from primary nav. Use the primitives for FAQ (accordion), mobile ' +
       'nav (sheet) and the services dropdown (dropdown-menu), restyled onto the derived tokens.');
+  } else if (available.length >= 4) {
+    const CORE = ['accordion', 'dialog', 'sheet', 'dropdown-menu'];
+    const missingCore = CORE.filter((c) => available.includes(c) && !imported.includes(c));
+    if (missingCore.length) {
+      failures.push(
+        `[primitives] core shadcn incomplete — missing imports: ${missingCore.join(', ')}. ` +
+        'Required every build: accordion (FaqAccordion), dialog (EstimateDialog), ' +
+        'sheet (mobile nav), dropdown-menu (services). Extra mechanics (input/select/tabs/…) ' +
+        'are available for forms; only the core four are mandatory imports.');
+    }
   } else if (handRolledFaq) {
     warnings.push('[primitives] a native <details> FAQ shipped while accordion.tsx sits vendored and unused.');
   }
   if (handRolledNav && !imported.includes('dropdown-menu') && !imported.includes('sheet')) {
     warnings.push('[primitives] nav appears hand-rolled (useState/aria-expanded) while sheet/dropdown-menu are vendored.');
+  }
+
+  /* ContactForm must use mechanics pack — not native <input> kits. */
+  const contactFormPath = join(siteDir, 'src', 'app', '_components', 'ContactForm.tsx');
+  if (existsSync(contactFormPath)) {
+    const cf = readFileSync(contactFormPath, 'utf8');
+    const usesPack = /_components\/ui\/(input|label)/.test(cf);
+    facts.contactFormUsesPack = usesPack;
+    if (!usesPack) {
+      failures.push(
+        '[forms] ContactForm.tsx does not import ui/input or ui/label — keep the template form ' +
+        'and the mechanics pack. Hand-rolled natives reintroduce the a11y/token drift the pack exists to stop.');
+    }
+  }
+}
+
+/* 17b. Remotion hero clip — required when usable photos exist (operator 2026-08-20).
+ * Poster-only is only OK when status.md records HERO_VIDEO=FAIL (legitimate degradation). */
+{
+  const statusPath = join(siteDir, '..', 'data', 'status.md');
+  const statusTxt = existsSync(statusPath) ? readFileSync(statusPath, 'utf8') : '';
+  const heroFail = /^HERO_VIDEO=FAIL/m.test(statusTxt);
+  const mp4 = join(siteDir, 'public', 'hero.mp4');
+  const pageTsx = join(siteDir, 'src', 'app', 'page.tsx');
+  const pageTxt = existsSync(pageTsx) ? readFileSync(pageTsx, 'utf8') : '';
+  const hasMp4 = existsSync(mp4) && statSync(mp4).size > 10_000;
+  const wiresSrc = /HeroVideo[\s\S]{0,400}\bsrc=/.test(pageTxt);
+  const imgDir = join(siteDir, 'public', 'images');
+  const photoCount = existsSync(imgDir)
+    ? readdirSync(imgDir).filter((f) => /\.(webp|jpe?g|png)$/i.test(f) && !/logo/i.test(f)).length
+    : 0;
+  facts.heroMp4 = hasMp4;
+  facts.heroVideoSrcWired = wiresSrc;
+  if (!heroFail && photoCount >= 3 && !hasMp4) {
+    failures.push(
+      `[hero-video] ${photoCount} public photos but no public/hero.mp4 — Remotion is required. ` +
+      'Run services/hero-video/render.mjs in copy-template (preflight). Poster-only only with HERO_VIDEO=FAIL.');
+  }
+  if (hasMp4 && /HeroVideo/.test(pageTxt) && !wiresSrc) {
+    failures.push(
+      '[hero-video] public/hero.mp4 exists but <HeroVideo> has no src= — wire src="/hero.mp4" (poster alone is not enough).');
   }
 }
 

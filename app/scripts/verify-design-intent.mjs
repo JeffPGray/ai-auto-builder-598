@@ -35,15 +35,30 @@ const slug = args.find((a) => !a.startsWith('--'));
 if (!slug) { console.error('usage: verify-design-intent.mjs <client-slug> [--brief-only]'); process.exit(1); }
 
 const statusPath = join('clients', slug, 'data', 'status.md');
-if (!existsSync(statusPath)) { console.error(`no status.md at ${statusPath}`); process.exit(2); }
-const status = readFileSync(statusPath, 'utf8');
+const lockPath = join('clients', slug, 'data', 'design-lock.md');
+if (!existsSync(statusPath) && !existsSync(lockPath)) {
+  console.error(`no status.md or design-lock.md for ${slug}`);
+  process.exit(2);
+}
+const status = existsSync(statusPath) ? readFileSync(statusPath, 'utf8') : '';
+const lock = existsSync(lockPath) ? readFileSync(lockPath, 'utf8') : '';
+const lockGet = (k) => (lock.match(new RegExp(`^${k}:\\s*(.+)$`, 'mi')) || [])[1]?.trim();
 
 /* ── JOB 1: re-inject the brief ─────────────────────────────────────────────────────────────── */
 const ideaMatch = status.match(/DESIGN_IDEA\s*=\s*(.+)/);
-const idea = ideaMatch ? ideaMatch[1].trim() : null;
-const moves = [...status.matchAll(/Signature move \d+:\s*(.+)/gi)].map((m) => m[1].trim());
-const hero = (status.match(/Hero archetype:\s*(.+)/i) || [])[1]?.trim();
-const ground = (status.match(/GROUND=(\S+)|Ground:\s*(.+)/i) || []).slice(1).find(Boolean)?.trim();
+let idea = (ideaMatch ? ideaMatch[1].trim() : null) || lockGet('DESIGN_IDEA') || null;
+let moves = [...status.matchAll(/Signature move \d+:\s*(.+)/gi)].map((m) => m[1].trim());
+if (moves.length < 3 && lock) {
+  const padded = [
+    lockGet('SIGNATURE MOVE'),
+    lockGet('CANVAS') && `canvas — ${lockGet('CANVAS')}`,
+    [lockGet('HEADING / BODY') || lockGet('HEADING/BODY'), lockGet('GROUND')].filter(Boolean).join(' / '),
+  ].filter(Boolean);
+  if (padded.length) moves = padded;
+}
+const hero = (status.match(/Hero archetype:\s*(.+)/i) || [])[1]?.trim() || lockGet('SIGNATURE MOVE');
+const ground = (status.match(/GROUND=(\S+)|Ground:\s*(.+)/i) || []).slice(1).find(Boolean)?.trim()
+  || lockGet('GROUND');
 
 console.log('\n════ RECORDED DESIGN BRIEF (re-read this; do not work from memory) ════');
 console.log(`DESIGN_IDEA : ${idea || '*** MISSING ***'}`);
@@ -76,8 +91,15 @@ const failures = [];
 const facts = {};
 
 /* CHECK A — the brief exists at all. */
-if (!idea) failures.push('[intent] no DESIGN_IDEA recorded in status.md. The design-system step is mandatory and its output is the artifact — an unrecorded design decision is an unaccountable one.');
-if (moves.length < 3) failures.push(`[intent] ${moves.length}/3 signature moves recorded. Three are required before any TSX is written.`);
+if (!idea) failures.push('[intent] no DESIGN_IDEA in status.md or design-lock.md. Consult-once must write the lock before any TSX.');
+{
+  const hasLockMove = Boolean(lockGet('SIGNATURE MOVE'));
+  if (hasLockMove && moves.length < 1) {
+    failures.push('[intent] design-lock.md has no usable SIGNATURE MOVE axis for enforcement.');
+  } else if (!hasLockMove && moves.length < 3) {
+    failures.push(`[intent] ${moves.length}/3 signature moves in status.md and no design-lock.md SIGNATURE MOVE. One lock (layout + canvas + type) or three recorded moves.`);
+  }
+}
 
 /* CHECK B — SCALE DRAMA. The single most visible boldness metric, and the one the failed build
  * missed completely: every heading sat in a narrow, safe size band.
@@ -270,6 +292,24 @@ for (const f of htmlFiles) {
       'grid. One element per page must escape it (a 2-col span, a negative-margin overlap, a ' +
       'vertical offset). A page where every row is the same shape reads as generated no matter how ' +
       'good the palette is.');
+  }
+}
+
+/* CHECK L — LOCK vs CENTER BIAS (experiment/speed-cut).
+ * Taste Rule 3: if the lock names a split / asymmetric / left-aligned hero, a centered H1 with
+ * no text-left is the cheap AI default the lock exists to kill. Cheap to check, expensive to miss. */
+{
+  const lockMove = (lockGet('SIGNATURE MOVE') || '') + ' ' + (idea || '');
+  if (/split|asymmetric|left-align|50\/50|field.?shop|offset/i.test(lockMove)) {
+    const home = htmlFiles.find((f) => /(^|\/)index\.html$/.test(f.replace(outDir + '/', '')));
+    if (home) {
+      const page = readFileSync(home, 'utf8');
+      const h1 = page.match(/<h1\b[^>]*class="([^"]*)"/i);
+      if (h1 && /\btext-center\b/.test(h1[1]) && !/\b(?:md:)?text-left\b/.test(h1[1])) {
+        failures.push(
+          '[lock] SIGNATURE MOVE asks for a split/asymmetric layout but the home <h1> is `text-center` with no `text-left`. That is the center-bias default. Execute the lock.');
+      }
+    }
   }
 }
 

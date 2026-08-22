@@ -18,22 +18,22 @@ CSV_CONFIG = {
     "style": {
         "file": "styles.csv",
         "search_cols": ["Style Category", "Keywords", "Best For", "Type", "AI Prompt Keywords"],
-        "output_cols": ["Style Category", "Type", "Keywords", "Primary Colors", "Secondary Colors", "Effects & Animation", "Best For", "Do Not Use For", "Performance", "Accessibility", "Framework Compatibility", "Complexity", "AI Prompt Keywords", "CSS/Technical Keywords", "Implementation Checklist", "Design System Variables"]
+        "output_cols": ["Style Category", "Type", "Keywords", "Primary Colors", "Secondary Colors", "Effects & Animation", "Best For", "Do Not Use For", "Performance", "Accessibility", "Framework Compatibility", "Complexity", "AI Prompt Keywords", "CSS/Technical Keywords", "Implementation Checklist", "Design System Variables", "Light Mode ✓", "Dark Mode ✓", "Mobile-Friendly", "Conversion-Focused", "Era/Origin"]
     },
     "color": {
         "file": "colors.csv",
         "search_cols": ["Product Type", "Notes"],
-        "output_cols": ["Product Type", "Primary (Hex)", "Secondary (Hex)", "CTA (Hex)", "Background (Hex)", "Text (Hex)", "Notes"]
+        "output_cols": ["Product Type", "Primary (Hex)", "Secondary (Hex)", "CTA (Hex)", "Background (Hex)", "Text (Hex)", "Border (Hex)", "Notes"]
     },
     "chart": {
         "file": "charts.csv",
         "search_cols": ["Data Type", "Keywords", "Best Chart Type", "Accessibility Notes"],
-        "output_cols": ["Data Type", "Keywords", "Best Chart Type", "Secondary Options", "Color Guidance", "Accessibility Notes", "Library Recommendation", "Interactive Level"]
+        "output_cols": ["Data Type", "Keywords", "Best Chart Type", "Secondary Options", "Color Guidance", "Accessibility Notes", "Library Recommendation", "Interactive Level", "Performance Impact"]
     },
     "landing": {
         "file": "landing.csv",
         "search_cols": ["Pattern Name", "Keywords", "Conversion Optimization", "Section Order"],
-        "output_cols": ["Pattern Name", "Keywords", "Section Order", "Primary CTA Placement", "Color Strategy", "Conversion Optimization"]
+        "output_cols": ["Pattern Name", "Keywords", "Section Order", "Primary CTA Placement", "Color Strategy", "Conversion Optimization", "Recommended Effects"]
     },
     "product": {
         "file": "products.csv",

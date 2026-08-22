@@ -42,7 +42,9 @@ So there are two paths, and the default is the cheap one:
 | Address | `{slug}.grayreserve.agency` | Their real domain (plus the subdomain until DNS moves) |
 | New Vercel projects | **zero** | one, and it is earned |
 | Follow | **§ Shared instance** below | **§ Vercel** below |
+| Media / surface | Same `image-plan` + `verify-media-surface` artifact (see `services/higgsfield/IMAGE-RULES.md`) | Same — only `KLAUDIUS_ASSET_PREFIX=''` + `/seo` URL rewrite differ |
 
+Single `/build` and parallel `run-lane` workers both produce this artifact per slug; deploy mode is chosen here from status, not from how many lanes ran.
 ```bash
 # The pipeline's own status column is the signal — no new config to keep in sync.
 # `converted` is the status /cms and /seo already key off. Anything else is a prospect.

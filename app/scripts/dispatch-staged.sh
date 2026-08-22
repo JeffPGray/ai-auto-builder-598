@@ -49,6 +49,24 @@ fi
 LOG_DIR="logs"
 mkdir -p "$LOG_DIR"
 
+# ── PLAYWRIGHT MUST NOT OUTLIVE THE PIPELINE ─────────────────────────────────────────────────
+# dispatch-build.sh sweeps orphaned playwright sessions when it is the LAST dispatch alive — but
+# in staged mode THIS script is still running when each child exits, so that guard correctly
+# declines every time and nothing ever sweeps at the end. Same sweep, at the point where the
+# pipeline genuinely stops. Operator rule: "playwright has to stop when builds stop."
+sweep_playwright() {
+  [ -n "$(pgrep -f 'dispatch-(staged|build)\.sh' | grep -v "^$$\$")" ] && return 0
+  local n
+  n=$(pgrep -f 'cliDaemon.js' 2>/dev/null | wc -l | tr -d ' ')
+  [ "${n:-0}" -eq 0 ] && return 0
+  for pw in $(pgrep -f 'cliDaemon.js' 2>/dev/null); do
+    pkill -P "$pw" 2>/dev/null; kill -9 "$pw" 2>/dev/null
+  done
+  echo "pipeline finished — swept $n orphaned playwright session(s)"
+  return 0
+}
+trap 'sweep_playwright' EXIT
+
 STAGE_COUNT=0
 MAX_STAGES=8   # hard backstop: gather, build, up to 3 qa-fix rounds, deploy, plus slack -- never loop forever
 
@@ -65,12 +83,34 @@ while [ "$STAGE_COUNT" -lt "$MAX_STAGES" ]; do
   fi
 
   case "$STAGE" in
-    PRE_GATHER|POST_GATHER)
+    PRE_GATHER)
       MODEL=sonnet; EFFORT=medium
       STAGE_PROMPT_SUFFIX="Run ONLY the /gather step for this client (and /find first if the client is not yet claimed -- check status before assuming). Stop once gathered-content.md is written and looks complete against the coverage checklist. Do NOT run /ui-ux-pro-max, /build, QA, or /deploy in this dispatch -- a separate dispatch handles those at a different model tier." ;;
-    POST_DESIGN_PRE_VERIFY)
+    POST_GATHER)
+      # BUG FOUND 2026-08-20, live, on the FIRST-EVER real dispatch-staged.sh run: this was grouped
+      # with PRE_GATHER above and given the gather-only prompt. detect-resume-stage.mjs's own
+      # definition (its PRE_GATHER/POST_GATHER branch, checked directly) says POST_GATHER means
+      # "gathered-content.md exists, design-system.md does not" -- i.e. gather is DONE, design/build
+      # is next. Routing it to "run ONLY /gather" told a real child to re-run gather on data that was
+      # already valid and hand-patched (inline unrated-review markers) — caught and killed within
+      # seconds, before any damage, but only because it was watched live. This IS the reason to
+      # actually run new infrastructure once before trusting it: a static read of both files
+      # separately missed the mismatch; only comparing detect-resume-stage.mjs's OWN semantics
+      # against this case statement's routing surfaced it.
       MODEL=opus; EFFORT=high
       STAGE_PROMPT_SUFFIX="gather is already complete (see clients/$SLUG/data/gathered-content.md -- do NOT re-run /gather). Run /ui-ux-pro-max then /build for this client. Stop once build's Verify step has genuinely passed (VERIFY_GATES_OK_AT written to status.md) or self-fixed to a clean pass. Do NOT run the QA loop or /deploy in this dispatch." ;;
+    POST_DESIGN_PRE_VERIFY)
+      # BUG FOUND 2026-08-20, same live-testing pass that found the POST_GATHER bug above. This
+      # stage is only reached once has(designSystem) is ALREADY true (detect-resume-stage.mjs's own
+      # branch order: POST_DESIGN_PRE_VERIFY is the `else if` after the has(designSystem) check), so
+      # its resumeInstruction says "/gather and /ui-ux-pro-max are done — DO NOT re-run either...
+      # re-run /build ${slug} from the top — it is idempotent per-page". This block previously told
+      # the child to "Run /ui-ux-pro-max then /build" — re-running a design consult whose own
+      # artefact (design-system.md) already exists is exactly the "the output IS the artifact, never
+      # overwrite it" violation named elsewhere in build/SKILL.md, just reintroduced at the dispatch
+      # layer instead of inside the build itself.
+      MODEL=opus; EFFORT=high
+      STAGE_PROMPT_SUFFIX="gather AND the design consult are already complete (see clients/$SLUG/data/gathered-content.md and clients/$SLUG/data/design-system.md -- do NOT re-run /gather or /ui-ux-pro-max, and do NOT edit design-system.md). Run /build ${SLUG} from the top -- it is idempotent per-page and will overwrite whatever partial pages exist. Stop once build's Verify step has genuinely passed (VERIFY_GATES_OK_AT written to status.md) or self-fixed to a clean pass. Do NOT run the QA loop or /deploy in this dispatch." ;;
     POST_VERIFY_PRE_QA|POST_VERIFY_QA_FAILED)
       MODEL=sonnet; EFFORT=high
       STAGE_PROMPT_SUFFIX="gather, design, and build+Verify are ALL already complete -- do NOT re-run any of them. Run the QA loop (spawn qa-reviewer, apply qa-fix on FAIL, re-review) per CLAUDE.md's QA Loop section, up to its normal 3-round max. Stop once QA reaches a PASS verdict or the 3-round max. Do NOT run /deploy in this dispatch. If a QA round's findings are genuinely design or content-judgment calls (not mechanical fixes like dashes/img-dims/typos), say so explicitly in status.md -- a human should consider re-dispatching that round at opus/high instead of continuing at this tier." ;;

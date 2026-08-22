@@ -31,4 +31,4 @@ A full Opus authoring pass is **not** run from this instrumentation commit: it i
 
 ## If A–C cannot beat 90 minutes
 
-Escalate to parameterized section primitives (plan D phase 2). Do not add more prose to `SKILL.md`.
+Escalate to **per-client** composition that still authors unique chrome (not a shared page kit). Do not add more prose to `SKILL.md`. Do not copy another tenant's TSX.

@@ -1,6 +1,8 @@
 # Stage: author
 Sonnet for every route page.tsx. Parent Opus does chrome only.
 
+**Images:** every marketing `/images/*` src must appear in `clients/$ARGUMENTS/data/image-plan.json` with `source !== "none"`. Do not invent stock or wire measured/systems veils under dense copy. See `services/higgsfield/IMAGE-RULES.md`.
+
 
 ## Route-batched write-once children (experiment/speed-cut)
 
@@ -13,6 +15,8 @@ Agent(subagent_type="general-purpose", model="sonnet", prompt="""
 You are a write-once route worker. You are NOT the orchestrator. Do not read .claude/ledger.json.
 
 Write ONE file: clients/{slug}/site/src/app/{route}/page.tsx
+- Read clients/{slug}/data/design-lock.md (this client only). Execute THAT SIGNATURE MOVE.
+- Do not copy layout from another client. Do not fill a shared section kit.
 - Read stages/author.md sections for this route type only (offset/limit).
 - Write the page COMPLETE on the first Write.
 - Then: node scripts/write-once-check.mjs {slug} --note src/app/{route}/page.tsx
@@ -43,7 +47,7 @@ a handful of deterministic, PER-FILE text patterns need zero cross-page context 
 running them the instant each page.tsx is saved, instead of waiting for the full QA battery to
 find them, deletes an entire fix-and-rebuild round when they'd otherwise be the only defect. On a
 real live build the same night this was written, exactly this class of issue (an AI self-reference
-phrase repeated on two pages, an em-dash pattern repeated across all five blog articles) was 4 of
+phrase repeated on two pages, an em-dash pattern repeated across all three blog articles) was 4 of
 6 total QA findings and the reason round 1 FAILed.
 
 Run this after every single page.tsx (and blog-data.ts) you write — it's a few grep calls against
@@ -63,6 +67,16 @@ contrast, whole-site gradient count, copy fingerprint against prior builds) stil
 gates and still only run once, against the finished site — see § Verify and the QA Loop.
 
 ### Per-service pages — `/services/<slug>` (the commercial-intent lane)
+
+**HARD RULE — atmosphere (BOTH lanes, Blue Water 2026-08-21):**
+1. Read `services/media-surface/ATMOSPHERE.md`. Layers: plane → plate → texture → chrome.
+2. Default body = flat `bg-surface-1/2`. Atmosphere is earned, not wallpaper.
+3. Budgets/page: hatch ≤1, frost ≤2, copper ≤1, mesh ≤1, loud beats ≤3.
+4. Never stack mutex pairs on one section (`hatch`+`grain`, `hatch`+`mesh`, copper+frost).
+5. `/services/<slug>`: `ServiceDetailFrame` only — photo-ground + **`band-depth-frost` forever**.
+   Ban `hatch*` and `band-go-mesh` on service detail. No flat `grad-*` heroes.
+6. Site-wide money closer: one `band-go-mesh` (+ `go-frame`) on home or contact only.
+Gate: `scripts/verify-media-surface.mjs`.
 
 **EVERY named service gets its own `/services/<slug>` page. This is not conditional (Jeff, direct
 instruction 2026-08-19: "every service getting a page… we always need to generate content. Always.
@@ -139,7 +153,7 @@ Run this decision before writing anything, and **write the outcome and the count
 | `/services` | **≥4 distinct named services**, each supporting **≥25 words** of true, non-duplicated detail from gathered content (what it covers, who it is for, how they do it). Counting "Landscaping" and "Landscape design" as two is padding — count distinct offerings, not synonyms. | Fold the services into a section on `/`. |
 | `/about` | **≥2 of:** years trading or a founding year; a named owner or team; a credential, licence, insurance or accreditation; an origin/values passage in the business's own words; awards or press. Plus **≥150 words** of real narrative material. | Fold the story into a section on `/`. |
 | `/contact` | The business is contactable at all (phone, email, or address). This is nearly always true and a contact page is never padding — it is the page a ready-to-buy visitor looks for by name. | Fold contact into a section on `/`. |
-| `/blog` + 5 articles | **Always.** This is the one route with no content threshold, because its content is written rather than gathered — see § Blog. The outreach email sells "20 new blog posts a month, written for your business", so a site with no blog contradicts the pitch the owner is reading. | Never omitted. |
+| `/blog` + 3 articles | **Always.** This is the one route with no content threshold, because its content is written rather than gathered — see § Blog. The outreach email sells "20 new blog posts a month, written for your business", so a site with no blog contradicts the pitch the owner is reading. | Never omitted. |
 | `/privacy` and `/terms` | **Always, both of them.** No content threshold — see § Legal pages. Linked from the footer (or sub-footer) only, never from the main nav. | Never omitted. |
 | extra routes | Only for genuinely rich content — a rescue target with distinct per-service or history pages (see § Rescue parity), or a service line with enough depth for its own page. | Omit. |
 
@@ -155,12 +169,12 @@ Whatever the count, write one `page.tsx` per route:
 | `/services` | `src/app/services/page.tsx` | Every gathered service in full — what it covers, who it is for, the real detail from gathered-content.md |
 | `/about` | `src/app/about/page.tsx` | The business's story, years trading, credentials/licences, area covered, team/owner, the photos that suit narrative rather than sales |
 | `/contact` | `src/app/contact/page.tsx` | The contact form/mailto, full NAP block, opening hours, the CID Google Maps embed |
-| `/blog` | `src/app/blog/page.tsx` | Index of the five seed articles: title, date, word count, standfirst, photo, link |
+| `/blog` | `src/app/blog/page.tsx` | Index of the three seed articles: title, date, word count, standfirst, photo, link |
 | `/blog/<slug>` | `src/app/blog/[slug]/page.tsx` | One article, rendered from `_components/blog-data.ts` via `generateStaticParams()` |
 | `/privacy` | `src/app/privacy/page.tsx` | What this specific site does with a visitor's information — see § Legal pages |
 | `/terms` | `src/app/terms/page.tsx` | Who runs the site, what it is and is not, whose words the reviews are — see § Legal pages |
 
-**Shared chrome lives in components, never copy-pasted per page.** Create `src/app/_components/SiteNav.tsx` and `src/app/_components/SiteFooter.tsx` (the `_` prefix keeps the folder out of the router) and import them into every page. Duplicating the nav markup four times guarantees the four copies drift, and every later skill (`/cms`, `/booking`, `/qa-fix`) then has to patch it four times. If the sticky mobile CTA or an info strip is site-wide, it belongs in the chrome components too.
+**Shared chrome ships in the template and mounts from `layout.tsx` only.** Do **not** create a fresh SiteNav/SiteFooter, and do **not** import them into individual pages — `cp -r templates/trade-site` already brings bluegrass-floor chrome. Fill `site-data.ts` (`NAV_LINKS` with children, `biz.hoursShort`, `biz.serviceAreaLabel`, `biz.hoursLines`). Pages are `<main>` content only. Re-authoring nav per page is how aquaklear lost the lift.
 
 The template also ships three components you do NOT write yourself — `Motion.tsx`, `SiteChat.tsx` and `HeroVideo.tsx`. Mount the first two once in `layout.tsx` and use the third in the hero. Full instructions in § Motion, chat and hero video below.
 
@@ -191,7 +205,7 @@ Route additions from other skills (`/book` from the booking facade, `/admin` fro
 **Kept here verbatim as a floor, never skip even under time pressure — the full never-write list, with reasoning, is in the reference file:** company registration number, VAT/EIN/tax number, a named data-protection officer, a statutory-rights recital (GDPR/CCPA), data retention periods, international transfer clauses, "we may share your data with trusted partners", a cookie table for cookies the site doesn't set, children's-privacy clauses, arbitration/venue/jurisdiction beyond the business's own state, indemnities, a money liability cap, prices/deposits/refund terms, guarantees or SLAs, licence/accreditation claims not in `gathered-content.md`, "your continued use constitutes acceptance", and any promise about what the business does with an enquiry after it reaches them. **The rule that covers the whole class: if you cannot point at the fact in `gathered-content.md`, `site-data.ts`, or code you just read, it does not go on the page.**
 
 ---
-## Blog (MANDATORY — `/blog` plus five articles, on every build)
+## Blog (MANDATORY — `/blog` plus three articles, on every build)
 
 **Render article dates with a GUARDED anchor:**
 ```ts
@@ -227,7 +241,7 @@ about hair. A blinds fitter's is about measuring a bay window and what happens t
 south-facing room. If an article would read as useful to a marketing agency, it is the wrong
 article.
 
-Derive the five topics from the business's own service list in `gathered-content.md`, one per
+Derive the three topics from the business's own service list in `gathered-content.md`, one per
 strong service where possible, and phrase each as the problem the customer has rather than the
 service we sell. "Sprinkler checks you can do yourself before calling anyone" beats "Our
 irrigation services".
@@ -249,8 +263,8 @@ Every sentence in an article falls into one of three buckets, and the handling d
    authority: "watering days are set by your city and change with drought stage, so check the
    current schedule for your address". A confident wrong ordinance is worse than no article.
 
-**Publish dates are the build date.** Do not backdate five articles to fake a publishing history.
-The owner opens the blog, sees five posts dated across the last six months that they know they
+**Publish dates are the build date.** Do not backdate three articles to fake a publishing history.
+The owner opens the blog, sees three posts dated across the last six months that they know they
 never wrote, and every other claim on the site becomes suspect.
 
 ### anti-ai-slop enforcement on blog prose — ONE real invocation, not two (Fable consult, 2026-08-18)
@@ -273,7 +287,7 @@ better evidence than trusting a sub-agent's own upfront self-certification, so n
 moving this from "before drafting" to "after drafting, before committing."
 
 Brief the sub-agent's prompt with a short inline summary instead (not the full skill): no
-three-item-default lists (vary 4/5/6 to fit content), no identical section shapes across the five
+three-item-default lists (vary 4/5/6 to fit content), no identical section shapes across the three
 articles, no closing recap or "Conclusion" heading, no rhetorical-question closers, end on the
 phone number and free consultation, avoid AI-fingerprint openers like "In today's fast-paced
 world...". Five formulaic listicles do more damage than no blog: an owner who skims one paragraph
@@ -283,14 +297,14 @@ why the REAL check (your post-hoc eval pass) must not be the one that gets skipp
 
 Concretely, the failures that show up in blog copy specifically: three-item lists that were
 three because AI defaults to three (make list length follow the content, 4/5/6 items are normal);
-identical section shapes across all five articles; an ending that recaps the article the reader
+identical section shapes across all three articles; an ending that recaps the article the reader
 just read; a "Conclusion" heading; questions as closers. End on the concrete next action, which
 here is the business's phone number and the free consultation.
 
 ### Shape of an article
 
 - **700 to 950 words each.** Long enough to be worth reading and to clear every extractability
-  floor with room to spare, short enough that five of them do not double the build. (Gray
+  floor with room to spare, short enough that three of them do not double the build. (Gray
   Reserve's own marketing blog targets 1,500 to 2,500. That is a different job with a different
   economics: these are speculative builds at 50 to 100 a day and wall-clock is the binding
   constraint.)
@@ -306,7 +320,7 @@ here is the business's phone number and the free consultation.
 template files — copy them from `templates/trade-site/src/app/blog/` and
 `templates/trade-site/src/app/_components/blog-data.ts` rather than authoring them fresh.** Added
 after a real build hand-authored the types, exported `Block` inconsistently between files, and
-shipped 5 articles with a broken build **and zero JSON-LD** — 26 AEO failures, caught by QA, that
+shipped 3 articles with a broken build **and zero JSON-LD** — 26 AEO failures, caught by QA, that
 a template removes the possibility of. `schema.ts` (already a template file) gained two new
 exports for this: `blogPostingSchema()` and `blogIndexSchema()` — read them before touching the
 article schema block.
@@ -336,7 +350,7 @@ this fails the gate rather than passing quietly.
   business publishes it; **never invent a human byline**), `isPartOf` the `Blog` node, and
   `wordCount` computed from the blocks rather than typed.
 - **One `Blog` node**, defined once on `/blog` (`<SITE_URL>/blog/#blog`), listing every article by
-  `@id`. Defining it on each article instead gives you five `Blog` nodes and a duplicate entity.
+  `@id`. Defining it on each article instead gives you three `Blog` nodes and a duplicate entity.
 - **`WebPage` per blog route too**, with the path in its `@id`. Reuse `pageGraph()`.
 - **`BreadcrumbList` on every blog route**: Home > Blog on the index, Home > Blog > <article title>
   on an article. The article crumb name is its visible `<h1>`.
@@ -356,7 +370,7 @@ this fails the gate rather than passing quietly.
 
 ### Cost, honestly (measured 2026-08-16 on a 10-route build)
 
-| | Without blog | With `/blog` + 5 articles |
+| | Without blog | With `/blog` + 3 articles |
 |---|---|---|
 | Routes | 4 | 10 |
 | `npx next build` | 5.12s | 6.05-6.57s |
@@ -364,7 +378,7 @@ this fails the gate rather than passing quietly.
 | An article page over the wire | — | 96-99 KB raw, **14.6 KB gzipped** (`/about` is 12.5 KB) |
 | New images / fonts / JS | — | **none** (articles reuse gathered photos) |
 
-`next build` is not the constraint. The constraint is **agent wall-clock**: five articles is
+`next build` is not the constraint. The constraint is **agent wall-clock**: three articles is
 roughly 4,000 words of generated prose, which on the measured 39.6-minute default-effort build
 adds an estimated 4 to 7 minutes, more at high effort. Budget for it before promising throughput,
 and note that the marginal cost is nearly all writing time, not build time or page weight.
@@ -372,7 +386,7 @@ and note that the marginal cost is nearly all writing time, not build time or pa
 ### Write the articles CONCURRENTLY with the pages (added 2026-08-16)
 
 Those 4-7 minutes are serial time spent on prose that touches no design surface. Recover them:
-once you have picked the five topics and `gathered-content.md` exists, spawn **one** sub-agent to
+once you have picked the three topics and `gathered-content.md` exists, spawn **one** sub-agent to
 draft the article prose while you write `globals.css`, the chrome and the route pages.
 
 This is **Exception 2** (`CLAUDE.md` Critical Rule 10). Blogs must be `model="sonnet"`. Parent does not draft `blog-data.ts`.
@@ -387,7 +401,7 @@ review before you commit it" below). This is a quality tradeoff on drafting only
 
 ```
 Agent(subagent_type="general-purpose", model="sonnet", prompt="""
-Draft 5 blog articles for {Business Name} as a `POSTS: Post[]` array for blog-data.ts.
+Draft 3 blog articles for {Business Name} as a `POSTS: Post[]` array for blog-data.ts.
 
 TOPICS (already decided — do not substitute):
   1. ... 2. ... 3. ... 4. ... 5. ...
@@ -758,21 +772,17 @@ alert, an operator queue, AND an orphan-lead queue for tenants with no email on 
 resolves a Klaudius tenant's email from `site.json`'s `business.email` (`loadKlaudiusManifest`,
 added 2026-08-18) — no per-client wiring, no API key, no third-party service to stand up.
 
-Build `_components/ContactForm.tsx` as a client component (`"use client"`) whose submit handler:
-1. Reads the tenant slug from `window.location.hostname.split(".")[0]` — matches the deployed
-   subdomain, never hardcode it.
-2. POSTs JSON to `` `/api/preview/${slug}/contact` `` with `Content-Type: application/json` and
-   `Accept: application/json`.
-3. Sends `name` (required) + either `phone` (7+ digits, Schema A) or `email` + `message` (Schema B)
-   — see the endpoint's own docstring for the exact two accepted schemas; extra/unknown field names
-   400. Map any locally-named field (e.g. a "Subject" input) onto the endpoint's real names
-   (`service`, not `subject`) before sending.
-4. Includes a hidden honeypot field named `_gr_hp_kx` (visually + tab-order hidden, must stay empty)
-   — required by the endpoint, a filled value silently drops the submission.
-5. Shows a `sending` → `sent`/`error` state from the real JSON response (`{ok:true}` /
-   `{ok:false, error}`), not an optimistic instant success. A `warning` field on a 200 response
-   means the tenant has no email on file yet (orphan queue) — still show success to the visitor
-   (the lead reached Slack + the operator queue, it isn't lost), no different UI needed.
+**Keep the template `ContactForm.tsx`** (`cp -r templates/trade-site` already ships it). Do not
+hand-roll native `<input>` / `<select>` / `<textarea>` or invent a second form.
+
+Wire only:
+1. Pass `phoneDisplay` / `phoneHref` / `services[]` from `site-data` (or hardcode from gather).
+2. Fields must use the mechanics pack: `ui/label`, `ui/input`, `ui/textarea`, `ui/select`,
+   `ui/checkbox`. Submit button stays `.cta-primary` — never shadcn `Button`.
+3. Submit handler already POSTs to `` `/api/preview/${slug}/contact` `` with honeypot `_gr_hp_kx`
+   and `sending` → `sent`/`error` from real JSON. Do not replace with `mailto:`.
+4. If you must edit the form, preserve pack imports — `richness-check` FAILs a ContactForm that
+   does not import `ui/input` (or `ui/label`).
 
 This is a same-origin fetch (the Klaudius tenant IS served by the previews app), so no CORS
 configuration is needed. The old two-branch spec (real `mailto:` if email known, fake

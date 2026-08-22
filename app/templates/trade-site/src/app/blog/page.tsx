@@ -7,8 +7,6 @@
  */
 import type { Metadata } from "next";
 import Link from "next/link";
-import SiteNav from "../_components/SiteNav";
-import SiteFooter from "../_components/SiteFooter";
 import { POSTS, readMinutesOf } from "../_components/blog-data";
 import { pageGraph, breadcrumbs, blogIndexSchema } from "../_components/schema";
 import { biz } from "../_components/site-data";
@@ -24,7 +22,6 @@ export default function BlogIndexPage() {
 
   return (
     <>
-      <SiteNav />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(pageGraph("/blog", `Blog | ${biz.name}`)) }}
@@ -87,7 +84,6 @@ export default function BlogIndexPage() {
         </div>
       </section>
 
-      <SiteFooter />
     </>
   );
 }

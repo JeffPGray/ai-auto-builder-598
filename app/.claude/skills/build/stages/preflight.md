@@ -113,7 +113,7 @@ the line. Running this here costs ~1 second and saves an entire QA round.
 > - Signature move 1: <a specific, named, checkable choice — not a vibe>
 > - Signature move 2: <ditto>
 > - Signature move 3: <ditto>
-> - Differs from the last 3 builds: <one line — what's structurally different here, not just
+> - Differs from recent neighbouring builds: <one line — what's structurally different here, not just
 >   re-hued>
 > ```
 >
@@ -142,41 +142,18 @@ the line. Running this here costs ~1 second and saves an entire QA round.
 > An unrecorded design step is an unaccountable one, and this project has now watched two
 > "mandatory" skills (anti-slop, and this) get read and not executed with nothing to show it.
 
-Every build must consume a fresh design system from `/ui-ux-pro-max` (skipping it is the biggest AI-generated tell — generic palette, predictable pairings, thin pages). Don't invent palette/fonts/layout ad hoc.
+Every build must consume a fresh design system. **Do not run search.py here.** One consult for
+the whole build: `stages/consult-once.md`. If `clients/$ARGUMENTS/data/design-lock.md` is missing,
+go there now. If it exists, do not re-run `--design-system`.
 
-Run before writing any TSX/CSS:
-```bash
-# The OUTPUT IS THE ARTIFACT. Redirect it — a design consult whose result was never written
-# down cannot be distinguished from one that never ran, and QA fails the build if this file
-# is missing or thin. Run it BEFORE any TSX exists.
-python3 .claude/skills/ui-ux-pro-max/scripts/search.py "<industry> <style keywords from gathered content>" --design-system -p "$ARGUMENTS" \
-  | tee "clients/$ARGUMENTS/data/design-system.md"
-```
+Use the copy inside `app/.claude/skills/`. The global `~/.claude/skills/ui-ux-pro-max` is a
+React Native skill and will give mobile-app guidance for a web build.
 
-**⚠️ Use the copy inside `app/.claude/skills/`, which is what this relative path resolves to
-with `cwd=app/`. There is a second `ui-ux-pro-max` in the operator's global `~/.claude/skills/`
-and it is a **React Native** skill — "this project's only tech stack" — with one data
-directory. The vendor copy here carries 11 data CSVs and 13 stacks including `nextjs`,
-`astro`, `html-tailwind` and `shadcn`. For a Next.js marketing site the vendor copy is the
-correct one; the global copy would give mobile-app guidance for a web build. Verified
-2026-08-16 — do not "fix" this path to point at the global skill.
-
-Pick keywords from the business's actual personality — a Victorian-era barber, a sustainable landscaper, a fine-dining bistro all need different style keywords. Capture the returned palette (hex codes), heading + body fonts, and layout pattern. These become the inputs to globals.css and tailwind.config.ts below — do NOT hardcode Georgia/cream or any default.
-
-If the recommended fonts feel safe (Fraunces/Outfit, Instrument Serif/Sora, Syne/Plus Jakarta Sans, Familjen Grotesk/Karla, etc.), do not blindly accept them — re-search the typography domain for something with more personality (see "How to pick fonts" below). The design system is a starting point, not a final answer.
-
-### 3. Copy quality system from `anti-ai-slop` (MANDATORY — a tool call, not a preference)
-`/ui-ux-pro-max` above is the design half of "does this look like a human made it". This is the writing half, and it is the half that ships in every headline the owner reads.
-
-**Do this now, before writing a single visitor-facing string:**
-```
-Skill(skill="anti-ai-slop", args="ENFORCE mode (job A) — website copy for $ARGUMENTS")
-```
-That is a literal Skill tool call. Reading this paragraph is not the same as making it, and neither is remembering that em dashes are banned. The skill carries the 10 AI fingerprints, ~30 named slop patterns and 80+ banned phrases; the dash rule restated under "Anti-slop rules" below is one line out of all of that. Invoke it and hold the finished copy against its `eval.md` checklist before you consider the build done.
-
-In scope: every headline, eyebrow, service name and description, About paragraph, review intro, FAQ answer, form label and CTA. Out of scope: component names, class names, comments, and anything the visitor never reads.
-
-**This step runs even when the run is constrained.** A short run, a copy-only run, a rebuild of one section, a "just fix the hero" request — the copy still reaches a real business owner, so the gate still applies. The only way to skip it is if the run produces no visitor-facing text at all.
+### 3. Copy quality (checklist, not a Skill dump)
+Do not `Skill(skill="anti-ai-slop")` as a full corpus load (compaction + gulf-coast stall). Apply
+this checklist to every visitor-facing string: no em dashes; no elevate/leverage/unlock/delve;
+no invented facts, prices, or permits; no fake author byline; no "we" that is Gray Reserve.
+Full list remains in `prompts/lessons/build.md`. Scripts: `fix-dashes.mjs`, copy-fingerprint.
 
 ## Language: `${OPERATOR_LANGUAGE}` (mandatory)
 
@@ -222,18 +199,50 @@ cd clients/$ARGUMENTS/site
 # The old placement (as a discrete step deep in § Motion, chat and hero video) put it AFTER the
 # work most likely to survive a truncated run and made it the easiest thing to silently drop.
 cd ../../..
-node services/hero-video/render.mjs --slug $ARGUMENTS
+# Image plan: pick slots → HF thin/wide plates into data/images → KEEP lines for verify-photos.
+# Rules: services/higgsfield/IMAGE-RULES.md · clients/<slug>/data/image-plan.json
+node services/higgsfield/image-plan.mjs --slug $ARGUMENTS --all
+cp -f clients/$ARGUMENTS/data/images/* clients/$ARGUMENTS/site/public/images/ 2>/dev/null || true
+# Optimise rasters → WebP in public/images (richness weight/webp). Required for BOTH
+# single /build and parallel run-lane — author stage also runs it; this makes a truncated
+# run less likely to skip it before first next build.
+node scripts/optimise-images.mjs $ARGUMENTS
+# Remotion lives in services/hero-video/node_modules (gitignored). A fresh worktree that
+# never ran `npm ci` there fails every hero render with "@remotion/bundler not installed"
+# and ships poster-only — unequal vs hillards. Ensure deps before render.
+if [ ! -d services/hero-video/node_modules/@remotion/bundler ]; then
+  (cd services/hero-video && npm ci) || (cd services/hero-video && npm install)
+fi
+# Hero: Higgsfield cinematic generate first (Seedance t2v by default; stills are
+# optional --ref / --lock-still). Remotion Ken Burns is the loud fallback.
+# Auth: `higgsfield auth login` once. HF_HERO=0 skips HF. Credits ≤500 → notify.sh.
+# Per-client prompt: clients/<slug>/data/hero-prompt.txt
+# Hero slot mode/ref come from image-plan.json when present.
+node services/higgsfield/render-hero.mjs --slug $ARGUMENTS
+# Logo nav chrome (BOTH lanes): white-plate → light nav + logo-only; writes data/logo-nav.json
+# and patches site-data when --write. Run after logo.webp is in public/images.
+node scripts/inspect-logo.mjs $ARGUMENTS --write
 cd clients/$ARGUMENTS/site
 ```
-Record the exact `HERO_VIDEO=OK …` or `HERO_VIDEO=FAIL …` line the render script prints into
+Record the exact `IMAGE_PLAN=OK …` and `HERO_VIDEO=OK …` or `HERO_VIDEO=FAIL …` lines into
 `status.md` NOW, before writing any TSX — this is what `verify-hero-video.mjs` and the build
 Verify gate check for, and doing it here means a kill at any later point cannot erase the fact that
-the attempt happened. A `FAIL` (fewer than three usable photos) is a legitimate, recorded
-degradation — carry on with the poster-only `<HeroVideo>` form, § Motion, chat and hero video below.
+the attempt happened. A `FAIL` (both HF and Remotion failed, or Remotion alone with &lt;3 photos) is a
+legitimate, recorded degradation — carry on with the poster-only `<HeroVideo>` form, § Motion, chat
+and hero video below. `source=higgsfield mode=t2v|ref|lock-still` is generative; Remotion path has
+no `source=` tag. Never invent a hero without that line. Cleared photos are REFERENCES for HF by
+default — do not treat them as a locked start frame unless the brief demands product fidelity.
+Author binds images only from `clients/$ARGUMENTS/data/image-plan.json` (`source !== "none"`).
+Roles `metrics` / `dense-copy` / `faq` / `spec-ledger` must stay `source: none` (no photo veils).
+Atmosphere: `services/media-surface/ATMOSPHERE.md` (hatch accent ≤1/page; frost/planes/plates menu).
+Parallel `run-lane` workers: same commands with that slug only — never write another client's plan/images.
+Surface CSS ships in the template (`lift-panel`, `cinema-grade--dealer`, soft `hero-overlay--split`,
+`band-go-mesh`/`go-frame`, `cta-primary--on-ink`). Do not re-author muddy overlays. Both shared
+(multisite) and dedicated deploys use this artifact; only `assetPrefix` / `SITE_URL` change at deploy.
 
 This removes any stale site directory, copies the template fresh, then copies gathered photos from `data/images/` into the site. The `data/images/` directory is the source of truth for photos — never download directly to `site/public/images/` as the template copy would overwrite them. You then write `globals.css`, `layout.tsx`, the shared chrome, and one `page.tsx` per route in § Site structure below.
 
-### 🚫 Four files SHIP IN THE TEMPLATE — do not author them (added 2026-08-16)
+### 🚫 Files that SHIP IN THE TEMPLATE — do not re-author them
 
 `cp -r templates/trade-site` already brings these, finished:
 
@@ -250,10 +259,14 @@ on all four). They were being retyped, at high effort, on every build — along 
 needed to re-derive schema.org and canonical invariants this skill already states. Authoring them
 once gives the AEO gates one chance to be right instead of one fresh chance to be wrong per client.
 
-**Deliberately NOT templated:** `blog/page.tsx`, `blog/[slug]/page.tsx`, `SiteNav`, `SiteFooter`,
-`layout.tsx`. Those carry real visual design (the blog article renderer alone has 25 `className`s),
-and freezing them across clients is exactly the template-look failure § Anti-slop rules exists to
-prevent. **Do not "finish the job" by templating them too.**
+**Templated chrome (speed-cut 2026-08-21 — bluegrass 1:1 floor):** `layout.tsx`, `SiteNav.tsx`,
+`SiteFooter.tsx`, and the full lift `globals.css` (hero-overlay, gauge-*, signature-spine, photo-ground,
+grain, heavy CTAs, palette utilities). Opus fills `:root` + `site-data.ts` + fonts; does **not**
+rewrite chrome structure or invent per-page nav. Pages are content only (`<main>` children).
+
+**Still deliberately NOT templated:** marketing `page.tsx` routes and the blog article *copy*
+(blog shells may ship; article bodies are unique). Freezing home/services/about/contact markup
+across clients is the template-look failure the Anti-slop rules exist to prevent.
 
 **Deviation is allowed, silence is not.** If a client genuinely needs a different graph — a trade
 with no schema.org type, a real multi-location `LocalBusiness` split — override the file for that

@@ -1,6 +1,18 @@
 # Stage: verify
 Scripts only. Run `bash scripts/pre-qa-gates.sh $ARGUMENTS` BEFORE spawning qa-reviewer.
 
+Gates include `media-surface` (`MEDIA_SURFACE_CHECK`) — overlays, money CTAs, image-plan,
+`assetPrefix`, hatch/watermark budgets, built-`out/` atmosphere (`ATMOSPHERE.md`).
+Same gate for a single `/build` and for a parallel `run-lane` worker. Record the line in `status.md`.
+
+If `MEDIA_SURFACE_CHECK=FAIL` (or richness/design-intent FAIL) on craft only: spawn **scoped**
+fix agents on the failing files — do not re-swarm the whole slug from the supervisor.
+
+Hero playback is loop-aware (short Seedance wraps must not false-FAIL). Template `FaqAccordion`
+ships AEO-open (`type=multiple` + `defaultValue`). Reviews gate accepts single- or double-quoted
+`site-data` literals. Before gates, re-run `node scripts/optimise-images.mjs $ARGUMENTS` if public/
+still has large JPG originals.
+
 ### Step 5 — Verify (scripts, before handing to QA)
 
 ```bash
@@ -84,8 +96,8 @@ done
 grep -o 'slug: "[^"]*"' src/app/_components/blog-data.ts | cut -d'"' -f2 | while read s; do
   test -f "out/blog/$s.html" && echo "OK   /blog/$s" || echo "MISSING /blog/$s"
 done
-test "$(ls out/blog/*.html 2>/dev/null | wc -l | tr -d ' ')" = "5" \
-  && echo "OK   5 articles exported" || echo "WRONG article count in out/blog/"
+test "$(ls out/blog/*.html 2>/dev/null | wc -l | tr -d ' ')" = "3" \
+  && echo "OK   3 articles exported" || echo "WRONG article count in out/blog/"
 ```
 
 Every route § Site structure said should ship must print `OK`. A `MISSING` line for a route you deliberately dropped is fine **only if the drop and its counts are written in `status.md`** — otherwise the site is a one-pager by accident and you go back and write the page before QA. Do not proceed on a green `next build` alone.

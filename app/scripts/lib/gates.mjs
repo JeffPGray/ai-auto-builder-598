@@ -121,6 +121,13 @@ export const GATES = [
     verdict: /PHOTO_CHECK=(PASS|FAIL|SKIP)/,
   },
   {
+    id: 'media-surface',
+    label: 'Media+surface contract (overlays, CTAs, image-plan, assetPrefix) — shared + dedicated, single or parallel lane',
+    argv: (slug) => ['scripts/verify-media-surface.mjs', slug],
+    verdict: /MEDIA_SURFACE_CHECK=(PASS|FAIL)/,
+    claim: 'MEDIA_SURFACE_CHECK',
+  },
+  {
     id: 'copy-fingerprint',
     label: 'Shipped prose does not repeat recent builds (warn-only by design)',
     argv: (slug) => ['scripts/copy-fingerprint-check.mjs', slug],

@@ -357,9 +357,9 @@ export default function Motion({ seed = "site" }: MotionProps) {
     const rise = m.snap(2, m.mapRange(0, 1, 36, 64, k)); // px a section travels
     const dur = m.snap(0.05, m.mapRange(0, 1, 0.7, 1.0, k)); // seconds
     const stagger = m.snap(0.01, m.mapRange(0, 1, 0.09, 0.16, k));
-    const parallax = m.snap(1, m.mapRange(0, 1, 14, 24, k)); // yPercent of hero drift
+    const parallax = m.snap(1, m.mapRange(0, 1, 8, 14, k)); // yPercent — softened for hero video stability
     const scaleFrom = m.snap(0.005, m.mapRange(0, 1, 0.985, 0.995, k));
-    const heroScale = m.snap(0.01, m.mapRange(0, 1, 1.08, 1.15, k));
+    const heroScale = m.snap(0.01, m.mapRange(0, 1, 1.04, 1.08, k)); // soft — video wrapper; was 1.08–1.15 (tab thrash)
 
     const ctx = gsap.context(() => {
       // Section fade-rise. `once: true` so a section never re-hides on scroll-up.

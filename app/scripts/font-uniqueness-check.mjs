@@ -28,12 +28,10 @@
  *   - Same-slug claim-vs-artifact drift (this build's own prior ledger record claimed a different
  *     heading/body font than what actually shipped) — hard FAIL. Bookkeeping-integrity issue, not
  *     a judgment call: whatever the ledger says was decided is supposed to be what got built.
- *   - Heading-font reuse against the last 8 OTHER records — hard FAIL, same rule and same
- *     rationale as design-ledger.mjs's font-ledger check (plain string equality, mandatory prose
- *     in build/SKILL.md, cheap fix at this point: swap one import + one CSS var line).
- *   - Same-town body-font reuse against the last 8 OTHER records — WARN only. Town-matching data
- *     quality is unverified; promote to FAIL once real town data proves reliable across ~10 builds
- *     (same calibration note as design-ledger.mjs).
+ *   - Heading-font reuse — hard FAIL ONLY on SAME-TOWN collision against the last 8 OTHER
+ *     records (same rule as design-ledger.mjs). Cross-town reuse is INFO only — forcing a re-pick
+ *     produced Bodoni on HVAC (2026-08-19).
+ *   - Same-town body-font reuse against the last 8 OTHER records — WARN only.
  *
  * Prints FONT_UNIQUENESS_CHECK=PASS|FAIL|SKIP. SKIP fires when there is nothing real to compare
  * against yet — no other ledger records, or no records (including this slug's own) carry font
@@ -193,13 +191,13 @@ let hardFail = false;
 if (own) {
   if (own.headingFont && extractedHeading && normFont(own.headingFont) !== normFont(extractedHeading)) {
     console.log(
-      `FONT_UNIQUENESS_CHECK=FAIL — claim-vs-artifact drift: ${slug}'s ledger record claims heading font "${own.headingFont}" but the shipped layout.tsx actually uses "${extractedHeading}". Update the ledger claim (or fix the build) so they agree.`
+      `FONT_UNIQUENESS_CHECK=FAIL — claim-vs-artifact drift: ${slug}'s ledger record claims headingFont="${own.headingFont}" but shipped layout.tsx uses "${extractedHeading}". Update the ledger claim (or fix the build) so they agree.`
     );
     hardFail = true;
   }
   if (own.bodyFont && extractedBody && normFont(own.bodyFont) !== normFont(extractedBody)) {
     console.log(
-      `FONT_UNIQUENESS_CHECK=FAIL — claim-vs-artifact drift: ${slug}'s ledger record claims body font "${own.bodyFont}" but the shipped layout.tsx actually uses "${extractedBody}". Update the ledger claim (or fix the build) so they agree.`
+      `FONT_UNIQUENESS_CHECK=FAIL — claim-vs-artifact drift: ${slug}'s ledger record claims bodyFont="${own.bodyFont}" but shipped layout.tsx uses "${extractedBody}". Update the ledger claim (or fix the build) so they agree.`
     );
     hardFail = true;
   }
@@ -228,7 +226,7 @@ if (extractedHeading) {
   }
   if (collision) {
     console.log(
-      `FONT_UNIQUENESS_CHECK=FAIL — shipped heading font "${extractedHeading}" collides with ${collision.slug}'s heading font "${collision.headingFont}". Never reuse a heading font (build/SKILL.md § How to pick fonts) — swap the import in layout.tsx for a different shortlist entry.`
+      `FONT_UNIQUENESS_CHECK=FAIL — shipped heading font "${extractedHeading}" collides with ${collision.slug}'s heading font "${collision.headingFont}" in the SAME TOWN (${ownTown}). Neighbouring owners can see both sites — swap the import in layout.tsx for a different shortlist entry.`
     );
     hardFail = true;
   }

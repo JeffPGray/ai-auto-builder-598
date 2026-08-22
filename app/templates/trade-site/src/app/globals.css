@@ -1,3 +1,794 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Design-lift floor — 1:1 with the bluegrass-blast-pw fixture (speed-cut 2026-08-21).
+ *
+ * Opus fills :root via derive-palette. Class shapes below are FIXED scaffold — bind them
+ * in chrome/home; do not reinvent skinny heroes, divider-only "signatures", or light CTAs.
+ * Signature motifs: use gauge-* OR signature-spine/index (pick one primary identity; both ship).
+ */
+
+:root {
+  /* ── filled by derive-palette.mjs — placeholders only ── */
+  --accent: #288000;
+  --accent-text: #216f00;
+  --accent-text-dark: #78d65f;
+  --accent-fill: #288000;
+  --on-accent-fill: #eef9ec;
+  --accent-fill-bright: #3d9b1e;
+  --on-accent-bright: #062500;
+  --secondary: #005b46;
+  --secondary-text: #006d54;
+  --secondary-fill: #007f62;
+  --on-secondary-fill: #e9faf3;
+  --surface: #fafdf8;
+  --surface-alt: #f1f5ee;
+  --surface-dark: #191c16;
+  --ink: #1c1f19;
+  --ink-muted: #5e615a;
+  --surface-1: #fafdf8;
+  --surface-2: #f1f5ee;
+  --surface-3: #e7ebe2;
+  --surface-4: #d9ded5;
+  --surface-5: #4a4f47;
+  --surface-6: #191c16;
+  --on-dark: #f2f5ef;
+  --on-dark-muted: #bec1ba;
+  --error: #cb574e;
+  --error-text: #a1413a;
+  --error-surface: #ffebe8;
+  --success: #018f48;
+  --success-text: #005b2c;
+  --success-surface: #e0f7e5;
+  --warning: #a57200;
+  --warning-text: #815800;
+  --warning-surface: #fdeed7;
+  --info: #0081cc;
+  --info-text: #0064a0;
+  --info-surface: #e4f2ff;
+  --success-text-dark: #4ade80;
+  --warning-text-dark: #fbbf24;
+  --error-text-dark: #f87171;
+  --info-text-dark: #60a5fa;
+
+  --font-display: var(--font-display-src), Georgia, serif;
+  --font-body: var(--font-body-src), "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  color-scheme: light;
+}
+
+html, body {
+  overflow-x: clip;
+  scroll-behavior: auto;
+}
+
+html {
+  background-color: var(--surface-dark);
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Typography ── */
+.font-display {
+  font-family: var(--font-display);
+  line-height: 1.20;
+}
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* ── Palette utilities (slash-opacity does NOT work on CSS vars) ── */
+.bg-surface     { background: var(--surface); }
+.bg-surface-alt { background: var(--surface-alt); }
+.bg-surface-dark { background: var(--surface-dark); }
+.bg-surface-1   { background: var(--surface-1); }
+.bg-surface-2   { background: var(--surface-2); }
+.bg-surface-3   { background: var(--surface-3); }
+.bg-surface-4   { background: var(--surface-4); }
+.bg-surface-5   { background: var(--surface-5); }
+.bg-surface-6   { background: var(--surface-6); }
+
+.text-ink       { color: var(--ink); }
+.text-ink-muted { color: var(--ink-muted); }
+.text-on-dark   { color: var(--on-dark); }
+.text-on-dark-muted { color: var(--on-dark-muted); }
+.text-accent    { color: var(--accent-text); }
+.text-accent-dark { color: var(--accent-text-dark); }
+.text-secondary { color: var(--secondary-text); }
+.text-secondary-text { color: var(--secondary-text); }
+.text-accent-text { color: var(--accent-text); }
+.text-accent-text-dark { color: var(--accent-text-dark); }
+
+.bg-accent-fill { background: var(--accent-fill); }
+.text-on-accent-fill { color: var(--on-accent-fill); }
+.bg-secondary-fill { background: var(--secondary-fill); }
+.text-on-secondary-fill { color: var(--on-secondary-fill); }
+
+.bg-surface-dark-95 { background: rgba(25,28,22,0.95); }
+.bg-surface-dark-85 { background: rgba(25,28,22,0.85); }
+.bg-surface-dark-72 { background: rgba(25,28,22,0.72); }
+.bg-ink-70 { color: color-mix(in oklch, var(--ink) 70%, transparent); }
+.border-accent { border-color: var(--accent); }
+.border-surface-3 { border-color: var(--surface-3); }
+.border-surface-4 { border-color: var(--surface-4); }
+.border-on-dark-15 { border-color: color-mix(in oklch, var(--on-dark) 15%, transparent); }
+
+/* ── Grain overlay ── */
+.grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.14;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+
+/* ── Section transitions ── */
+.section-divider {
+  position: relative;
+}
+.section-divider::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+/* ── Gauge motif (signature-as-structure — bluegrass fixture) ── */
+.gauge-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px 0;
+}
+.gauge-divider::before,
+.gauge-divider::after {
+  content: "";
+  flex: 1;
+  max-width: 160px;
+  height: 1px;
+  background: var(--surface-4);
+}
+.gauge-needle {
+  width: 28px;
+  height: 28px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.gauge-needle--sm {
+  width: 18px;
+  height: 18px;
+}
+.gauge-rail {
+  position: relative;
+  padding-left: 2.75rem;
+}
+.gauge-rail::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  width: 1px;
+  background: linear-gradient(180deg, var(--accent) 0%, var(--surface-4) 100%);
+}
+.gauge-rail__mark {
+  position: absolute;
+  left: 0;
+  top: 0.15rem;
+  color: var(--accent);
+}
+
+/* ── Spine motif (alternate signature architecture) ── */
+.signature-spine { position: relative; }
+.signature-spine:has(> .signature-spine__rail--h) {
+  padding-top: 1.35rem;
+}
+.signature-spine__station { position: relative; }
+.signature-spine__rail {
+  position: absolute;
+  left: 1.75rem;
+  top: 3.5rem;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg,
+    var(--accent-fill) 0%,
+    var(--secondary) 100%
+  );
+}
+.signature-spine--row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.25rem 2rem;
+  position: relative;
+  padding-top: 0.25rem;
+}
+.signature-spine__rail--h {
+  left: 0;
+  right: auto;
+  width: min(36rem, 85%);
+  top: 0;
+  bottom: auto;
+  height: 2px;
+  transform: none;
+  background: linear-gradient(90deg,
+    var(--accent-fill) 0%,
+    var(--secondary) 75%,
+    transparent 100%
+  );
+}
+.signature-index {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* left with hero copy — center was a stack misalign */
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* ── Photo atmosphere ── */
+.photo-wash {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--surface-dark) 88%, transparent) 0%,
+    color-mix(in oklch, var(--surface-dark) 72%, transparent) 45%,
+    color-mix(in oklch, var(--surface-dark) 90%, transparent) 100%
+  );
+}
+.photo-ground { position: relative; overflow: hidden; }
+.photo-ground > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.photo-ground > .photo-ground-wash {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: color-mix(in oklch, var(--surface-dark) 84%, transparent);
+}
+.photo-ground > .photo-ground-content { position: relative; z-index: 2; }
+
+/* ── Hero overlays — both lanes (shared + dedicated). Soft wash; no hard nav seam.
+   Contract: services/media-surface/contract.mjs · IMAGE-RULES.md ── */
+.hero-overlay {
+  background: linear-gradient(180deg,
+    color-mix(in oklch, var(--surface-dark) 22%, transparent) 0%,
+    color-mix(in oklch, var(--surface-dark) 28%, transparent) 45%,
+    color-mix(in oklch, var(--surface-dark) 55%, transparent) 100%
+  );
+}
+.hero-overlay--split {
+  background:
+    linear-gradient(105deg,
+      color-mix(in oklch, var(--surface-dark) 78%, transparent) 0%,
+      color-mix(in oklch, var(--surface-dark) 45%, transparent) 36%,
+      color-mix(in oklch, var(--surface-dark) 12%, transparent) 58%,
+      transparent 78%
+    ),
+    linear-gradient(0deg,
+      color-mix(in oklch, var(--surface-dark) 42%, transparent) 0%,
+      transparent 38%
+    );
+}
+
+/* Dealer / photo-ground: letterbox blend only — lift-panel owns copy */
+.cinema-grade {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+.cinema-grade--dealer {
+  background: linear-gradient(0deg,
+    color-mix(in oklch, var(--surface-dark) 55%, transparent) 0%,
+    transparent 28%
+  );
+}
+.cinema-letterbox {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2rem;
+  z-index: 11;
+  background: var(--surface-dark);
+  pointer-events: none;
+}
+.cinema-letterbox--top { top: 0; }
+.cinema-letterbox--bottom { bottom: 0; }
+.cinema-copper-rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2rem;
+  height: 3px;
+  z-index: 12;
+  background: linear-gradient(90deg,
+    var(--secondary) 0%,
+    var(--accent-fill) 55%,
+    transparent 100%
+  );
+}
+
+/* Money CTA / photo-ground copy plane */
+.lift-panel {
+  position: relative;
+  z-index: 2;
+  background: var(--surface-1);
+  padding: 1.75rem 1.5rem;
+  box-shadow:
+    0 1px 0 color-mix(in oklch, var(--ink) 6%, transparent),
+    0 18px 48px color-mix(in oklch, var(--ink) 22%, transparent);
+}
+.lift-panel--ink {
+  background: var(--surface-dark);
+  box-shadow:
+    0 1px 0 color-mix(in oklch, black 35%, transparent),
+    0 22px 56px color-mix(in oklch, black 45%, transparent);
+}
+@media (min-width: 640px) {
+  .lift-panel { padding: 2.25rem 2.5rem; }
+}
+
+.band-go-mesh {
+  background-color: var(--surface-dark);
+  background-image:
+    radial-gradient(
+      100% 90% at 85% 15%,
+      color-mix(in oklch, var(--accent-fill) 45%, transparent),
+      transparent 50%
+    ),
+    radial-gradient(
+      70% 60% at 10% 90%,
+      color-mix(in oklch, var(--secondary) 35%, transparent),
+      transparent 48%
+    ),
+    linear-gradient(145deg,
+      color-mix(in oklch, var(--surface-dark) 85%, white) 0%,
+      var(--surface-dark) 40%,
+      color-mix(in oklch, var(--surface-dark) 70%, black) 100%
+    );
+}
+.go-frame {
+  position: relative;
+  z-index: 2;
+  border-top: 3px solid var(--secondary);
+  border-bottom: 3px solid var(--accent-fill);
+  padding: 3.5rem 0;
+}
+.go-frame::before,
+.go-frame::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--secondary), var(--accent-fill));
+}
+.go-frame::before { left: 0; }
+.go-frame::after { right: 0; }
+@media (max-width: 767px) {
+  .go-frame::before,
+  .go-frame::after { display: none; }
+}
+
+/* ── Link + CTA — Stripe/Notion/Linear class adapted for trade
+   Solid brand fill (not muddy multi-stop). Chromatic shadow. 6px radius.
+   Secondary: soft fill, not hairline ghost. BOTH lanes from templates/trade-site. */
+a { color: inherit; text-decoration: none; }
+.cta-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 28px;
+  min-height: 48px;
+  background: var(--accent-fill-bright);
+  color: #ffffff;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  border-radius: 6px;
+  border: none;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 8px 24px -6px color-mix(in srgb, var(--accent-fill) 55%, transparent);
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+  cursor: pointer;
+}
+.cta-primary:hover {
+  background: color-mix(in srgb, var(--accent-fill-bright) 82%, black);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 12px 28px -6px color-mix(in srgb, var(--accent-fill) 60%, transparent);
+  transform: translateY(-1px);
+}
+.cta-primary:active {
+  transform: translateY(0);
+  background: color-mix(in srgb, var(--accent-fill) 88%, black);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 1px 1px rgba(0, 0, 0, 0.1);
+}
+.cta-primary:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent-fill-bright) 28%, transparent),
+    0 8px 24px -6px color-mix(in srgb, var(--accent-fill) 55%, transparent);
+}
+.cta-primary--on-ink {
+  color: #ffffff;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 10px 28px -4px color-mix(in srgb, var(--accent-fill-bright) 65%, transparent);
+}
+.cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 28px;
+  min-height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+  cursor: pointer;
+}
+.cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.cta-secondary:active {
+  transform: translateY(0);
+  background: rgba(255, 255, 255, 0.14);
+}
+.cta-secondary-ink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 28px;
+  min-height: 48px;
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  color: var(--ink);
+  background: var(--surface-1);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  border-radius: 6px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 4px 12px -4px color-mix(in srgb, var(--ink) 12%, transparent);
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+  cursor: pointer;
+}
+.cta-secondary-ink:hover {
+  background: var(--surface-2);
+  border-color: color-mix(in srgb, var(--accent-fill) 45%, var(--surface-4));
+  color: var(--accent-text);
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 8px 18px -6px color-mix(in srgb, var(--accent-fill) 22%, transparent);
+}
+
+/* Mobile sticky bar */
+.sticky-mobile-bar {
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+
+/* Nav scroll solidify (Motion sets data-scrolled) — token-driven, not hardcoded green-black */
+[data-nav][data-scrolled="true"] {
+  background-color: rgba(25,28,22,0.95) !important;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+/* Light navbar when logo plate is white (data-nav-theme=light) — BOTH lanes */
+[data-nav][data-nav-theme="light"][data-scrolled="true"] {
+  background-color: color-mix(in srgb, var(--surface-1) 96%, transparent) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+/* ── Section atmosphere (BOTH lanes) — see services/media-surface/ATMOSPHERE.md
+   Default body = flat surface. Hatch ≤1/page (accent). ServiceDetailFrame = frost, not hatch. ── */
+.band-depth-frost {
+  background-color: var(--surface-1);
+  background-image:
+    radial-gradient(100% 80% at 100% -20%, color-mix(in oklch, var(--secondary) 32%, transparent), transparent 50%),
+    radial-gradient(90% 70% at -10% 110%, color-mix(in oklch, var(--accent-fill) 22%, transparent), transparent 48%),
+    linear-gradient(175deg, var(--surface-1) 0%, var(--surface-2) 55%, color-mix(in oklch, var(--surface-3) 70%, var(--surface-1)) 100%);
+}
+.band-depth-dark {
+  background-color: var(--surface-dark);
+  background-image:
+    radial-gradient(100% 90% at 0% 0%, color-mix(in oklch, var(--surface-3) 40%, transparent), transparent 55%),
+    radial-gradient(80% 70% at 100% 100%, color-mix(in oklch, var(--accent-fill) 18%, transparent), transparent 50%),
+    linear-gradient(165deg, color-mix(in oklch, var(--surface-dark) 70%, white) 0%, var(--surface-dark) 42%, color-mix(in oklch, var(--surface-dark) 85%, black) 100%);
+}
+.band-vs-split {
+  background-color: var(--surface-2);
+  background-image:
+    radial-gradient(70% 60% at 100% 0%, color-mix(in oklch, var(--accent-fill) 12%, transparent), transparent 55%),
+    linear-gradient(180deg, var(--surface-1) 0%, var(--surface-2) 100%);
+}
+.band-copper-mesh {
+  background-color: var(--secondary-fill);
+  background-image:
+    radial-gradient(120% 90% at 100% -10%, color-mix(in oklch, white 28%, transparent), transparent 52%),
+    radial-gradient(90% 80% at -10% 110%, color-mix(in oklch, var(--surface-dark) 45%, transparent), transparent 48%),
+    linear-gradient(118deg, color-mix(in oklch, var(--secondary-fill) 65%, black) 0%, var(--secondary-fill) 38%, var(--secondary) 72%, color-mix(in oklch, var(--secondary) 85%, black) 100%);
+}
+.band-ink-mesh {
+  background-color: var(--surface-dark);
+  background-image:
+    radial-gradient(100% 90% at 110% 0%, color-mix(in oklch, var(--accent-fill) 42%, transparent), transparent 50%),
+    radial-gradient(80% 70% at -5% 100%, color-mix(in oklch, var(--secondary) 35%, transparent), transparent 48%),
+    linear-gradient(150deg, color-mix(in oklch, var(--surface-dark) 75%, white) 0%, var(--surface-dark) 45%, color-mix(in oklch, var(--surface-dark) 90%, black) 100%);
+}
+.band-accent-mesh {
+  background-color: var(--accent-fill);
+  background-image:
+    radial-gradient(100% 90% at 0% -10%, color-mix(in oklch, white 28%, transparent), transparent 48%),
+    radial-gradient(80% 70% at 100% 110%, color-mix(in oklch, var(--surface-dark) 40%, transparent), transparent 50%),
+    linear-gradient(132deg, color-mix(in oklch, var(--accent-fill) 70%, black) 0%, var(--accent-fill) 46%, color-mix(in oklch, var(--accent-fill) 85%, white) 100%);
+}
+.grad-frost {
+  background: linear-gradient(180deg, var(--surface-1) 0%, var(--surface-2) 100%);
+}
+.band-panel {
+  background-color: var(--surface-dark);
+  background-image:
+    radial-gradient(80% 70% at 100% 20%, color-mix(in oklch, var(--accent-fill) 32%, transparent), transparent 55%),
+    radial-gradient(60% 50% at 0% 100%, color-mix(in oklch, var(--secondary) 20%, transparent), transparent 50%),
+    linear-gradient(160deg, color-mix(in oklch, var(--surface-dark) 75%, white) 0%, var(--surface-dark) 45%, color-mix(in oklch, var(--surface-dark) 90%, black) 100%);
+}
+/* Soft alternatives to hatch wallpaper (ATMOSPHERE.md) */
+.band-ledge {
+  background-color: var(--surface-2);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, white 55%, transparent),
+    inset 0 -1px 0 color-mix(in oklch, var(--ink) 10%, transparent);
+}
+.band-seam {
+  background-color: var(--surface-1);
+  background-image: linear-gradient(
+    118deg,
+    var(--surface-1) 0%,
+    var(--surface-2) 48%,
+    color-mix(in oklch, var(--secondary) 8%, var(--surface-1)) 100%
+  );
+}
+.paper-tooth {
+  position: relative;
+  isolation: isolate;
+}
+.paper-tooth::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.05;
+  background-image: repeating-linear-gradient(
+    -28deg,
+    transparent 0,
+    transparent 3px,
+    color-mix(in oklch, var(--ink) 40%, transparent) 3px,
+    color-mix(in oklch, var(--ink) 40%, transparent) 4px
+  );
+}
+.paper-tooth > * { position: relative; z-index: 2; }
+.edge-rule {
+  position: relative;
+}
+.edge-rule::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--secondary) 0%, var(--accent-fill) 55%, transparent 100%);
+}
+.hatch {
+  position: relative;
+  isolation: isolate;
+  --hatch-opacity: 0.18;
+}
+.hatch::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: var(--hatch-opacity, 0.18);
+  background-image: repeating-linear-gradient(
+    -34deg,
+    transparent 0,
+    transparent 6px,
+    color-mix(in oklch, var(--ink) 22%, transparent) 6px,
+    color-mix(in oklch, var(--ink) 22%, transparent) 7px
+  );
+}
+.hatch--light { --hatch-opacity: 0.12; }
+.hatch > *,
+.hatch--light > * {
+  position: relative;
+  z-index: 3;
+}
+
+/* ── Watermark + copper plate + metric (BOTH lanes; ported from Aqua craft) ── */
+.watermark {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  top: auto;
+  z-index: 0;
+  margin: 0;
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(4.25rem, 13vw, 10rem);
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  color: color-mix(in srgb, var(--ink) 7%, transparent);
+  white-space: nowrap;
+  transform: translate(8%, 28%);
+}
+.watermark--gutter {
+  right: 0;
+  bottom: 8%;
+  top: auto;
+  transform: translate(12%, 0);
+  font-size: clamp(4rem, 12vw, 9rem);
+  color: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.watermark--on-dark {
+  color: color-mix(in srgb, var(--on-dark) 8%, transparent);
+}
+.watermark--go {
+  left: 50%;
+  right: auto;
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -48%);
+  font-size: clamp(7rem, 24vw, 16rem);
+  letter-spacing: -0.07em;
+  color: color-mix(in srgb, var(--accent-fill) 10%, transparent);
+  z-index: 0;
+}
+.watermark--deal {
+  left: 4%;
+  right: auto;
+  top: auto;
+  bottom: 14%;
+  transform: none;
+  font-size: clamp(5rem, 16vw, 12rem);
+  color: color-mix(in srgb, var(--on-dark) 8%, transparent);
+  line-height: 0.8;
+}
+.band-content { position: relative; z-index: 2; }
+
+.band-copper-plate {
+  background-color: var(--secondary-fill);
+  background-image:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--accent-fill) 22%, transparent), transparent 48%),
+    radial-gradient(90% 80% at 100% 100%, color-mix(in srgb, var(--surface-dark) 45%, transparent), transparent 52%),
+    linear-gradient(128deg, color-mix(in srgb, var(--secondary-fill) 70%, black) 0%, var(--secondary-fill) 28%, color-mix(in srgb, var(--secondary) 80%, white) 58%, var(--secondary) 100%);
+}
+
+.hatch--cross::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.1;
+  background-image: repeating-linear-gradient(
+    58deg,
+    transparent 0,
+    transparent 11px,
+    color-mix(in srgb, var(--ink) 40%, transparent) 11px,
+    color-mix(in srgb, var(--ink) 40%, transparent) 12px
+  );
+}
+.hatch--on-dark { --hatch-opacity: 0.18; }
+.hatch--on-dark::after {
+  opacity: var(--hatch-opacity, 0.18);
+  background-image: repeating-linear-gradient(
+    -34deg,
+    transparent 0,
+    transparent 5px,
+    color-mix(in srgb, var(--on-dark) 28%, transparent) 5px,
+    color-mix(in srgb, var(--on-dark) 28%, transparent) 6px
+  );
+}
+
+.tick-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 14px;
+  pointer-events: none;
+  z-index: 1;
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent 23px,
+    color-mix(in srgb, var(--on-secondary-fill) 35%, transparent) 23px,
+    color-mix(in srgb, var(--on-secondary-fill) 35%, transparent) 24px
+  );
+}
+.tick-rail--top { top: 0; mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent); }
+.tick-rail--bottom { bottom: 0; opacity: 0.7; }
+
+.metric-caliper {
+  position: relative;
+  padding-top: 1.25rem;
+}
+.metric-caliper::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--on-secondary-fill) 0%, var(--on-secondary-fill) 28%, transparent 28%);
+}
+.metric-caliper::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 14px;
+  background: var(--on-secondary-fill);
+}

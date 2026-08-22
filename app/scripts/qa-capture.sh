@@ -232,7 +232,8 @@ echo "--- mobile pass ---"; cat /tmp/qa-mobile-"$SLUG".log; rm -f /tmp/qa-mobile
 # against data/design-fingerprints.json: a mismatch between what THIS build's own ledger record
 # claimed and what actually shipped is a hard FAIL (bookkeeping-integrity issue — the fix is a
 # one-line layout.tsx import swap or a corrected ledger record), and a shipped heading font that
-# collides name-for-name with one of the last 8 OTHER builds is also a hard FAIL (never reuse a
+# heading font — SAME-TOWN collision only is a hard FAIL (never reuse a heading font with a
+# neighbour). Cross-town reuse is INFO. A same-town body-font match is WARN-only.
 # heading font — build/SKILL.md § How to pick fonts). A same-town body-font match is WARN-only for
 # now (town-matching data quality unverified). Prints FONT_UNIQUENESS_CHECK=PASS/FAIL/SKIP — SKIP
 # is normal on the first few runs across the whole system (nothing in the ledger yet to compare

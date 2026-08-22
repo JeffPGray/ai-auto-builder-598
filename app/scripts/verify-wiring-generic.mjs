@@ -709,7 +709,11 @@ function checkSectionRefs() {
       else if (e.endsWith('.md')) extra.push(p);
     }
   };
-  for (const s of lsSafe(join(ROOT, '.claude/skills'))) collectMd(join(ROOT, '.claude/skills', s, 'reference'));
+  for (const s of lsSafe(join(ROOT, '.claude/skills'))) {
+    collectMd(join(ROOT, '.claude/skills', s, 'reference'));
+    // Speed-cut split: build headings live in stages/*.md — section cross-refs must resolve there.
+    collectMd(join(ROOT, '.claude/skills', s, 'stages'));
+  }
   collectMd(join(ROOT, 'prompts'));
 
   const universe = [...new Set([...GOVERNED.map((g) => g.path), join(ROOT, 'CLAUDE.md'), ...extra])].filter(isFile);

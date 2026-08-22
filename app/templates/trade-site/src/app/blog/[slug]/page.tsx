@@ -52,7 +52,6 @@ export default async function BlogArticlePage({
 
   return (
     <>
-      <SiteNav />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -172,7 +171,6 @@ export default async function BlogArticlePage({
         </div>
       </article>
 
-      <SiteFooter />
     </>
   );
 }

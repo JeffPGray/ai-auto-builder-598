@@ -74,6 +74,49 @@ CALIB_FILE = ROOT / "data" / "plan-calibration.json"
 # Build start-times, so build-end can report wall clock as well as tokens.
 MARK = ROOT / "data" / "build-marks.json"
 
+# ── file_lock() — mkdir-based mutex, matching scripts/lib/file-lock.mjs's protocol ─────────────
+# WHY: found 2026-08-20 answering "can 3-4 sites run in parallel". build-marks.json is read-
+# modify-written by build-start/build-end with NO lock, same shape as the design-fingerprints.json
+# race the Node side (scripts/lib/file-lock.mjs) already fixed 2026-08-18 for design-ledger.mjs /
+# font-uniqueness-check.mjs / copy-fingerprint-check.mjs. This file was the one writer left
+# unprotected. Same lock-dir NAME convention (`<path>.lock`, atomic mkdir) so a Python writer and a
+# Node writer contend correctly on the same physical file if they were ever pointed at one, even
+# though neither implementation imports the other's code.
+import contextlib
+import shutil as _shutil
+
+_LOCK_STALE_S = 30
+_LOCK_POLL_S = 0.05
+_LOCK_MAX_WAIT_S = 10
+
+
+@contextlib.contextmanager
+def file_lock(target: Path):
+    lock_dir = Path(str(target) + ".lock")
+    deadline = time.time() + _LOCK_MAX_WAIT_S
+    while True:
+        try:
+            lock_dir.mkdir()
+            break
+        except FileExistsError:
+            try:
+                age = time.time() - lock_dir.stat().st_mtime
+                if age > _LOCK_STALE_S:
+                    _shutil.rmtree(lock_dir, ignore_errors=True)
+                    continue
+            except FileNotFoundError:
+                continue  # released between our failed mkdir and this stat
+            if time.time() > deadline:
+                raise TimeoutError(
+                    f"file_lock: timed out waiting for {lock_dir} after {_LOCK_MAX_WAIT_S}s "
+                    "— a concurrent process is holding it far longer than expected")
+            time.sleep(_LOCK_POLL_S)
+    try:
+        yield
+    finally:
+        _shutil.rmtree(lock_dir, ignore_errors=True)
+
+
 
 def _usage_by_message_id(path: Path, by_id: dict) -> None:
     """Fold one transcript's usage blocks into by_id, deduped per API call.
@@ -156,8 +199,9 @@ def sessions_since(ts: float, project: str = "") -> list:
     reads as several times its real value. Measured 2026-08-16 - a 2-second
     smoke test reported 1.29% of plan because eight other sessions were live.
 
-    The project dir name is the cwd with separators replaced by dashes, e.g.
-    /Users/x/Github/klaudius/app -> -Users-x-Github-klaudius-app.
+    The project dir name is the cwd with `/` and `.` replaced by dashes, e.g.
+    /Users/x/Github/klaudius/app -> -Users-x-Github-klaudius-app
+    /Users/x/Github/klaudius/.worktrees/foo/app -> -Users-x-Github-klaudius--worktrees-foo-app.
 
     BUG FOUND 2026-08-17 (Fable review, token/compaction audit): a build's
     subagent transcripts live under `<session-id>/subagents/*.jsonl`, which
@@ -210,8 +254,15 @@ def attribution_looks_wrong(minutes: float, turns: int, weighted: int) -> str:
 
 
 def project_dir_for(path: str) -> str:
-    """Claude's project-dir name for a filesystem path."""
-    return str(Path(path).resolve()).replace("/", "-")
+    """Claude's project-dir name for a filesystem path.
+
+    Claude Code replaces BOTH `/` and `.` with `-`. Measured on worktrees:
+      /Users/.../klaudius/.worktrees/klaudius-speed/app
+        → -Users-...-klaudius--worktrees-klaudius-speed-app
+    Replacing only `/` left `.worktrees` intact and pointed metering + live-ledger
+    at a directory that does not exist — every worktree build-end recorded 0 sessions.
+    """
+    return str(Path(path).resolve()).replace("/", "-").replace(".", "-")
 
 
 def load_calibration() -> Optional[float]:
@@ -327,6 +378,85 @@ def assert_no_bleed(path: Path = LEDGER) -> None:
         )
 
 
+def session_id_from_log(log_path: str) -> Optional[str]:
+    """Pull the `session_id` a dispatcher wrote into its own log.
+
+    GROUND TRUTH for attribution: the dispatcher knows which session it
+    launched, so nothing downstream has to infer it from timestamps. Inference
+    is what broke - see claim_sessions(). A killed run leaves a 0-byte log by
+    construction (`claude -p` buffers until exit), so this returns None there
+    and the caller falls back to the `seen` filter alone.
+    """
+    try:
+        lines = Path(log_path).read_text(errors="replace").splitlines()
+    except OSError:
+        return None
+    for line in lines:
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            d = json.loads(line)
+        except Exception:  # noqa: BLE001 - a partial line is not fatal
+            continue
+        sid = d.get("session_id") or d.get("sessionId")
+        if sid:
+            return str(sid)
+    return None
+
+
+def claim_sessions(files: list, session_id: Optional[str], slug: str = "") -> list:
+    """Keep only the transcript this dispatch actually launched.
+
+    WHY THIS IS ID-BASED AND NOT TIME-BASED (2026-08-20, MS septic campaign).
+    `seen` excludes every transcript that existed at build-start, which
+    isolates a build from earlier siblings but never from one that starts
+    LATER - that sibling's transcript did not exist yet, so it could not be in
+    `seen`. Under parallel lanes aaa-septic-systems-ms and laceys-digging-ms
+    were both recorded at 966,398 weighted tokens, the identical figure two
+    seconds apart, each having counted the other.
+
+    The first attempt at a fix inferred ownership from time: a transcript
+    belongs to the latest build that started before its first event. That is
+    WRONG and it silently zeroed a real build. A dispatch does not create its
+    transcript at build-start - it lags by minutes - so a sibling starting
+    inside that lag looks like the better owner. diers-vacuum-service-ms
+    began 5+ minutes after its own build-start, by which point two siblings
+    had started, and the rule handed its transcript away: 0 sessions, 0
+    tokens, on a 20-minute build that had completed successfully. An
+    under-count reads as a cheap build, which is the dangerous direction when
+    these numbers set capacity.
+
+    So attribution never guesses. The dispatcher records the session it
+    launched; we match on that id and nothing else. With no id available we
+    fall back to the `seen` filter alone - the pre-existing over-count, which
+    is wrong in the safe direction and was the behaviour before today.
+    """
+    if session_id:
+        return [f for f in files if f.stem == session_id]
+    if slug:
+        # No session id: the run was killed, so `claude -p` never flushed its buffered log.
+        # Fall back to OWNERSHIP - a dispatch names its client directory in its opening prompt,
+        # so the transcript says whose it is. Same test the watchdog's resolver uses. Bounded
+        # head read: these files reach megabytes.
+        owned = []
+        for f in files:
+            try:
+                with f.open(errors="replace") as fh:
+                    for i, line in enumerate(fh):
+                        if i >= 400:
+                            break
+                        if f"clients/{slug}" in line:
+                            owned.append(f)
+                            break
+            except OSError:
+                continue
+        # Only trust it if it found something; an empty result means the probe failed, and
+        # under-counting a real build is the more dangerous direction.
+        return owned or files
+    return files
+
+
 def record(slug: str, usd: float, note: str = "", stage: str = "build") -> dict:
     """Append one cost line. Returns the entry. Never raises into the caller."""
     entry = {
@@ -430,15 +560,16 @@ def main() -> int:
             print("usage: cost_ledger.py build-start SLUG"); return 1
         slug = args[1]
         MARK.parent.mkdir(parents=True, exist_ok=True)
-        marks = json.loads(MARK.read_text()) if MARK.exists() else {}
-        # Snapshot the session transcripts that ALREADY exist. Any .jsonl that
-        # appears after this is, by construction, a session started for this
-        # build — which is what makes two CONCURRENT builds separable. Without
-        # it, both children write into the same project dir and their costs are
-        # indistinguishable, so the per-build number (the whole point) is lost.
-        existing = sorted(str(f) for f in sessions_since(0, project_dir_for(ROOT)))
-        marks[slug] = {"t": time.time(), "seen": existing}
-        MARK.write_text(json.dumps(marks, indent=2))
+        with file_lock(MARK):
+            marks = json.loads(MARK.read_text()) if MARK.exists() else {}
+            # Snapshot the session transcripts that ALREADY exist. Any .jsonl that
+            # appears after this is, by construction, a session started for this
+            # build — which is what makes two CONCURRENT builds separable. Without
+            # it, both children write into the same project dir and their costs are
+            # indistinguishable, so the per-build number (the whole point) is lost.
+            existing = sorted(str(f) for f in sessions_since(0, project_dir_for(ROOT)))
+            marks[slug] = {"t": time.time(), "seen": existing}
+            MARK.write_text(json.dumps(marks, indent=2))
         print(f"build-start {slug} @ {datetime.now(timezone.utc).isoformat(timespec='seconds')}")
         return 0
 
@@ -446,8 +577,12 @@ def main() -> int:
         if len(args) < 2:
             print("usage: cost_ledger.py build-end SLUG"); return 1
         slug = args[1]
-        marks = json.loads(MARK.read_text()) if MARK.exists() else {}
-        mark = marks.get(slug)
+        with file_lock(MARK):
+            marks = json.loads(MARK.read_text()) if MARK.exists() else {}
+            mark = marks.get(slug)
+            if mark is not None:
+                marks.pop(slug, None)
+                MARK.write_text(json.dumps(marks, indent=2))
         if not mark:
             print(f"no build-start recorded for {slug} — run build-start first"); return 1
         # Back-compat: older marks were a bare float.
@@ -468,6 +603,15 @@ def main() -> int:
         if seen:
             seen_set = set(seen)
             files = [f for f in files if str(f) not in seen_set]
+        # `seen` only excludes siblings that started EARLIER. A sibling that
+        # starts LATER is invisible to it, so under parallel lanes every build
+        # counted every other one. See claim_sessions().
+        sid = None
+        if "--session" in args:
+            sid = args[args.index("--session") + 1]
+        elif "--log" in args:
+            sid = session_id_from_log(args[args.index("--log") + 1])
+        files = claim_sessions(files, sid, slug)
         agg = {"input":0,"output":0,"cache_write":0,"cache_read":0,"weighted":0,"turns":0}
         for f in files:
             t = session_tokens(f)
@@ -475,7 +619,8 @@ def main() -> int:
         pct = pct_for(agg["weighted"])
         mins = elapsed / 60
         print(f"=== {slug} ===")
-        print(f"  sessions       {len(files)} (new since build-start; siblings excluded)")
+        how = "matched to this dispatch's session id" if sid else "NO session id - siblings may be included"
+        print(f"  sessions       {len(files)} ({how})")
         print(f"  wall clock     {mins:,.1f} min")
         print(f"  turns          {agg['turns']:,}")
         print(f"  weighted tok   {agg['weighted']:,}")
@@ -495,21 +640,20 @@ def main() -> int:
         # comparison becomes impossible the moment build-end runs once.
         # Measured 2026-08-16: re-deriving the input/output/cache split for the
         # two completed builds was impossible for exactly this reason.
-        marks.pop(slug, None)
-        MARK.write_text(json.dumps(marks, indent=2))
         done_file = ROOT / "data" / "build-marks-done.json"
-        try:
-            archive = json.loads(done_file.read_text()) if done_file.exists() else {}
-        except json.JSONDecodeError:
-            archive = {}
-        archive.setdefault(slug, []).append({
-            "t": start, "seen": seen if isinstance(seen, list) else sorted(seen),
-            "ended": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "minutes": round(mins, 1), "weighted": agg["weighted"],
-            "turns": agg["turns"], "plan_pct": pct,
-            "sessions": [str(f) for f in files],
-        })
-        done_file.write_text(json.dumps(archive, indent=2))
+        with file_lock(done_file):
+            try:
+                archive = json.loads(done_file.read_text()) if done_file.exists() else {}
+            except json.JSONDecodeError:
+                archive = {}
+            archive.setdefault(slug, []).append({
+                "t": start, "seen": seen if isinstance(seen, list) else sorted(seen),
+                "ended": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "minutes": round(mins, 1), "weighted": agg["weighted"],
+                "turns": agg["turns"], "plan_pct": pct,
+                "sessions": [str(f) for f in files],
+            })
+            done_file.write_text(json.dumps(archive, indent=2))
         print(f"\n  recorded to the ledger")
         return 0
 
@@ -636,6 +780,43 @@ def main() -> int:
               + (f", ${tot/n:.2f} per build" if n else "")
               + (f"  (since {since})" if since else ""))
         return 0
+
+    if cmd == "compare":
+        # experiment/speed-cut: print this slug vs hillards baseline from archive.
+        if len(args) < 2:
+            print("usage: cost_ledger.py compare SLUG [--baseline hillards-septic-ms]"); return 1
+        slug = args[1]
+        baseline = "hillards-septic-ms"
+        if "--baseline" in args:
+            baseline = args[args.index("--baseline") + 1]
+        done_file = ROOT / "data" / "build-marks-done.json"
+        if not done_file.exists():
+            print("no completed builds recorded yet"); return 1
+        arch = json.loads(done_file.read_text())
+        def latest(s: str):
+            runs = arch.get(s) or []
+            return runs[-1] if runs else None
+        cur = latest(slug)
+        base = latest(baseline)
+        if not cur:
+            print(f"no completed run for {slug}"); return 1
+        print(f"=== compare {slug} vs {baseline} ===")
+        print(f"  {'':12} {'min':>8} {'weighted':>14} {'turns':>8} {'plan %':>10}")
+        print(f"  {'this':12} {cur.get('minutes',0):>8.1f} {cur.get('weighted',0):>14,} "
+              f"{cur.get('turns',0):>8,} {(cur.get('plan_pct') or 0):>10.4f}")
+        if base:
+            print(f"  {'baseline':12} {base.get('minutes',0):>8.1f} {base.get('weighted',0):>14,} "
+                  f"{base.get('turns',0):>8,} {(base.get('plan_pct') or 0):>10.4f}")
+            dm = cur.get("minutes", 0) - base.get("minutes", 0)
+            dw = cur.get("weighted", 0) - base.get("weighted", 0)
+            print(f"  delta        {dm:>+8.1f} {dw:>+14,}  "
+                  f"(target: wall <60 and tokens not worse than ~2.1M)")
+        else:
+            print(f"  (no archive row for baseline {baseline} — hillards numbers live on the "
+                  "operator machine that ran that build)")
+            print("  hard baseline from speed-cut-replay.md: hillards 150.4 min / 1.63M weighted")
+        return 0
+
     print(__doc__)
     return 1
 
