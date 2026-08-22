@@ -352,6 +352,13 @@ body {
   .lift-panel { padding: 2.25rem 2.5rem; }
 }
 
+.card-lift {
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
+  box-shadow: 0 24px 48px -24px color-mix(in srgb, var(--surface-dark) 35%, transparent);
+}
+
 .band-go-mesh {
   background-color: var(--surface-dark);
   background-image:

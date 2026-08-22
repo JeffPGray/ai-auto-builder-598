@@ -23,10 +23,11 @@ export default function HeroVideo({ poster, src, alt = "", className = "" }: Her
   useEffect(() => {
     if (!src) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const narrow = window.matchMedia("(max-width: 767px)").matches;
     const saveData = (
       navigator as Navigator & { connection?: { saveData?: boolean } }
     ).connection?.saveData;
-    if (reduce || saveData) return;
+    if (reduce || saveData || narrow) return;
 
     const start = () => {
       const v = ref.current;

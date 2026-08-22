@@ -193,6 +193,39 @@ function genericDefaults(slug, cleared) {
         crop: { objectPosition: "center 40%" },
       });
     }
+    // Tier 2: service micro-loops (720p, 4s) from additional cleared stills
+    for (const [i, stem] of stems.slice(1, 4).entries()) {
+      if (stem === ref || stem === secondary) continue;
+      slots.push({
+        id: `service-loop-${i + 1}`,
+        role: "service-loop",
+        source: "hf-loop",
+        mode: "ref",
+        refStem: stem,
+        out: `videos/${stem}.mp4`,
+        duration: 4,
+        resolution: "720p",
+        optional: true,
+      });
+    }
+  }
+  const gatheredPath = path.join(APP_ROOT, "clients", slug, "data", "gathered-content.md");
+  if (existsSync(gatheredPath)) {
+    const g = readFileSync(gatheredPath, "utf8");
+    if (/owner|founder|founded by/i.test(g) && ref) {
+      slots.push({
+        id: "about-founder",
+        role: "about-video",
+        source: "hf-loop",
+        mode: "ref",
+        refStem: ref,
+        out: "videos/about-founder.mp4",
+        duration: 4,
+        resolution: "720p",
+        optional: true,
+        note: "short founder/team motion plate for about page",
+      });
+    }
   }
   return {
     version: 1,

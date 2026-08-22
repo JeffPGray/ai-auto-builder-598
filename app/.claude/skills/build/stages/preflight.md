@@ -76,6 +76,8 @@ Confirm at least one channel in `OUTREACH_PRIORITY` is viable for this client �
 ### 1. Photos
 Read `clients/$ARGUMENTS/data/gathered-content.md` and verify it contains at least one actual photo URL (e.g. `lh3.googleusercontent.com`, `/images/`, `img02.restaurantguru.com`). If the Photos section has zero usable URLs, **STOP and go back to gather photos** before building. A site without photos looks like a generic template and wastes the lead. Do NOT proceed with a gradient-only hero and no images anywhere — that is not a bespoke website.
 
+**Hi-res for HF:** when scraping Squarespace/Wix/CDN photos, request the largest variant (e.g. Squarespace `?format=2500w`) into `data/images/` **before** optimise. HF `--image` reads originals; WebP in `public/` is for page weight only.
+
 **🚨 Only use photos gather POSITIVELY CLEARED.** The Photos section carries a verdict per photo and
 usually a `Usable hero candidates:` / `Usable work photos:` summary. **A photo marked
 `(not yet verified)`, `too small`, `unclear` or similar is NOT available to you** — not as a hero,
@@ -202,23 +204,23 @@ cd ../../..
 # Image plan: pick slots → HF thin/wide plates into data/images → KEEP lines for verify-photos.
 # Rules: services/higgsfield/IMAGE-RULES.md · clients/<slug>/data/image-plan.json
 node services/higgsfield/image-plan.mjs --slug $ARGUMENTS --all
+node services/higgsfield/hero-prompt.mjs --slug $ARGUMENTS
 cp -f clients/$ARGUMENTS/data/images/* clients/$ARGUMENTS/site/public/images/ 2>/dev/null || true
-# Optimise rasters → WebP in public/images (richness weight/webp). Required for BOTH
-# single /build and parallel run-lane — author stage also runs it; this makes a truncated
-# run less likely to skip it before first next build.
-node scripts/optimise-images.mjs $ARGUMENTS
 # Remotion lives in services/hero-video/node_modules (gitignored). A fresh worktree that
 # never ran `npm ci` there fails every hero render with "@remotion/bundler not installed"
 # and ships poster-only — unequal vs hillards. Ensure deps before render.
 if [ ! -d services/hero-video/node_modules/@remotion/bundler ]; then
   (cd services/hero-video && npm ci) || (cd services/hero-video && npm install)
 fi
-# Hero: Higgsfield cinematic generate first (Seedance t2v by default; stills are
-# optional --ref / --lock-still). Remotion Ken Burns is the loud fallback.
-# Auth: `higgsfield auth login` once. HF_HERO=0 skips HF. Credits ≤500 → notify.sh.
-# Per-client prompt: clients/<slug>/data/hero-prompt.txt
-# Hero slot mode/ref come from image-plan.json when present.
+# Hero BEFORE optimise-images — HF --image reads data/images/ originals (hi-res gather).
+# Auth: `higgsfield auth login` once. Do not pass --skip-hf in production preflight.
 node services/higgsfield/render-hero.mjs --slug $ARGUMENTS
+# Tier 2: optional service/about micro-loops (720p, hf-loop slots in image-plan)
+node services/higgsfield/render-loops.mjs --slug $ARGUMENTS || true
+# Optimise rasters → WebP in public/images (richness weight/webp). Required for BOTH
+# single /build and parallel run-lane — author stage also runs it; this makes a truncated
+# run less likely to skip it before first next build.
+node scripts/optimise-images.mjs $ARGUMENTS
 # Logo nav chrome (BOTH lanes): white-plate → light nav + logo-only; writes data/logo-nav.json
 # and patches site-data when --write. Run after logo.webp is in public/images.
 node scripts/inspect-logo.mjs $ARGUMENTS --write

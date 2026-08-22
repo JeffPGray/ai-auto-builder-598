@@ -3,6 +3,12 @@ Sonnet for every route page.tsx. Parent Opus does chrome only.
 
 **Images:** every marketing `/images/*` src must appear in `clients/$ARGUMENTS/data/image-plan.json` with `source !== "none"`. Do not invent stock or wire measured/systems veils under dense copy. See `services/higgsfield/IMAGE-RULES.md`.
 
+**react-vite (experiment track — once per build, before client chrome):**
+```
+Skill(skill="react-vite", args="Client components for $ARGUMENTS: HeroVideo HF binding, lazy below-fold if needed, ContactForm. Next export only.")
+```
+One invoke. Do not Skill-dump. Higgsfield outputs bind in HeroVideo per `image-plan.json`.
+
 
 ## Route-batched write-once children (experiment/speed-cut)
 

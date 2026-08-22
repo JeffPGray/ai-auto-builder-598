@@ -96,6 +96,10 @@ if (mode === "lockup") {
 } else if (Math.min(w, h) < 96) {
   // Tiny source mark — display larger than intrinsic pixel density suggests
   logoImgClass = "h-11 w-11 sm:h-12 sm:w-12 shrink-0 object-contain";
+} else if (mode === "mark" && Math.min(w, h) >= 128) {
+  // Large square brand icon — readable alone; redundant shortName reads as a bug
+  logoOnly = true;
+  logoImgClass = "h-14 w-14 sm:h-16 sm:w-16 shrink-0 object-contain";
 }
 
 const result = {

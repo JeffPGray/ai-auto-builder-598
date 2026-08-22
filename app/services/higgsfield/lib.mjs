@@ -6,7 +6,7 @@
  * (browser once per machine). No silent Pexels-style fallback here — callers decide.
  */
 import { spawnSync, execFileSync } from "node:child_process";
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync, renameSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -115,16 +115,61 @@ export function listUsablePhotos(imgDir) {
 }
 
 /**
- * Prefer concrete tank / install product stills for i2v; else largest usable.
+ * Prefer largest landscape work still for HF ref; aqua tank paths stay for wastewater builds.
  */
 export function pickHeroStill(photos) {
   if (!photos.length) return null;
-  const prefer = [/concrete.?tank/i, /product-install/i, /gmaps/i, /facility/i];
-  for (const re of prefer) {
+  const work = [
+    /tree.?trim/i,
+    /tree/i,
+    /sod/i,
+    /landscap/i,
+    /crew/i,
+    /work/i,
+    /install/i,
+    /sprinkler/i,
+    /drain/i,
+    /product/i,
+    /concrete.?tank/i,
+    /facility/i,
+  ];
+  for (const re of work) {
     const hit = photos.find((p) => re.test(p.file));
     if (hit) return hit;
   }
-  return photos[0];
+  const nonGmaps = photos.filter((p) => !/gmaps|street|maps/i.test(p.file));
+  return (nonGmaps[0] || photos[0]);
+}
+
+/**
+ * Resolve HF reference still: data/images originals first, then public/images.
+ * @returns {{ file: string, full: string, size?: number } | null}
+ */
+export function resolveRefStill(slug, refStem, publicImgDir) {
+  const dataDir = path.join(APP_ROOT, "clients", slug, "data", "images");
+  const dirs = [dataDir, publicImgDir].filter((d) => existsSync(d));
+
+  if (refStem) {
+    for (const dir of dirs) {
+      let best = null;
+      for (const ext of [".jpg", ".jpeg", ".png", ".webp"]) {
+        const full = path.join(dir, `${refStem}${ext}`);
+        if (!existsSync(full)) continue;
+        const size = statSync(full).size;
+        if (!best || size > best.size) best = { file: `${refStem}${ext}`, full, size };
+      }
+      if (best) return best;
+    }
+  }
+
+  const photos = [];
+  for (const dir of dirs) {
+    for (const p of listUsablePhotos(dir)) {
+      if (!photos.some((x) => x.file === p.file)) photos.push(p);
+    }
+  }
+  photos.sort((a, b) => b.size - a.size);
+  return photos.length ? pickHeroStill(photos) : null;
 }
 
 /** Download URL → local path (binary). */
@@ -156,4 +201,58 @@ export function writePosterFromVideo({ mp4Path, posterPath, thumbnailUrl }) {
 function which(cmd) {
   const r = spawnSync("which", [cmd], { encoding: "utf8" });
   return r.status === 0 ? r.stdout.trim() : "";
+}
+
+/** faststart + optional re-encode when hero mp4 exceeds budget (mobile LCP). */
+export function postProcessHeroMp4(mp4Path, { maxBytes = 4_500_000 } = {}) {
+  const ffmpeg = which("ffmpeg");
+  if (!ffmpeg || !existsSync(mp4Path)) return { action: "skip" };
+
+  const tmp = `${mp4Path}.faststart.mp4`;
+  const r1 = spawnSync(
+    ffmpeg,
+    ["-y", "-i", mp4Path, "-movflags", "+faststart", "-c", "copy", tmp],
+    { encoding: "utf8" },
+  );
+  if (r1.status === 0 && existsSync(tmp)) {
+    renameSync(tmp, mp4Path);
+  } else if (existsSync(tmp)) {
+    try {
+      unlinkSync(tmp);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  let size = statSync(mp4Path).size;
+  if (size <= maxBytes) return { action: "faststart", bytes: size };
+
+  const enc = `${mp4Path}.enc.mp4`;
+  const r2 = spawnSync(
+    ffmpeg,
+    [
+      "-y",
+      "-i",
+      mp4Path,
+      "-movflags",
+      "+faststart",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "slow",
+      "-crf",
+      "28",
+      "-pix_fmt",
+      "yuv420p",
+      "-an",
+      enc,
+    ],
+    { encoding: "utf8" },
+  );
+  if (r2.status === 0 && existsSync(enc)) {
+    renameSync(enc, mp4Path);
+    size = statSync(mp4Path).size;
+    return { action: "reencode", bytes: size };
+  }
+  return { action: "faststart", bytes: size };
 }

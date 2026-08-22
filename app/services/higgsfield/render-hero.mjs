@@ -11,12 +11,11 @@
  *   node services/higgsfield/render-hero.mjs --slug <slug> [--force] [--skip-hf]
  *     [--prompt "…"] [--ref] [--lock-still]
  *
- * Policy (2026-08-21):
- *   Prompt Seedance (or HF_HERO_MODEL) for a STUNNING hero. Cleared client photos
- *   are optional references — not a locked start frame. Default is text→video.
- *   --ref / HF_HERO_REF=1     → pass best still as --image (soft reference)
- *   --lock-still / HF_HERO_LOCK_STILL=1 → start_image i2v (rare; when fidelity > craft)
- *   Remotion is the loud fallback when HF fails — never silent, never stock Pexels.
+ * Policy (2026-08-22):
+ *   When image-plan hero slot has cleared photos → mode=ref + --image from data/images
+ *   originals (hi-res gather), then public/images fallback. t2v only when no usable still.
+ *   Default 1080p (HF_HERO_RESOLUTION). Remotion is loud fallback — never silent Pexels.
+ *   --skip-hf is dev-only; production preflight must not pass it.
  */
 import { spawnSync } from "node:child_process";
 import {
@@ -34,10 +33,10 @@ import {
   accountStatus,
   downloadFile,
   hfJson,
-  listUsablePhotos,
-  pickHeroStill,
+  resolveRefStill,
   warnIfLowCredits,
   writePosterFromVideo,
+  postProcessHeroMp4,
 } from "./lib.mjs";
 
 const arg = (name, dflt) => {
@@ -97,16 +96,6 @@ function readHeroPlan(slug) {
   }
 }
 
-function resolveRefStill(imgDir, refStem, photos) {
-  if (refStem) {
-    for (const ext of [".webp", ".jpg", ".jpeg", ".png"]) {
-      const full = path.join(imgDir, `${refStem}${ext}`);
-      if (existsSync(full)) return { file: `${refStem}${ext}`, full };
-    }
-  }
-  return photos.length ? pickHeroStill(photos) : null;
-}
-
 async function tryHiggsfieldHero({ slug, siteDir, force, promptOverride, useRef, lockStill }) {
   const publicDir = path.join(siteDir, "public");
   const imgDir = path.join(publicDir, "images");
@@ -115,8 +104,7 @@ async function tryHiggsfieldHero({ slug, siteDir, force, promptOverride, useRef,
   const metaPath = path.join(publicDir, "hero-hf.json");
 
   const heroSlot = readHeroPlan(slug);
-  const photos = listUsablePhotos(imgDir);
-  const still = resolveRefStill(imgDir, heroSlot?.refStem, photos);
+  const still = resolveRefStill(slug, heroSlot?.refStem, imgDir);
 
   const prompt =
     promptOverride ||
@@ -142,10 +130,28 @@ async function tryHiggsfieldHero({ slug, siteDir, force, promptOverride, useRef,
     (useRef || planMode === "ref" || process.env.HF_HERO_REF === "1");
   const modeTag = effectiveLock ? "lock-still" : effectiveRef ? "ref" : "t2v";
 
+  const duration = Number(process.env.HF_HERO_DURATION || 5);
+  const resolution = process.env.HF_HERO_RESOLUTION || "1080p";
+
+  if (heroSlot?.refStem && !still) {
+    throw new Error(`image-plan refStem=${heroSlot.refStem} but no file in data/images or public/images`);
+  }
+  if (planMode === "ref" && !still) {
+    throw new Error("image-plan mode=ref but no usable reference still");
+  }
+  if ((effectiveRef || planMode === "ref") && !still) {
+    throw new Error("ref mode requested but no usable reference still");
+  }
+
   if (!force && existsSync(outMp4) && existsSync(outPoster) && existsSync(metaPath)) {
     try {
       const meta = JSON.parse(readFileSync(metaPath, "utf8"));
-      if (meta.source === "higgsfield" && meta.prompt === prompt && meta.mode === modeTag) {
+      if (
+        meta.source === "higgsfield" &&
+        meta.prompt === prompt &&
+        meta.mode === modeTag &&
+        (meta.resolution || "1080p") === resolution
+      ) {
         const kb = (statSync(outMp4).size / 1024).toFixed(0);
         const pkb = (statSync(outPoster).size / 1024).toFixed(0);
         console.log(
@@ -167,8 +173,6 @@ async function tryHiggsfieldHero({ slug, siteDir, force, promptOverride, useRef,
   }
   warnIfLowCredits(status.credits);
 
-  const duration = Number(process.env.HF_HERO_DURATION || 5);
-  const resolution = process.env.HF_HERO_RESOLUTION || "720p";
   const mode = process.env.HF_HERO_MODE || "std";
   const model = process.env.HF_HERO_MODEL || "seedance_2_0";
 
@@ -212,6 +216,10 @@ async function tryHiggsfieldHero({ slug, siteDir, force, promptOverride, useRef,
   const tmpPoster = path.join(publicDir, `.hero-hf-${process.pid}.jpg`);
   try {
     downloadFile(job.result_url, tmpMp4);
+    const pp = postProcessHeroMp4(tmpMp4);
+    if (pp.action !== "skip") {
+      console.log(`[higgsfield] hero post-process ${pp.action} bytes=${pp.bytes}`);
+    }
     const posterHow = writePosterFromVideo({
       mp4Path: tmpMp4,
       posterPath: tmpPoster,
@@ -231,6 +239,7 @@ async function tryHiggsfieldHero({ slug, siteDir, force, promptOverride, useRef,
           source: "higgsfield",
           model,
           mode: modeTag,
+          resolution,
           still: still?.file || null,
           prompt,
           jobId: job.id,
@@ -254,8 +263,8 @@ async function tryHiggsfieldHero({ slug, siteDir, force, promptOverride, useRef,
   const kb = (statSync(outMp4).size / 1024).toFixed(0);
   const pkb = (statSync(outPoster).size / 1024).toFixed(0);
   console.log(
-    `HERO_VIDEO=OK slug=${slug} source=higgsfield model=${model} mode=${modeTag} ` +
-      `job=${job.id} mp4=${kb}KB poster=${pkb}KB ` +
+    `HERO_VIDEO=OK slug=${slug} source=higgsfield model=${model} mode=${modeTag} resolution=${resolution} ` +
+      `still=${still?.file || "none"} job=${job.id} mp4=${kb}KB poster=${pkb}KB ` +
       `wall=${((Date.now() - started) / 1000).toFixed(1)}s credits=${status.credits}`,
   );
   return { cached: false, job };
@@ -280,6 +289,9 @@ const promptOverride = arg("prompt");
 
 (async () => {
   if (skipHf) {
+    console.warn(
+      "[higgsfield] --skip-hf / HF_HERO=0: Remotion fallback only — do not use in production preflight",
+    );
     remotionFallback(slug, maxImages, siteDirOverride);
     return;
   }

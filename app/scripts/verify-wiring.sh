@@ -192,7 +192,10 @@ chk "dispatch records cost_end"          "grep -q 'cost_end' scripts/dispatch-bu
 chk "hero-video remotion package.json"   "test -f services/hero-video/package.json && grep -q '@remotion/bundler' services/hero-video/package.json"
 chk "preflight ensures remotion install" "grep -q 'services/hero-video/node_modules/@remotion/bundler' .claude/skills/build/stages/preflight.md"
 chk "higgsfield render-hero exists"      "test -f services/higgsfield/render-hero.mjs"
+chk "higgsfield hero-prompt exists"      "test -f services/higgsfield/hero-prompt.mjs"
 chk "preflight runs higgsfield hero"     "grep -q 'services/higgsfield/render-hero.mjs' .claude/skills/build/stages/preflight.md"
+chk "preflight runs hero-prompt"         "grep -q 'services/higgsfield/hero-prompt.mjs' .claude/skills/build/stages/preflight.md"
+chk "higgsfield render-loops exists"     "test -f services/higgsfield/render-loops.mjs"
 chk "QA still judges with impeccable"    "grep -q 'skill=\"impeccable\"' .claude/agents/qa-reviewer.md"
 chk "build does not Skill-dump impeccable as a session" "! grep -rE '^Skill\\(skill=\"impeccable\"' .claude/skills/build --include='*.md'"
 

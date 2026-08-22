@@ -27,7 +27,9 @@ Media + surface rules are identical in every cell. Parallel safety = only touch 
 
 | Slot role | Allowed `source` | Notes |
 |---|---|---|
-| `hero-video` | `hf-hero` | Seedance t2v; still = optional `--ref`; Remotion loud fallback |
+| `hero-video` | `hf-hero` | Seedance **ref** when cleared photos exist (`mode: ref` + `--image` from `data/images/`); t2v only with zero stills; Remotion loud fallback |
+| `service-loop` | `hf-loop` | 4s 720p ref micro-loop → `public/videos/{stem}.mp4` (optional slots) |
+| `about-video` | `hf-loop` | About-page founder/team motion plate (optional) |
 | `photo-ground` | `cleared` \| `hf-still` | Portrait in landscape → HF 16:9 plate |
 | `product-feature` | `cleared` | Contained / cutaway |
 | `thin-shelf` / `atmosphere-ground` | `hf-still` optional | Never under dense copy |
@@ -78,7 +80,9 @@ Slot ≥ **7/10**; hero ≥ **8/10** (motion weighted).
 
 ```bash
 node services/higgsfield/image-plan.mjs --slug $SLUG --all
+node services/higgsfield/hero-prompt.mjs --slug $SLUG
 node services/higgsfield/render-hero.mjs --slug $SLUG
+node services/higgsfield/render-loops.mjs --slug $SLUG
 node scripts/verify-photos.mjs $SLUG
 node scripts/verify-media-surface.mjs $SLUG   # fail-closed if plan missing
 ```

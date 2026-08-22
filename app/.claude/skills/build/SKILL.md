@@ -70,6 +70,10 @@ Legal `/privacy` and `/terms` use the frozen layout in `reference/legal-pages.md
 
 Consult once: `stages/consult-once.md`. If `design-lock.md` exists, do not Skill-dump design corpora.
 
+**react-vite (experiment track):** After design lock, one bounded invoke for client components only —
+`Skill(skill="react-vite", args="HeroVideo + Motion + ContactForm for $ARGUMENTS. Next static export. Bind HF hero from image-plan.")`.
+See `.claude/skills/react-vite/SKILL.md`. Never `npm create vite`.
+
 ## Gates before screenshots
 
 ```bash

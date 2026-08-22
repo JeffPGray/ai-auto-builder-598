@@ -1068,6 +1068,25 @@ if (existsSync(uiDir)) {
   }
 }
 
+/* 17c. Home ATMOSPHERE recipe — template lift must bind on / (ATMOSPHERE.md rows 1 + 6). */
+{
+  const homeTsx = join(siteDir, 'src', 'app', 'page.tsx');
+  if (existsSync(homeTsx)) {
+    const home = readFileSync(homeTsx, 'utf8');
+    const hasSplitOverlay = /hero-overlay--split/.test(home);
+    const hasEarnedPlate =
+      /band-go-mesh|band-depth-frost|band-depth-dark|band-copper-plate|bg-secondary-fill/.test(home);
+    if (!hasSplitOverlay) {
+      failures.push(
+        '[atmosphere-home] page.tsx hero missing hero-overlay--split — use template overlay, not flat wash.');
+    }
+    if (!hasEarnedPlate) {
+      failures.push(
+        '[atmosphere-home] page.tsx missing earned plate (band-go-mesh, band-depth-frost, or secondary-fill band).');
+    }
+  }
+}
+
 /* 18. PER-ROUTE DESIGN BINDING — the check § Step 1d already CLAIMED existed (2026-08-19).
  *
  * build/SKILL.md's "The design idea binds on EVERY route" said, in prose: "richness-check.mjs counts
